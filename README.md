@@ -1,59 +1,260 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistem Akademik New TOCR
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Sistem Akademik New TOCR adalah aplikasi pembayaran SKS berbasis Laravel yang mendukung pengelolaan tagihan mahasiswa, upload bukti bayar, verifikasi otomatis berbasis OCR, pengelolaan kelas, import data mahasiswa, laporan Excel, dan monitoring dashboard admin.
 
-## About Laravel
+Project ini dirancang untuk dua peran utama:
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- Admin kampus untuk mengelola mahasiswa, tarif, pembayaran, laporan, OCR, dan kelas
+- Mahasiswa untuk melihat tagihan, memilih skema cicilan, upload bukti bayar, melihat histori, dan mengakses pembayaran munaqosah
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Fitur Utama
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Dashboard admin dengan ringkasan mahasiswa aktif, status pembayaran, tagihan, tren pembayaran, dan statistik OCR per kelas
+- Import data mahasiswa dari file Excel/CSV lengkap dengan template import
+- Pembuatan payment plan otomatis berdasarkan template angsuran
+- Upload bukti pembayaran oleh mahasiswa
+- Verifikasi pembayaran manual dan otomatis menggunakan OCR Python + Tesseract
+- Validasi OCR terhadap nominal, rekening tujuan, tanggal transaksi, dan nama mahasiswa
+- Export laporan pembayaran dan ledger mahasiswa ke Excel
+- Cetak receipt pembayaran dalam format PDF
+- Pengelolaan kelas, tarif kuliah, penyesuaian tagihan, dan pengaturan OCR dari panel admin
+- Modul munaqosah untuk mahasiswa yang sudah melunasi tagihan semester
+- Reminder pembayaran via WhatsApp melalui command terjadwal
+- Export dataset pembayaran terverifikasi untuk kebutuhan pelatihan machine learning
 
-## Learning Laravel
+## Teknologi yang Digunakan
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- PHP 8.2
+- Laravel 12
+- MySQL
+- Vite + Tailwind CSS
+- Laravel Sanctum
+- Laravel DomPDF
+- Laravel Excel
+- Python 3
+- Tesseract OCR
+- OpenCV, Pillow, NumPy, pytesseract
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Struktur Peran
 
-## Laravel Sponsors
+### Admin
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- Login ke dashboard admin
+- Mengelola data mahasiswa reguler dan RPL
+- Mengimpor data mahasiswa secara massal
+- Mengatur tarif dan template pembayaran
+- Memverifikasi pembayaran yang perlu review
+- Mengekspor laporan transaksi dan ledger
+- Mengelola kelas dan setting OCR
 
-### Premium Partners
+### Mahasiswa
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+- Login menggunakan email atau NIM
+- Melihat rencana pembayaran aktif
+- Mengunggah bukti transfer
+- Melihat histori pembayaran
+- Mengubah password
+- Mengakses pendaftaran pembayaran munaqosah jika seluruh tagihan semester sudah lunas
 
-## Contributing
+## Alur Singkat Sistem
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+1. Admin menyiapkan tarif, template angsuran, dan data mahasiswa.
+2. Mahasiswa login lalu memilih atau menerima payment plan.
+3. Mahasiswa mengunggah bukti pembayaran.
+4. Sistem memproses bukti bayar melalui queue dan OCR Python.
+5. Jika hasil OCR valid, pembayaran dapat diverifikasi otomatis.
+6. Jika hasil OCR meragukan atau gagal, status pembayaran masuk ke review admin.
+7. Admin dapat melihat dashboard, memverifikasi pembayaran, lalu mengekspor laporan.
 
-## Code of Conduct
+## Persyaratan Sistem
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Sebelum menjalankan project ini, pastikan tersedia:
 
-## Security Vulnerabilities
+- PHP 8.2 atau lebih baru
+- Composer
+- Node.js dan npm
+- MySQL
+- Python 3
+- Tesseract OCR
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Untuk Windows, default path Tesseract yang digunakan script adalah:
 
-## License
+```bash
+C:\Program Files\Tesseract-OCR\tesseract.exe
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Jika Tesseract terpasang di lokasi lain, sesuaikan path di `app/Scripts/ocr_processor.py` atau pastikan executable tersedia di PATH.
+
+## Instalasi Lokal
+
+### 1. Clone repository
+
+```bash
+git clone https://github.com/Mishalyolyin/Sistem_akademik_new_TOCR.git
+cd Sistem_akademik_new_TOCR
+```
+
+### 2. Install dependency PHP
+
+```bash
+composer install
+```
+
+### 3. Siapkan environment
+
+```bash
+copy .env.example .env
+php artisan key:generate
+```
+
+Lalu sesuaikan konfigurasi database di file `.env`.
+
+### 4. Jalankan migrasi dan seeder
+
+```bash
+php artisan migrate --seed
+```
+
+Seeder akan membuat akun admin default dan data dummy awal.
+
+### 5. Install dependency frontend
+
+```bash
+npm install
+npm run build
+```
+
+Untuk pengembangan aktif, gunakan:
+
+```bash
+npm run dev
+```
+
+### 6. Install dependency OCR Python
+
+```bash
+pip install -r app/Scripts/requirements.txt
+```
+
+### 7. Siapkan storage link
+
+```bash
+php artisan storage:link
+```
+
+### 8. Jalankan aplikasi
+
+Opsi paling praktis:
+
+```bash
+composer run dev
+```
+
+Script tersebut akan menjalankan:
+
+- Laravel development server
+- Queue listener
+- Log viewer
+- Vite dev server
+
+Jika ingin manual, jalankan service terpisah:
+
+```bash
+php artisan serve
+php artisan queue:listen --tries=1 --timeout=0
+npm run dev
+```
+
+## Akun Default Seeder
+
+Jika menjalankan `php artisan migrate --seed`, akun admin default yang dibuat adalah:
+
+- Email: `admin@campus.ac.id`
+- Password: `password`
+
+Setelah login pertama, sebaiknya password langsung diganti.
+
+## Command Penting
+
+### Menjalankan test
+
+```bash
+composer test
+```
+
+### Menjalankan reminder pembayaran
+
+```bash
+php artisan payments:send-reminders
+```
+
+Command ini juga sudah dijadwalkan harian pukul `08:00`.
+
+### Export dataset untuk ML
+
+```bash
+php artisan app:export-dataset --limit=100
+```
+
+## OCR dan Verifikasi Pembayaran
+
+Sistem OCR menggunakan script Python di `app/Scripts/ocr_processor.py`.
+
+Prosesnya sebagai berikut:
+
+- Laravel menerima upload bukti pembayaran
+- Job queue memproses file bukti bayar
+- Python melakukan pre-processing gambar
+- Tesseract membaca teks dari gambar
+- Sistem mengekstrak nominal dan informasi penting
+- Hasil OCR dibandingkan dengan data pembayaran yang seharusnya
+- Pembayaran bisa otomatis diverifikasi atau masuk status review manual
+
+Jika OCR gagal karena dependency belum lengkap atau hasil pembacaan tidak valid, pembayaran tidak langsung dianggap berhasil dan tetap memerlukan pengecekan admin.
+
+## Fitur Import dan Export
+
+### Import mahasiswa
+
+- Mendukung file `csv`, `txt`, dan `xlsx`
+- Memiliki template import bawaan
+- Mendukung mode skip, update, dan cancel saat data bentrok
+
+### Export laporan
+
+- Export laporan pembayaran per program
+- Export seluruh data pembayaran mahasiswa
+- Export ledger mahasiswa
+- Export receipt PDF
+- Export dataset pembayaran terverifikasi untuk pelatihan model
+
+## Struktur Folder Penting
+
+```text
+app/
+  Console/Commands/     Command artisan custom
+  Exports/              Export Excel
+  Http/Controllers/     Controller admin dan mahasiswa
+  Imports/              Logic import Excel mahasiswa
+  Jobs/                 Job queue OCR
+  Models/               Model Eloquent
+  Scripts/              Script Python OCR
+  Services/             Business logic utama
+database/
+  migrations/           Struktur database
+  seeders/              Seeder akun admin dan data awal
+resources/views/        Blade view admin, mahasiswa, auth, receipt
+routes/                 Route web, api, dan console
+tests/                  Feature test, unit test, dan python test
+```
+
+## Catatan Pengembangan
+
+- Queue connection default menggunakan `database`
+- Session dan cache default juga menggunakan database
+- Project menyediakan banyak feature test untuk alur pembayaran, OCR, import, export, dashboard, dan keamanan pembayaran
+- Dokumentasi tambahan tersedia di `DEPLOYMENT.md`, `ML_GUIDE.md`, dan `README_OCR.md`
+
+## Lisensi
+
+Project ini menggunakan lisensi MIT.
