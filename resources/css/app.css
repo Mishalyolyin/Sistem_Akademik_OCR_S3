@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Playfair Display', ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
+    /* Luxury Green (Unissula Style) Palette - Refined */
+    --color-primary: #022c22; /* Emerald 950 - Deep Dark Green */
+    --color-primary-light: #064e3b; /* Emerald 900 */
+    --color-gold: #D4AF37; /* Metallic Gold */
+    --color-gold-light: #F9E5B8; /* Champagne Gold */
+    --color-gold-dark: #997B19; /* Antique Gold */
+    --color-surface: #F8F9FA; /* Light Gray / Off-White */
+    --color-surface-dark: #E9ECEF; /* Slightly darker gray */
+    --color-text-main: #1a2e26; /* Dark Jungle Green */
+    --color-text-muted: #64748b; /* Slate 500 */
+}
+
+/* Custom Utilities for Luxury Feel - Refined & Clean */
+.glass {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.01);
+}
+
+.card-luxury {
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid rgba(226, 232, 240, 0.8); /* Slate-200 */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px 0 rgba(0, 0, 0, 0.01);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-luxury:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+    border-color: rgba(212, 175, 55, 0.4); /* Subtle Gold on hover */
+}
+
+.text-gold-gradient {
+    background: linear-gradient(135deg, #997B19 0%, #D4AF37 50%, #B4941F 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.bg-gold-gradient {
+    background: linear-gradient(135deg, #B4941F 0%, #D4AF37 100%);
+}
+
+.btn-luxury {
+    background: #022c22;
+    color: #ffffff;
+    border: 1px solid transparent;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.btn-luxury:hover {
+    background: #064e3b;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+}
+
+.input-luxury {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.input-luxury:focus {
+    border-color: #D4AF37;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.1);
+    outline: none;
+}
+
+.sidebar-gradient {
+    background: #022c22; /* Solid dark green is cleaner than gradient */
+    background-image: linear-gradient(to bottom, #022c22, #064e3b);
+}
+
+@keyframes shine {
+    to {
+        background-position: 200% center;
+    }
+}
+
+@keyframes shine-bar {
+    0% { left: -100%; }
+    20% { left: 200%; }
+    100% { left: 200%; }
+}
+
+/* Scrollbar Luxury */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #F1F5F9; 
+}
+::-webkit-scrollbar-thumb {
+    background: #CBD5E1; 
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8; 
+}
+
