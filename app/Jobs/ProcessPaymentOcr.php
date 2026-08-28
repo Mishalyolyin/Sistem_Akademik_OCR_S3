@@ -79,13 +79,24 @@ class ProcessPaymentOcr implements ShouldQueue
             $ocrStatus = $result['verification_status'] ?? 'pending';
             $extractedAmount = $result['extracted_amount'] ?? 0;
             $bankName = $result['bank_name'] ?? null;
-            
+            $extractedDate = $result['extracted_date'] ?? null;
+
             $updateData = [
                 'ocr_data' => $result,
                 'bank_name' => $bankName,
                 // In a real app, we might create a separate 'processed' image with bounding boxes
-                'processed_file_path' => $payment->proof_file_path, 
+                'processed_file_path' => $payment->proof_file_path,
             ];
+
+            // Tanggal pada struk/bukti transfer — disimpan sebagai data pelaporan saja,
+            // tidak lagi memengaruhi status verifikasi (lihat ocr_processor.py).
+            if ($extractedDate) {
+                try {
+                    $updateData['payment_proof_date'] = \Carbon\Carbon::parse($extractedDate);
+                } catch (Exception $e) {
+                    // Abaikan tanggal yang tidak bisa di-parse, tidak menggagalkan job.
+                }
+            }
 
             // Fetch Settings
             $thresholdPercent = SystemSetting::where('key', 'ocr_confidence_threshold')->value('value') ?? 80;
@@ -104,7 +115,11 @@ class ProcessPaymentOcr implements ShouldQueue
                     // Append flag to local result array (to be saved)
                     $result['flags'][] = "Amount mismatch: Expected " . number_format($payment->amount) . ", Found " . number_format($extractedAmount);
                     $updateData['ocr_data'] = $result; // Update the data to be saved
-                    Log::channel('ocr')->info("Payment #{$payment->id} Amount Mismatch. Diff: {$diff}");
+                    
+                    // Update payment amount to the extracted amount so it reflects the actual receipt
+                    $updateData['amount'] = $extractedAmount;
+                    
+                    Log::channel('ocr')->info("Payment #{$payment->id} Amount Mismatch. Diff: {$diff}. Updated amount to {$extractedAmount}.");
                 }
             }
 
@@ -132,8 +147,19 @@ class ProcessPaymentOcr implements ShouldQueue
                 Log::channel('ocr')->info("Payment #{$payment->id} Needs Review. Confidence: {$confidence}, Mismatch: " . ($amountMismatch ? 'Yes' : 'No'));
             }
 
+            // Guard: an admin may have manually approved/rejected this payment while the OCR
+            // job was running (OCR runs async and can be delayed). A manual decision must
+            // never be silently overwritten by a late-arriving automatic result.
+            $freshStatus = Payment::where('id', $payment->id)->value('status');
+            if (!in_array($freshStatus, [Payment::STATUS_PENDING, Payment::STATUS_NEEDS_REVIEW])) {
+                Log::channel('ocr')->info("Payment #{$payment->id} already handled manually (status: {$freshStatus}) before OCR finished. Saving OCR data only, not overriding status.");
+                unset($updateData['status'], $updateData['verified_at'], $updateData['amount']);
+                $payment->update($updateData);
+                return;
+            }
+
             $payment->update($updateData);
-            
+
             // Notification Logic
             $studentPhone = $payment->student->phone;
             $amountFmt = number_format($payment->amount, 0, ',', '.');

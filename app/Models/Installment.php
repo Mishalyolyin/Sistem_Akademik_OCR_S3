@@ -30,4 +30,9 @@ class Installment extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function adjustments()
+    {
+        return $this->morphMany(Adjustment::class, 'adjustable');
+    }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Payment;
 use App\Models\Installment;
 use App\Models\Student;
+use App\Models\SystemSetting;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -49,9 +50,21 @@ class PaymentAllocationService
             // 3. Priority 1: Targeted Installment
             if ($payment->installment_id) {
                 $targetInstallment = Installment::lockForUpdate()->find($payment->installment_id);
-                
-                if ($targetInstallment && $targetInstallment->status !== 'PAID') {
-                    $remainingAmount = $this->payInstallment($targetInstallment, $remainingAmount);
+
+                if ($targetInstallment) {
+                    if ($targetInstallment->status !== 'PAID') {
+                        $tolerance = (float) (SystemSetting::where('key', 'payment_tolerance_amount')->value('value') ?? 0);
+                        $remainingAmount = $this->payInstallment($targetInstallment, $remainingAmount, $tolerance);
+                    } else {
+                        // The installment this payment was verified against is already PAID.
+                        // Do NOT silently redirect this payment's money to a different
+                        // installment or the wallet — that makes the money untraceable.
+                        // Flag it for a human to look at instead.
+                        Log::warning("Payment {$payment->id}: target installment {$targetInstallment->id} is already PAID. Flagging for manual review instead of auto-reallocating funds.");
+                        $payment->status = Payment::STATUS_NEEDS_REVIEW;
+                        $payment->save();
+                        return;
+                    }
                 }
             }
 
@@ -87,8 +100,12 @@ class PaymentAllocationService
     /**
      * Apply amount to an installment.
      * Returns remaining amount.
+     *
+     * @param float $discardTolerance Leftover up to this amount (e.g. a bank/kode-unik fee
+     *                                the institution never actually receives) is written off
+     *                                instead of being carried to the next installment or wallet.
      */
-    private function payInstallment(Installment $installment, float $amount): float
+    private function payInstallment(Installment $installment, float $amount, float $discardTolerance = 0): float
     {
         $billAmount = $installment->amount;
         $paidSoFar = $installment->amount_paid;
@@ -99,11 +116,18 @@ class PaymentAllocationService
         }
 
         $toPay = min($amount, $outstanding);
-        
+
         $installment->amount_paid += $toPay;
         $installment->status = ($installment->amount_paid >= $billAmount) ? 'PAID' : 'PARTIAL';
         $installment->save();
 
-        return $amount - $toPay;
+        $leftover = $amount - $toPay;
+
+        if ($leftover > 0 && $leftover <= $discardTolerance) {
+            Log::info("Installment {$installment->id}: discarding Rp{$leftover} leftover within tolerance (kode unik/biaya admin), not carried to next installment or wallet.");
+            return 0;
+        }
+
+        return $leftover;
     }
 }
