@@ -41,7 +41,7 @@
         </form>
         
         <div class="flex flex-wrap gap-2">
-            <a href="{{ route('admin.payments.export_all', ['programType' => $programType]) }}" class="whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-sm">
+            <a href="{{ $category === 'KERJASAMA' ? route('admin.payments.export_all_kerjasama') : route('admin.payments.export_all', ['programType' => $programType]) }}" class="whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors flex items-center gap-2 shadow-sm">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                 Export Semua
             </a>
@@ -303,6 +303,27 @@
                                             <td class="py-4 px-4 text-gray-500">{{ $latestPayment ? $latestPayment->created_at->format('d M Y H:i') : '-' }}</td>
                                             <td class="py-4 px-4">
                                                 <div class="text-[11px] text-gray-500">Tagihan Utuh: Rp{{ number_format($inst->amount, 0, ',', '.') }}</div>
+                                                @if($category === 'KERJASAMA')
+                                                    <form action="{{ route('admin.installments.update_amount', $inst->id) }}" method="POST" class="inline ajax-action-form">
+                                                        @csrf
+                                                        <input type="hidden" name="amount" value="">
+                                                        <input type="hidden" name="reason" value="">
+                                                        <button type="submit" class="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline font-semibold inline-flex items-center gap-0.5 mb-1" title="Ubah nominal tagihan cicilan ini" onclick="
+                                                            var newAmount = prompt('Nominal tagihan baru untuk cicilan ini (Rp):', {{ (int) $inst->amount }});
+                                                            if (newAmount === null || newAmount.trim() === '') return false;
+                                                            var cleaned = newAmount.replace(/[^0-9]/g, '');
+                                                            if (!cleaned) { alert('Nominal tidak valid.'); return false; }
+                                                            var reason = prompt('Alasan perubahan tagihan:');
+                                                            if (reason === null || reason.trim() === '') return false;
+                                                            this.form.amount.value = cleaned;
+                                                            this.form.reason.value = reason;
+                                                            return true;
+                                                        ">
+                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                                            Ubah Tagihan
+                                                        </button>
+                                                    </form>
+                                                @endif
                                                 @if($inst->amount_paid > 0 && $inst->status != 'PAID')
                                                     <div class="text-[10px] font-semibold text-emerald-600 mb-1">Sudah Dicicil: Rp{{ number_format($inst->amount_paid, 0, ',', '.') }}</div>
                                                 @endif
@@ -541,6 +562,27 @@
                         <td class="p-4">
                             @if($payment->installment)
                                 <div class="text-[11px] text-gray-500 mb-0.5">Tagihan Utuh: Rp {{ number_format($payment->installment->amount, 0, ',', '.') }}</div>
+                                @if($category === 'KERJASAMA')
+                                    <form action="{{ route('admin.installments.update_amount', $payment->installment->id) }}" method="POST" class="inline ajax-action-form">
+                                        @csrf
+                                        <input type="hidden" name="amount" value="">
+                                        <input type="hidden" name="reason" value="">
+                                        <button type="submit" class="text-[10px] text-indigo-600 hover:text-indigo-800 hover:underline font-semibold inline-flex items-center gap-0.5 mb-0.5" title="Ubah nominal tagihan cicilan ini" onclick="
+                                            var newAmount = prompt('Nominal tagihan baru untuk cicilan ini (Rp):', {{ (int) $payment->installment->amount }});
+                                            if (newAmount === null || newAmount.trim() === '') return false;
+                                            var cleaned = newAmount.replace(/[^0-9]/g, '');
+                                            if (!cleaned) { alert('Nominal tidak valid.'); return false; }
+                                            var reason = prompt('Alasan perubahan tagihan:');
+                                            if (reason === null || reason.trim() === '') return false;
+                                            this.form.amount.value = cleaned;
+                                            this.form.reason.value = reason;
+                                            return true;
+                                        ">
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                            Ubah Tagihan
+                                        </button>
+                                    </form>
+                                @endif
                                 @if($payment->installment->amount_paid > 0 && $payment->installment->status != 'PAID')
                                     <div class="text-[10px] font-semibold text-emerald-600 mb-0.5">Sudah Dicicil: Rp {{ number_format($payment->installment->amount_paid, 0, ',', '.') }}</div>
                                 @endif

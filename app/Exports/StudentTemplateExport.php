@@ -18,16 +18,22 @@ class StudentTemplateExport implements FromArray, WithHeadings, WithStyles, Shou
                 'Contoh Mahasiswa',     // name
                 'A-1',                  // class
                 'REGULER',              // program_type (REGULER/RPL)
+                'TRUE',                 // is_alumni (TRUE/FALSE)
                 'GASAL',                // start_term (GASAL/GENAP)
+                '2025/2026',            // academic_year
                 '081234567890',         // phone
+                'FALSE',                // kelas_kerjasama (TRUE/FALSE) — hanya berlaku untuk program_type RPL
             ],
             [
                 '301230002',
                 'Mahasiswa RPL Contoh',
                 'B-2',
                 'RPL',
+                'FALSE',
                 'GENAP',
+                '2025/2026',
                 '081987654321',
+                'TRUE',
             ],
         ];
     }
@@ -39,8 +45,11 @@ class StudentTemplateExport implements FromArray, WithHeadings, WithStyles, Shou
             'name',
             'class',
             'program_type',
+            'is_alumni',
             'start_term',
+            'academic_year',
             'phone',
+            'kelas_kerjasama',
         ];
     }
 

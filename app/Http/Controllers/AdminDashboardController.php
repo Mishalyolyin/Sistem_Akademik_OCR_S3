@@ -18,20 +18,46 @@ class AdminDashboardController extends Controller
     {
         // 1. Basic Counts
         $activeStudents = Student::where('program_type', $programType)->count();
+
+        $documentsIncomplete = Student::where('program_type', $programType)
+            ->whereNull('documents_completed_at')
+            ->count();
         
         $waitingVerification = Payment::whereHas('student', function($q) use ($programType) {
             $q->where('program_type', $programType);
         })->where('status', 'NEEDS_REVIEW')->count();
 
+        // Breakdown by category so the dashboard link can send admins straight to the
+        // right page (Semester vs Munaqosah are separate list pages).
+        $waitingVerificationMunaqosah = Payment::whereHas('student', function($q) use ($programType) {
+            $q->where('program_type', $programType);
+        })->whereHas('paymentPlan', function($q) {
+            $q->where('category', 'MUNAOSAH');
+        })->where('status', 'NEEDS_REVIEW')->count();
+
+        $waitingVerificationKerjasama = Payment::whereHas('student', function($q) use ($programType) {
+            $q->where('program_type', $programType);
+        })->whereHas('paymentPlan', function($q) {
+            $q->where('category', 'KERJASAMA');
+        })->where('status', 'NEEDS_REVIEW')->count();
+
         // 2. Financials (Complex calculation)
-        // Get all students of this program with their Active Plan and Total Paid
+        
+        // Get all students of this program with their Active Plan
         $students = Student::where('program_type', $programType)
             ->with(['paymentPlans' => function($q) {
-                $q->where('status', 'ACTIVE');
+                $q->where('status', 'ACTIVE')->where('category', 'SEMESTER');
             }])
             ->get();
 
-        $totalTagihan = 0; // Total Bill (Invoice)
+        // Pre-fetch all active tuition rates for this program
+        $activeRates = \App\Models\TuitionRate::where('program_type', $programType)
+            ->where('active', true)
+            ->where('category', 'SEMESTER')
+            ->orderBy('academic_year', 'desc')
+            ->get();
+
+        $totalTagihan = 0;
         $totalUang = 0; // Total Collected (Revenue)
         $countLunas = 0;
         $countMenunggu = 0; // Partial
@@ -41,12 +67,28 @@ class AdminDashboardController extends Controller
 
         foreach ($students as $student) {
             $plan = $student->paymentPlans->first();
-            $bill = $plan ? $plan->total_amount : 0;
+            
+            // Find specific rate for this student based on start_term and is_alumni
+            $studentRate = $activeRates->where('start_term', $student->start_term)
+                ->where('is_alumni', (bool)$student->is_alumni)
+                ->first();
+                
+            // Fallback
+            if (!$studentRate) {
+                $studentRate = $activeRates->where('is_alumni', (bool)$student->is_alumni)->first();
+            }
+            if (!$studentRate) {
+                $studentRate = $activeRates->first();
+            }
+
+            $individualTuitionAmount = $studentRate ? $studentRate->amount : 0;
+            
+            $bill = $plan ? $plan->total_amount : $individualTuitionAmount;
+            $totalTagihan += $bill;
             
             // Calculate total paid (verified only)
             $paid = $student->payments()->where('status', 'VERIFIED')->sum('amount');
             
-            $totalTagihan += $bill;
             $totalUang += $paid;
 
             $status = 'BELUM';
@@ -97,6 +139,9 @@ class AdminDashboardController extends Controller
             'active_students' => $activeStudents,
             'total_tagihan' => $totalTagihan,
             'waiting_verification' => $waitingVerification,
+            'waiting_verification_munaqosah' => $waitingVerificationMunaqosah,
+            'waiting_verification_kerjasama' => $waitingVerificationKerjasama,
+            'documents_incomplete' => $documentsIncomplete,
             'sudah_lunas' => $countLunas,
             'eligible_munaqosah' => $eligibleMunaqosah,
             'ratio' => [

@@ -292,11 +292,25 @@ def extract_text_from_image(image_path, doc_type='payment'):
             # textured background (e.g. the batik pattern on a KTP) and small
             # print at low source resolution. A single global threshold (Otsu)
             # binarizes the whole image at once and turns those textured areas
-            # into noise, destroying the text underneath. Upscaling the plain
-            # grayscale image and letting Tesseract treat it as a layout
-            # (--psm 6: uniform block of text) reads these far more reliably.
-            scale = 3
-            processed = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+            # into noise, destroying the text underneath. Resizing the plain
+            # grayscale image to a consistent target width and letting
+            # Tesseract treat it as a layout (--psm 6: uniform block of text)
+            # reads these far more reliably.
+            #
+            # The scale factor is computed from a fixed TARGET on the LONGEST
+            # side rather than a flat multiplier: a small (e.g. 720px) upload
+            # needs ~3x upscaling to become legible, but a modern phone photo
+            # already arrives at 3000-4000px+ — blindly multiplying that by 3
+            # produces a 10000px+ image that makes Tesseract extremely slow
+            # (minutes per document) for no accuracy benefit. Using the
+            # longest side (not just width) also protects against a KTP/KK
+            # photographed in portrait orientation — its "width" alone can
+            # look small while the un-rotated long edge is still huge.
+            target_dim = 2200
+            h, w = gray.shape[:2]
+            longest_side = max(h, w)
+            scale = max(0.3, min(target_dim / longest_side, 4.0)) if longest_side > 0 else 1.0
+            processed = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC if scale >= 1 else cv2.INTER_AREA)
             tess_config = '--psm 6'
         else:
             # Payment proofs are typically clean screenshots/scans of a plain
@@ -324,20 +338,21 @@ def extract_text_from_image(image_path, doc_type='payment'):
 
 
 _DIGIT_CONFUSION = str.maketrans({
-    'o': '0', 'O': '0', 'l': '1', 'I': '1', 'i': '1',
+    'o': '0', 'O': '0', 'l': '1', 'I': '1', 'i': '1', 'L': '1',
     'b': '6', 's': '5', 'S': '5', 'g': '9', 'z': '2', 'Z': '2', 'B': '8',
 })
+_DIGIT_CONFUSION_CLASS = '0-9OoIlLibsSgzZB'
 
 
 def extract_id_number(text, label_pattern):
     """
     Find a 16-digit ID number (NIK / No. KK) following a label. At the print
     size of a photographed KTP/KK, Tesseract routinely misreads a handful of
-    digits as visually-similar letters (6<->b, 0<->o, 1<->l/I, 5<->s, 9<->g,
+    digits as visually-similar letters (6<->b, 0<->o, 1<->l/I/L, 5<->s, 9<->g,
     2<->z, 8<->B) — those are normalized back to digits before validating the
     run as a real 16-digit ID, instead of rejecting it outright.
     """
-    pattern = label_pattern + r'\W{0,6}([0-9OoIlibsSgzZB][0-9OoIlibsSgzZB\s]{14,22}[0-9OoIlibsSgzZB])'
+    pattern = label_pattern + r'\W{0,6}([' + _DIGIT_CONFUSION_CLASS + r'][' + _DIGIT_CONFUSION_CLASS + r'\s]{14,22}[' + _DIGIT_CONFUSION_CLASS + r'])'
     match = re.search(pattern, text, re.IGNORECASE)
     if not match:
         return None
@@ -345,6 +360,14 @@ def extract_id_number(text, label_pattern):
     candidate = re.sub(r'\s', '', match.group(1)).translate(_DIGIT_CONFUSION)
     if len(candidate) == 16 and candidate.isdigit():
         return candidate
+
+    # OCR noise sometimes leaves a stray character right next to the label
+    # (e.g. a misread colon/dash) glued onto one end of the captured run
+    # before the real 16-digit number — try trimming each side first.
+    if len(candidate) > 16:
+        for trimmed in (candidate[-16:], candidate[:16]):
+            if trimmed.isdigit():
+                return trimmed
 
     digits_only = re.sub(r'\D', '', candidate)
     return digits_only if len(digits_only) == 16 else None

@@ -68,6 +68,15 @@
                     <a href="{{ route('admin.payments.munaqosah.rpl') }}" class="block px-3 py-2 rounded-lg text-sm transition-all duration-200 hover:text-white hover:bg-white/10 {{ request()->routeIs('admin.payments.munaqosah.rpl') ? 'text-white bg-white/20 font-bold shadow-sm' : 'text-gray-400' }}">
                         Munaqosah RPL
                     </a>
+                    <a href="{{ route('admin.payments.pendaftaran.reguler') }}" class="block px-3 py-2 rounded-lg text-sm transition-all duration-200 hover:text-white hover:bg-white/10 {{ request()->routeIs('admin.payments.pendaftaran.reguler') ? 'text-white bg-white/20 font-bold shadow-sm' : 'text-gray-400' }}">
+                        Pendaftaran Reguler
+                    </a>
+                    <a href="{{ route('admin.payments.pendaftaran.rpl') }}" class="block px-3 py-2 rounded-lg text-sm transition-all duration-200 hover:text-white hover:bg-white/10 {{ request()->routeIs('admin.payments.pendaftaran.rpl') ? 'text-white bg-white/20 font-bold shadow-sm' : 'text-gray-400' }}">
+                        Pendaftaran RPL
+                    </a>
+                    <a href="{{ route('admin.payments.kerjasama.rpl') }}" class="block px-3 py-2 rounded-lg text-sm transition-all duration-200 hover:text-white hover:bg-white/10 {{ request()->routeIs('admin.payments.kerjasama.rpl') ? 'text-white bg-white/20 font-bold shadow-sm' : 'text-gray-400' }}">
+                        Kelas Kerjasama RPL
+                    </a>
                 </div>
             </div>
 

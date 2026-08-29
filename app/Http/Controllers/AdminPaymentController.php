@@ -62,6 +62,11 @@ class AdminPaymentController extends Controller
         return $this->getPaymentsView('RPL', 'PENDAFTARAN');
     }
 
+    public function kerjasamaRpl()
+    {
+        return $this->getPaymentsView('RPL', 'KERJASAMA');
+    }
+
     private function getPaymentsView($programType, $category = 'SEMESTER')
     {
         $viewMode = request('view', 'group'); // Default to group view
@@ -439,5 +444,11 @@ class AdminPaymentController extends Controller
         $filename = 'Laporan_Tagihan_Semua_Mahasiswa_' . $programType . '_' . date('YmdHis') . '.xlsx';
         // Use StudentLedgerExport to ensure consistent template
         return Excel::download(new \App\Exports\StudentLedgerExport($programType), $filename);
+    }
+
+    public function exportAllKerjasama()
+    {
+        $filename = 'Laporan_Tagihan_Kelas_Kerjasama_RPL_' . date('YmdHis') . '.xlsx';
+        return Excel::download(new \App\Exports\KerjasamaLedgerExport(), $filename);
     }
 }

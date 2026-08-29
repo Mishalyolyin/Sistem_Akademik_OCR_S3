@@ -73,10 +73,27 @@
                     </div>
 
                     <div class="mb-4">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Periode Masuk</label>
+                        <select name="start_term" class="w-full text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 py-2.5" required>
+                            <option value="GASAL">GASAL</option>
+                            <option value="GENAP">GENAP</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
                         <label class="block text-xs font-medium text-gray-600 mb-1">Kategori Biaya</label>
                         <select name="category" class="w-full text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 py-2.5" required>
                             <option value="SEMESTER">Biaya SPP Semester</option>
                             <option value="MUNAOSAH">Biaya Munaqosah</option>
+                            <option value="KERJASAMA" x-show="activeTab === 'RPL'">Kelas Kerjasama (RPL)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4" x-show="activeTab === 'REGULER'">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Tipe Mahasiswa</label>
+                        <select name="is_alumni" :disabled="activeTab !== 'REGULER'" class="w-full text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 py-2.5">
+                            <option value="0">Non-Alumni</option>
+                            <option value="1">Alumni S1 UNISSULA</option>
                         </select>
                     </div>
 
@@ -148,6 +165,15 @@
                         Daftar Tarif Munaqosah (RPL)
                     </h3>
                     @include('admin.tuition.partials.table', ['rates' => $rplMunaqosahRates])
+                </div>
+
+                <!-- Kelas Kerjasama Rates -->
+                <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+                    <h3 class="font-bold text-lg text-gray-800 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm6 3c0 1.657-2.686 3-6 3s-6-1.343-6-3"></path></svg>
+                        Daftar Tarif Kelas Kerjasama (RPL, 4x Angsuran)
+                    </h3>
+                    @include('admin.tuition.partials.table', ['rates' => $rplKerjasamaRates])
                 </div>
             </div>
 
