@@ -52,8 +52,9 @@ public class AuthController {
 	}
 
 	@PostMapping("/logout")
-	@Operation(summary = "Keluar dan hapus cookie sesi")
+	@Operation(summary = "Keluar, cabut refresh token, dan hapus cookie sesi")
 	public ResponseEntity<Void> logout() {
+		authService.logout();
 		return ResponseEntity.noContent()
 				.header(HttpHeaders.SET_COOKIE, refreshCookie("", Duration.ZERO).toString())
 				.build();

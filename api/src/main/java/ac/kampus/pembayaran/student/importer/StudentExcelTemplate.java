@@ -47,19 +47,32 @@ public class StudentExcelTemplate {
 				cell.setCellStyle(headerStyle);
 			}
 
+			for (int i = 0; i < HEADERS.size(); i++) {
+				sheet.autoSizeColumn(i);
+			}
+
+			// Contoh pengisian ditaruh di sheet sendiri, bukan di sheet data.
+			// Yang diunggah hanya sheet pertama, jadi contoh yang lupa dihapus
+			// tidak bisa lagi ikut masuk sebagai mahasiswa sungguhan.
+			Sheet contoh = workbook.createSheet("Contoh");
+			Row contohHeader = contoh.createRow(0);
+			for (int i = 0; i < HEADERS.size(); i++) {
+				var cell = contohHeader.createCell(i);
+				cell.setCellValue(HEADERS.get(i));
+				cell.setCellStyle(headerStyle);
+			}
 			for (int r = 0; r < CONTOH.size(); r++) {
-				Row row = sheet.createRow(r + 1);
+				Row row = contoh.createRow(r + 1);
 				List<String> values = CONTOH.get(r);
 				for (int c = 0; c < values.size(); c++) {
 					row.createCell(c).setCellValue(values.get(c));
 				}
 			}
-
 			for (int i = 0; i < HEADERS.size(); i++) {
-				sheet.autoSizeColumn(i);
+				contoh.autoSizeColumn(i);
 			}
 
-			// Petunjuk ditaruh di sheet terpisah. Kalau ditaruh di sheet data,
+			// Petunjuk juga di sheet terpisah. Kalau ditaruh di sheet data,
 			// barisnya ikut terbaca sebagai baris mahasiswa saat diunggah.
 			Sheet petunjuk = workbook.createSheet("Petunjuk");
 			List<String> catatan = List.of(
@@ -79,7 +92,8 @@ public class StudentExcelTemplate {
 					"academic_year  Format 2026/2027, wajib.",
 					"phone          Boleh dikosongkan.",
 					"",
-					"Hapus tiga baris contoh di sheet Mahasiswa sebelum mengunggah.",
+					"Isi data di sheet Mahasiswa; hanya sheet itu yang dibaca saat diunggah.",
+					"Sheet Contoh berisi tiga baris teladan dan boleh dibiarkan apa adanya.",
 					"Baris yang gagal akan dilaporkan satu per satu tanpa membatalkan baris lain.");
 
 			for (int i = 0; i < catatan.size(); i++) {

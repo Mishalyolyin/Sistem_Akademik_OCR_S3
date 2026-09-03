@@ -85,6 +85,8 @@ public class OcrJobConsumer {
 		List<String> catatan = new ArrayList<>(asStringList(hasil.get("flags")));
 
 		// Selisih nominal di luar toleransi berarti bukti tidak cocok dengan tagihan.
+		// Nominalnya sengaja BELUM disentuh di sini; penyesuaian baru dilakukan
+		// setelah dipastikan pembayaran ini memang masih boleh diubah OCR.
 		boolean nominalTidakCocok = false;
 		if (nominalTerbaca != null && nominalTerbaca.signum() > 0) {
 			BigDecimal selisih = payment.getAmount().subtract(nominalTerbaca).abs();
@@ -93,8 +95,6 @@ public class OcrJobConsumer {
 				catatan.add("Selisih nominal: diklaim %s, terbaca %s"
 						.formatted(payment.getAmount().toPlainString(),
 								nominalTerbaca.toPlainString()));
-				// Nominal disesuaikan ke yang benar-benar tertulis di bukti.
-				payment.setAmount(nominalTerbaca);
 			}
 		}
 
@@ -111,10 +111,29 @@ public class OcrJobConsumer {
 				&& !nominalTidakCocok
 				&& nominalTerbaca != null
 				&& nominalTerbaca.signum() > 0) {
+			// verifiedAt baru diisi setelah dipastikan hasil ini memang berlaku;
+			// mengisinya di sini akan menimpa waktu verifikasi milik admin.
 			statusBaru = PaymentStatus.AUTO_VERIFIED;
-			payment.setVerifiedAt(Instant.now());
 		} else {
 			statusBaru = PaymentStatus.NEEDS_REVIEW;
+		}
+
+		// Admin bisa saja sudah memutuskan secara manual selagi pekerjaan ini
+		// mengantre. Keputusan manusia tidak boleh ditimpa hasil otomatis
+		// yang datang belakangan.
+		PaymentStatus statusTerkini = paymentRepository.findStatusById(payment.getId())
+				.orElse(payment.getStatus());
+
+		// Nominal hanya boleh disesuaikan selama uangnya belum dibagikan ke
+		// cicilan. Sesudah dialokasikan, mengubah nominal membuat pembukuan
+		// timpang: cicilan terlanjur menerima angka yang lama dan alokasi tidak
+		// pernah dihitung ulang, sementara kuitansi mencetak angka yang baru.
+		boolean bolehSesuaikanNominal =
+				statusTerkini.bolehDitimpaOcr() && payment.getAllocatedAt() == null;
+
+		if (nominalTidakCocok && !bolehSesuaikanNominal) {
+			catatan.add("Nominal dibiarkan apa adanya: pembayaran sudah diputuskan "
+					+ "manual atau uangnya sudah dibagikan ke cicilan. Perlu ditinjau admin.");
 		}
 
 		Map<String, Object> ocrData = new HashMap<>(hasil);
@@ -125,19 +144,22 @@ public class OcrJobConsumer {
 		payment.setBankName(asString(hasil.get("bank_name")));
 		payment.setPaymentProofDate(asLocalDate(hasil.get("extracted_date")));
 
-		// Admin bisa saja sudah memutuskan secara manual selagi pekerjaan ini
-		// mengantre. Keputusan manusia tidak boleh ditimpa hasil otomatis
-		// yang datang belakangan.
-		PaymentStatus statusTerkini = paymentRepository.findStatusById(payment.getId())
-				.orElse(payment.getStatus());
-
 		if (!statusTerkini.bolehDitimpaOcr()) {
-			log.info("Pembayaran {} sudah diputuskan manual ({}). Hasil OCR disimpan tanpa mengubah status.",
+			log.info("Pembayaran {} sudah diputuskan manual ({}). "
+							+ "Hasil OCR disimpan tanpa mengubah status maupun nominal.",
 					payment.getId(), statusTerkini);
 			payment.setStatus(statusTerkini);
-			payment.setVerifiedAt(payment.getVerifiedAt());
 			paymentRepository.save(payment);
 			return;
+		}
+
+		if (nominalTidakCocok && bolehSesuaikanNominal) {
+			// Nominal disesuaikan ke yang benar-benar tertulis di bukti.
+			payment.setAmount(nominalTerbaca);
+		}
+
+		if (statusBaru == PaymentStatus.AUTO_VERIFIED) {
+			payment.setVerifiedAt(Instant.now());
 		}
 
 		PaymentStatus statusLama = payment.getStatus();

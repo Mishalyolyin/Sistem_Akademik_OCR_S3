@@ -23,13 +23,6 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis-data:/data
-
   rabbitmq:
     image: rabbitmq:3-management-alpine
     restart: unless-stopped
@@ -89,6 +82,5 @@ services:
 
 volumes:
   postgres-data:
-  redis-data:
   rabbitmq-data:
   bukti-bayar:

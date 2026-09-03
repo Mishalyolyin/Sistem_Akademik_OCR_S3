@@ -27,21 +27,6 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    container_name: pembayaran-redis
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: pembayaran-rabbitmq
@@ -62,5 +47,4 @@ services:
 
 volumes:
   postgres-data:
-  redis-data:
   rabbitmq-data:

@@ -100,4 +100,10 @@ public class JwtService {
 	public String roleOf(Claims claims) {
 		return claims.get(CLAIM_ROLE, String.class);
 	}
+
+	/** Waktu token diterbitkan. Dipakai untuk menolak token yang sudah dicabut. */
+	public Instant issuedAtOf(Claims claims) {
+		Date issuedAt = claims.getIssuedAt();
+		return issuedAt == null ? Instant.EPOCH : issuedAt.toInstant();
+	}
 }

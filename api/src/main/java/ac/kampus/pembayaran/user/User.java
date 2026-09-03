@@ -49,6 +49,13 @@ public class User {
 	@Column(nullable = false)
 	private boolean active;
 
+	/**
+	 * Refresh token yang diterbitkan sebelum waktu ini ditolak. Diisi saat
+	 * pengguna keluar. {@code null} berarti belum pernah ada pencabutan.
+	 */
+	@Column(name = "tokens_valid_from")
+	private Instant tokensValidFrom;
+
 	@Column(name = "created_at", nullable = false, insertable = false, updatable = false)
 	private Instant createdAt;
 

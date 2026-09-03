@@ -1,4 +1,7 @@
-FROM python:3.12-slim
+# Disamakan dengan Python yang dipakai pengembangan. Beda minor version
+# antara mesin pengembang dan container membuat bug pembacaan sulit
+# direproduksi, dan OpenCV termasuk pustaka yang perilakunya bisa berbeda.
+FROM python:3.14-slim
 
 WORKDIR /app
 

@@ -3,20 +3,22 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 3 September 2026, 21.55
+Terakhir diperbarui: 3 September 2026, 22.40
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 3 September 2026 pukul 21.55 di mesin pengembangan, semuanya lolos:
+Dijalankan 3 September 2026 pukul 22.40 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw clean test` | ✅ 38 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw clean verify` | ✅ 67 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
-| Service OCR | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
+| Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
+| Service OCR (container) | `docker build` lalu `GET /health` | ✅ Python 3.14.7, OpenCV 5.0.0, Tesseract 5.5.0 |
+| Susunan compose | `docker compose config` | ✅ dev dan prod terbaca |
 
 Toolchain yang terpasang: JDK 21.0.12.1, Node 24.19.0, Python 3.14.7, Docker 29.7.2.
 
@@ -37,6 +39,64 @@ Toolchain yang terpasang: JDK 21.0.12.1, Node 24.19.0, Python 3.14.7, Docker 29.
 | 5 | Verifikasi & alokasi pembayaran | ✅ Selesai |
 | 6 | Laporan, export Excel, PDF, deploy | ✅ Selesai |
 | + | Portal mahasiswa (di luar rencana awal) | ✅ Selesai |
+
+---
+
+## Hasil audit 3 September 2026
+
+Seluruh isi berkas ini ditelusuri ulang ke kode. Klaimnya cocok, kecuali hal-hal
+di bawah. Yang sudah diperbaiki punya test yang menguncinya; tiap test itu sudah
+dibuktikan gagal terhadap kode sebelum perbaikan.
+
+### Diperbaiki
+
+**1. Nominal pembayaran bisa berubah setelah uangnya dibagikan.** Hasil OCR yang
+datang setelah admin memutuskan manual memang tidak mengubah statusnya — tapi
+nominalnya ikut ditulis ulang, dan alokasi tidak pernah dihitung ulang. Cicilan
+terlanjur menerima angka lama sementara kuitansi mencetak angka baru.
+
+Urutannya: mahasiswa mengaku bayar Rp 1.000.000 → admin memverifikasi manual →
+uang masuk cicilan → pekerjaan OCR baru jalan dan membaca Rp 1.200.000 → nominal
+tersimpan 1.200.000 padahal yang masuk 1.000.000. Tidak ada galat, tidak ada
+peringatan. Sekarang nominal hanya boleh disesuaikan selama statusnya masih
+`PENDING`/`NEEDS_REVIEW` **dan** uangnya belum dialokasikan; selisihnya tetap
+dicatat sebagai catatan supaya admin tahu ada yang perlu ditinjau.
+
+Dari keluarga yang sama: `verified_at` juga ikut ditimpa, sehingga jejak audit
+mencatat pembayaran diverifikasi admin pada jam saat OCR selesai, bukan saat
+admin menekan tombolnya. Ikut diperbaiki.
+
+**2. Keluar sekarang benar-benar mencabut sesi.** Sebelumnya `/auth/logout` hanya
+menghapus cookie di peramban; refresh tokennya tetap sah tujuh hari penuh.
+Migrasi V6 menambah `users.tokens_valid_from`, dan refresh token yang terbit
+sebelum waktu itu ditolak. Access token yang sudah beredar tidak ikut dicabut —
+pemeriksaannya harus tetap tanpa akses database — tapi umurnya lima belas menit
+dan tidak bisa diperbarui lagi.
+
+**3. Penolakan 401 kini berformat ProblemDetail.** Request tanpa token dijawab
+401 bertubuh kosong, padahal frontend membaca field `detail`, sehingga di layar
+muncul galat tanpa keterangan apa pun. Penolakan di rantai filter sekarang
+memakai format yang sama dengan penolakan dari controller.
+
+**4. Baris contoh di template Excel dipindah ke sheet sendiri.** Importer hanya
+membaca sheet pertama, jadi tiga baris contoh yang lupa dihapus akan masuk
+sebagai mahasiswa sungguhan — dan karena datanya valid, tidak ada galat apa pun
+yang memberi tahu. Sheet data kini berisi judul kolom saja.
+
+**5. Redis dihapus dari `docker compose`.** Tidak ada satu pun dependency atau
+baris kode yang memakainya, di `api/` maupun `web/`. Containernya nyala dan makan
+memori tanpa fungsi.
+
+**6. Container OCR disamakan ke Python 3.14.** Sebelumnya `ocr/Dockerfile` memakai
+3.12 sementara pengembangan memakai 3.14. Beda minor version membuat bug
+pembacaan sulit direproduksi.
+
+### Ditemukan, belum diputuskan
+
+**Peran DEVELOPER adalah peran yatim.** Dikecualikan dari seluruh endpoint admin;
+satu-satunya kemampuannya membuka gambar bukti. Login sebagai DEVELOPER berarti
+mendapat dashboard yang gagal memuat. Ini menyambung ke keputusan menggantung
+nomor 2 di bawah — sengaja tidak disentuh sampai ada keputusannya.
 
 ---
 
@@ -70,18 +130,26 @@ masih dibutuhkan di sistem S3.
 
 ### Test otomatis
 
-Sudah ada **38 test** dan semuanya lolos:
+Sudah ada **67 test** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
 - `PaymentAllocationServiceTest` — 11 test aturan pembagian uang ke cicilan
 - `ApiApplicationTests` — 1 test yang menyalakan PostgreSQL asli lewat
-  Testcontainers, sekaligus memverifikasi keempat migrasi Flyway
+  Testcontainers, sekaligus memverifikasi keenam migrasi Flyway
+- `OcrJobConsumerTest` — 10 test keputusan otomatis atas hasil pembacaan bukti,
+  termasuk kapan nominal boleh ditulis ulang
+- `SecurityLayerTest` — 8 test lapisan HTTP: peran mana yang diterima di
+  endpoint admin, dan bentuk badan jawaban penolakan
+- `AuthServiceTest` — 7 test aturan sesi dan pencabutan token
+- `StudentExcelTemplateTest` — 4 test bentuk berkas template import
 
 Yang belum:
 
 - **Fase 6**: Playwright untuk alur end-to-end
-- Belum ada test untuk lapisan controller (`@WebMvcTest`)
+- Lapisan controller baru diuji lewat satu endpoint yang mewakili
+  (`SecurityLayerTest`). Aturan per-endpoint selain penjagaan peran — validasi
+  masukan, bentuk jawaban sukses — belum punya test
 
 ### Keputusan yang masih menggantung
 
@@ -102,7 +170,7 @@ Yang belum:
 ### Fase 1 — Fondasi
 
 - Spring Boot 3.5.16 + Java 21, dijalankan lewat Maven Wrapper
-- PostgreSQL 16, Redis, RabbitMQ jalan lewat `docker compose up -d`
+- PostgreSQL 16 dan RabbitMQ jalan lewat `docker compose up -d`
 - Login JWT: access token 15 menit di memori, refresh token di cookie HttpOnly
 - Refresh token ditolak bila dipakai sebagai access token (diuji)
 - RBAC: endpoint admin menolak token mahasiswa dengan 403 (diuji)
@@ -189,7 +257,8 @@ nol karena masih ada cicilan yang belum lunas.
 
 - Service FastAPI di `ocr/` membungkus `ocr_processor.py`; model dimuat sekali
   saat menyala, bukan spawn proses Python tiap unggahan seperti sistem lama
-- Python 3.14 + OpenCV 5.0 + Tesseract 5.4 dengan bahasa `ind` dan `eng`
+- Python 3.14 + OpenCV 5.0 + Tesseract 5.5 dengan bahasa `ind` dan `eng`,
+  versinya sama antara mesin pengembangan dan container
 - Berkas bahasa dibundel di `ocr/tessdata/`, jadi tidak bergantung pada
   instalasi Tesseract yang menyertakan bahasa Indonesia
 - Migrasi V5: `payments`, `verification_logs`, `system_settings`
