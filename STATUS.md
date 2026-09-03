@@ -100,6 +100,19 @@ nomor 2 di bawah — sengaja tidak disentuh sampai ada keputusannya.
 
 ---
 
+## Daftar kerja berikutnya
+
+Dikerjakan berurutan, dari yang paling mendesak.
+
+| # | Pekerjaan | Kenapa urutannya begini | Status |
+|---|---|---|---|
+| 1 | Penyesuaian saldo mahasiswa | Satu-satunya fitur yang belum ada. Tanpa ini, kelebihan bayar dan koreksi golongan hanya bisa dibereskan lewat database langsung | 🔨 Dikerjakan |
+| 2 | Test controller per-endpoint | Aturan peran sudah dikunci `SecurityLayerTest`, tapi validasi masukan dan bentuk jawaban tiap endpoint belum | 🔘 Menunggu |
+| 3 | Playwright end-to-end | Menguji sambungan antar bagian yang tidak terlihat di test satuan: login, unggah, verifikasi, kuitansi | 🔘 Menunggu |
+| 4 | Persiapan deploy VPS | Paling akhir karena butuh keputusan paket hosting, dan lebih aman dilakukan setelah tiga hal di atas beres | 🔘 Menunggu |
+
+---
+
 ## Yang BELUM dikerjakan
 
 ### Fitur yang tidak jadi dibuat
