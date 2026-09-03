@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -86,13 +87,31 @@ public class GlobalExceptionHandler {
 		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
 		problem.setTitle("Data tidak valid");
 
-		Class<?> type = e.getRequiredType();
-		String pilihan = (type != null && type.isEnum())
-				? " Pilihan: " + String.join(", ", enumNames(type)) + "."
-				: "";
+		Class<?> enumType = tipeEnum(e);
+		String pilihan = enumType == null
+				? ""
+				: " Pilihan: " + String.join(", ", enumNames(enumType)) + ".";
 		problem.setDetail("Nilai \"%s\" tidak berlaku untuk %s.%s"
 				.formatted(e.getValue(), e.getName(), pilihan));
 		return problem;
+	}
+
+	/**
+	 * Enum di balik parameter, termasuk bila parameternya berupa daftar seperti
+	 * {@code List<PaymentStatus> status}. Tanpa membuka pembungkusnya, penyaring
+	 * yang boleh diisi lebih dari satu nilai kehilangan daftar pilihan di pesan
+	 * galatnya, padahal justru di situ pengguna paling butuh dituntun.
+	 */
+	private static Class<?> tipeEnum(MethodArgumentTypeMismatchException e) {
+		Class<?> type = e.getRequiredType();
+		if (type != null && type.isEnum()) {
+			return type;
+		}
+		if (type != null && Collection.class.isAssignableFrom(type)) {
+			Class<?> elemen = e.getParameter().nested().getNestedParameterType();
+			return elemen.isEnum() ? elemen : null;
+		}
+		return null;
 	}
 
 	private Optional<String> pilihanEnum(Throwable cause) {

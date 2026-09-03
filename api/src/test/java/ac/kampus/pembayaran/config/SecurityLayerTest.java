@@ -1,21 +1,15 @@
 package ac.kampus.pembayaran.config;
 
-import ac.kampus.pembayaran.auth.JwtAuthenticationFilter;
-import ac.kampus.pembayaran.auth.JwtService;
-import ac.kampus.pembayaran.common.GlobalExceptionHandler;
 import ac.kampus.pembayaran.dashboard.DashboardController;
 import ac.kampus.pembayaran.dashboard.DashboardRepository;
+import ac.kampus.pembayaran.support.ControllerTest;
+import ac.kampus.pembayaran.support.ControllerTestSupport;
 import ac.kampus.pembayaran.user.User;
 import ac.kampus.pembayaran.user.UserRole;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -37,31 +31,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * {@code detail}, jadi 401 bertubuh kosong muncul sebagai galat tanpa
  * keterangan apa pun di layar pengguna.
  */
-@WebMvcTest(controllers = DashboardController.class)
-@Import({ SecurityConfig.class, JwtAuthenticationFilter.class, JwtService.class,
-		ProblemDetailErrorResponder.class, GlobalExceptionHandler.class })
-@TestPropertySource(properties = {
-		"app.jwt.secret=rahasia-uji-coba-minimal-32-karakter-untuk-hs256",
-		"app.jwt.access-token-minutes=15",
-		"app.jwt.refresh-token-days=7",
-		"app.cors.allowed-origins=http://localhost:3000",
-})
-class SecurityLayerTest {
-
-	@Autowired
-	private MockMvc mockMvc;
-
-	@Autowired
-	private JwtService jwtService;
+@ControllerTest(DashboardController.class)
+class SecurityLayerTest extends ControllerTestSupport {
 
 	@MockitoBean
 	private DashboardRepository repository;
 
 	private String tokenUntuk(UserRole role) {
-		return jwtService.generateAccessToken(User.builder()
-				.id(1L).name("Uji").email("uji@kampus.ac.id")
-				.passwordHash("hash").role(role).active(true)
-				.build());
+		return token(role, 1L);
 	}
 
 	private void repositoryMengembalikanNol() {
