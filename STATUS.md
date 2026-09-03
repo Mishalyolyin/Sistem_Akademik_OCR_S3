@@ -3,22 +3,23 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 4 September 2026, 01.10
+Terakhir diperbarui: 4 September 2026, 01.55
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 3 September 2026 pukul 23.55 di mesin pengembangan, semuanya lolos:
+Dijalankan 4 September 2026 pukul 01.55 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw clean verify` | ✅ 148 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw clean verify` | ✅ 152 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
 | Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
 | Service OCR (container) | `docker build` lalu `GET /health` | ✅ Python 3.14.7, OpenCV 5.0.0, Tesseract 5.5.0 |
 | Susunan compose | `docker compose config` | ✅ dev dan prod terbaca |
+| Stack produksi | `up -d --build` lalu login | ✅ 5 service hidup, admin bisa masuk |
 
 Toolchain yang terpasang: JDK 21.0.12.1, Node 24.19.0, Python 3.14.7, Docker 29.7.2.
 
@@ -109,7 +110,7 @@ Dikerjakan berurutan, dari yang paling mendesak.
 | 1 | Penyesuaian saldo mahasiswa | Satu-satunya fitur yang belum ada. Tanpa ini, kelebihan bayar dan koreksi golongan hanya bisa dibereskan lewat database langsung | ✅ Selesai |
 | 2 | Test controller per-endpoint | Aturan peran sudah dikunci `SecurityLayerTest`, tapi validasi masukan dan bentuk jawaban tiap endpoint belum | ✅ Selesai |
 | 3 | Playwright end-to-end | Menguji sambungan antar bagian yang tidak terlihat di test satuan: login, unggah, verifikasi, kuitansi | ✅ Selesai |
-| 4 | Persiapan deploy VPS | Paling akhir karena butuh keputusan paket hosting, dan lebih aman dilakukan setelah tiga hal di atas beres | 🔨 Berikutnya |
+| 4 | Persiapan deploy VPS | Paling akhir karena butuh keputusan paket hosting, dan lebih aman dilakukan setelah tiga hal di atas beres | ✅ Selesai |
 
 ---
 
@@ -120,17 +121,26 @@ Dikerjakan berurutan, dari yang paling mendesak.
 Halaman forensik OCR belum dibuat, dan **belum diputuskan** apakah peran ini
 masih dibutuhkan di sistem S3.
 
+### Admin belum bisa mengganti kata sandinya sendiri
+
+Halaman ganti kata sandi baru ada untuk mahasiswa (`/me/kata-sandi`, khusus peran
+MAHASISWA). Admin tidak punya jalur apa pun — baik di UI maupun di API. Artinya
+kata sandi yang diisi di `APP_ADMIN_PASSWORD` saat deploy akan menetap sampai
+diubah langsung di basis data.
+
+Menu "Profil saya" di menu pengguna juga belum melakukan apa-apa.
+
 ### Hal teknis yang ditandai untuk dikerjakan nanti
 
 | Berkas | Yang perlu dilakukan | Fase |
 |---|---|---|
-| `.env` di server | Isi `JWT_SECRET`, kata sandi database dan RabbitMQ sebelum deploy | deploy |
-| `COOKIE_SECURE=true` | Wajib diset saat sudah memakai HTTPS | deploy |
+| ~~`.env` di server~~ | ~~Isi rahasia sebelum deploy~~ Sudah dipaksa: compose menolak menyala kalau kosong | ✅ |
+| ~~`COOKIE_SECURE=true`~~ | Sudah jadi bawaan di compose produksi | ✅ |
 | `web/src/features/tarif/konstanta.ts` | Label dan pratinjau saja; sumber kebenaran ada di API | — |
 
 ### Test otomatis
 
-Sudah ada **148 test** dan semuanya lolos:
+Sudah ada **152 test** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
@@ -144,6 +154,7 @@ Sudah ada **148 test** dan semuanya lolos:
 - `AuthServiceTest` — 7 test aturan sesi dan pencabutan token
 - `StudentExcelTemplateTest` — 4 test bentuk berkas template import
 - `AdjustmentServiceTest` — 17 test aturan penyesuaian saldo dan cicilan
+- `InitialAdminSeederTest` — 4 test pembuatan admin pertama
 
 **Lapisan controller**, memakai rantai filter keamanan yang sesungguhnya —
 bukan dimatikan seperti kebiasaan pada uji controller, karena justru di sanalah
@@ -260,6 +271,32 @@ diperbaiki memakai `findByIdForUpdate` yang sama.
 tombol Tambah/Kurangi, bukan dengan mengetik tanda minus — salah tanda di sini
 berarti uang bergerak ke arah sebaliknya. Pratinjau menampilkan nilai sebelum
 dan sesudah, dan penolakan aturan bisnis muncul sebelum tombol simpan aktif.
+
+### Persiapan deploy
+
+Petunjuk lengkapnya di [DEPLOY.md](DEPLOY.md). Seluruh stack produksi sudah
+dijalankan sungguhan sekali dari nol — lima service menyala sehat, dan admin
+berhasil masuk memakai kata sandi dari `.env`.
+
+**Dua hal yang membuat deploy sebenarnya tidak akan berhasil, sudah diperbaiki:**
+
+**1. Pemasangan baru tidak punya jalan masuk sama sekali.** `docker-compose.prod.yml`
+menyetel `APP_SEED_ADMIN: "false"`, sementara sistem ini tidak menyediakan
+endpoint pembuat pengguna. Deploy bersih akan menghasilkan sistem yang rapi tapi
+tidak bisa dibuka siapa pun. Sekarang penyemaian menyala di produksi dan
+kredensialnya diambil dari `APP_ADMIN_EMAIL` serta `APP_ADMIN_PASSWORD` yang
+wajib diisi; compose menolak menyala kalau keduanya kosong. Terbukti: login
+dengan kata sandi dari `.env` dijawab 200, sementara kata sandi bawaan lama
+`admin123` dijawab 401.
+
+**2. Cookie sesi terkirim tanpa flag `Secure`.** `COOKIE_SECURE` tidak pernah
+disebut di compose produksi, jadi nilainya jatuh ke bawaan `false` dan refresh
+token ikut lewat koneksi biasa. Sekarang bawaannya `true` di produksi. Terbukti:
+jawabannya kini `Secure; HttpOnly; SameSite=Lax`.
+
+Selain itu, port yang dipublikasikan kini bisa diatur lewat `API_BIND` dan
+`WEB_BIND`, supaya di VPS keduanya bisa dikunci ke `127.0.0.1` dan hanya
+dijangkau lewat reverse proxy.
 
 ### Uji end-to-end
 

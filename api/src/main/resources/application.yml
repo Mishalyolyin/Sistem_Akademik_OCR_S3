@@ -59,8 +59,14 @@ server:
     context-path: /api
 
 app:
-  # Dimatikan di produksi lewat APP_SEED_ADMIN=false.
+  # Admin pertama. Sistem tidak punya endpoint pembuat pengguna, jadi mematikan
+  # ini pada pemasangan baru berarti tidak ada jalan masuk sama sekali.
   seed-admin: ${APP_SEED_ADMIN:true}
+  admin:
+    name: ${APP_ADMIN_NAME:Admin Keuangan}
+    email: ${APP_ADMIN_EMAIL:admin@kampus.ac.id}
+    # WAJIB diganti lewat environment variable di produksi.
+    password: ${APP_ADMIN_PASSWORD:admin123}
 
   cookie:
     # WAJIB true saat sudah memakai HTTPS.
