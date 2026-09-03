@@ -3,7 +3,26 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 3 September 2026, 17.35
+Terakhir diperbarui: 3 September 2026, 21.55
+
+---
+
+## Verifikasi terakhir
+
+Dijalankan 3 September 2026 pukul 21.55 di mesin pengembangan, semuanya lolos:
+
+| Yang dicek | Perintah | Hasil |
+|---|---|---|
+| Test backend | `api/mvnw clean test` | ✅ 38 test lolos, BUILD SUCCESS |
+| Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
+| Build frontend | `npm run build` | ✅ 23 rute terbentuk |
+| Service OCR | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
+
+Toolchain yang terpasang: JDK 21.0.12.1, Node 24.19.0, Python 3.14.7, Docker 29.7.2.
+
+> **Catatan version control.** Seluruh V2 sempat tidak pernah masuk git dan nyaris
+> hilang karena sebuah auto-stash menyapu working tree. Sudah dipulihkan dan
+> dikomit ke branch `migrasi-v2`. Commit tiap kali ada bagian yang selesai.
 
 ---
 
@@ -69,9 +88,9 @@ Yang belum:
 1. **Hosting.** Spring Boot butuh JVM, shared hosting cPanel tidak mungkin.
    Perlu VPS. Belum dipastikan paket Rumahweb yang dipakai.
 2. **Peran DEVELOPER** masih dibutuhkan atau tidak.
-3. **Python 3.14** terpasang di mesin pengembangan. Waktu Fase 4, `opencv-python`
-   dan `pytesseract` mungkin belum punya wheel untuk versi itu — kemungkinan
-   perlu Python 3.12 khusus untuk service OCR.
+3. ~~**Python 3.14** dan wheel `opencv-python`.~~ Terjawab: OpenCV 5.0.0 dan
+   `pytesseract` terpasang normal di Python 3.14.7, `ocr/main.py` bisa diimpor
+   tanpa galat. Tidak perlu Python 3.12 khusus untuk service OCR.
 4. **Kata sandi awal mahasiswa = NIM.** Halaman ganti kata sandi sudah ada dan
    menolak NIM sebagai kata sandi baru, tapi belum ada pemaksaan ganti saat
    pertama kali masuk.
