@@ -1,0 +1,240 @@
+# Status Pengerjaan
+
+Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
+yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
+
+Terakhir diperbarui: 3 September 2026, 17.35
+
+---
+
+## Ringkasan
+
+| Fase | Isi | Status |
+|---|---|---|
+| 1 | Fondasi: auth JWT, RBAC, Swagger, Docker, shell UI | ✅ Selesai |
+| 2 | Master data: kelas, mahasiswa, tarif, potongan, import Excel | ✅ Selesai (backend + frontend) |
+| 3 | Tagihan: generate plan UKT, urutan ujian, edit nominal | ✅ Selesai (backend + UI admin) |
+| 4 | OCR: FastAPI service, RabbitMQ, retry | ✅ Selesai (backend) |
+| 5 | Verifikasi & alokasi pembayaran | ✅ Selesai |
+| 6 | Laporan, export Excel, PDF, deploy | ✅ Selesai |
+| + | Portal mahasiswa (di luar rencana awal) | ✅ Selesai |
+
+---
+
+## Yang BELUM dikerjakan
+
+### Fitur yang tidak jadi dibuat
+
+**Penyesuaian (adjustment) saldo mahasiswa** belum ada, dan menunya sudah
+dihapus dari sidebar supaya tidak jadi tautan mati. Ini perlu diperhatikan
+karena beberapa aturan bisnis merujuk padanya:
+
+- Kelebihan bayar yang muncul saat nominal cicilan diturunkan di bawah yang
+  sudah dibayar
+- Koreksi golongan potongan yang baru ketahuan setelah mahasiswa upload
+
+Sampai fitur ini ada, kedua kasus itu hanya bisa diselesaikan lewat ubah nominal
+cicilan, atau langsung di database.
+
+### Peran DEVELOPER
+
+Halaman forensik OCR belum dibuat, dan **belum diputuskan** apakah peran ini
+masih dibutuhkan di sistem S3.
+
+### Hal teknis yang ditandai untuk dikerjakan nanti
+
+| Berkas | Yang perlu dilakukan | Fase |
+|---|---|---|
+| `.env` di server | Isi `JWT_SECRET`, kata sandi database dan RabbitMQ sebelum deploy | deploy |
+| `COOKIE_SECURE=true` | Wajib diset saat sudah memakai HTTPS | deploy |
+| `web/src/features/tarif/konstanta.ts` | Label dan pratinjau saja; sumber kebenaran ada di API | — |
+
+### Test otomatis
+
+Sudah ada **38 test** dan semuanya lolos:
+
+- `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
+- `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
+- `PaymentAllocationServiceTest` — 11 test aturan pembagian uang ke cicilan
+- `ApiApplicationTests` — 1 test yang menyalakan PostgreSQL asli lewat
+  Testcontainers, sekaligus memverifikasi keempat migrasi Flyway
+
+Yang belum:
+
+- **Fase 6**: Playwright untuk alur end-to-end
+- Belum ada test untuk lapisan controller (`@WebMvcTest`)
+
+### Keputusan yang masih menggantung
+
+1. **Hosting.** Spring Boot butuh JVM, shared hosting cPanel tidak mungkin.
+   Perlu VPS. Belum dipastikan paket Rumahweb yang dipakai.
+2. **Peran DEVELOPER** masih dibutuhkan atau tidak.
+3. **Python 3.14** terpasang di mesin pengembangan. Waktu Fase 4, `opencv-python`
+   dan `pytesseract` mungkin belum punya wheel untuk versi itu — kemungkinan
+   perlu Python 3.12 khusus untuk service OCR.
+4. **Kata sandi awal mahasiswa = NIM.** Halaman ganti kata sandi sudah ada dan
+   menolak NIM sebagai kata sandi baru, tapi belum ada pemaksaan ganti saat
+   pertama kali masuk.
+
+---
+
+## Yang SUDAH selesai dan terverifikasi
+
+### Fase 1 — Fondasi
+
+- Spring Boot 3.5.16 + Java 21, dijalankan lewat Maven Wrapper
+- PostgreSQL 16, Redis, RabbitMQ jalan lewat `docker compose up -d`
+- Login JWT: access token 15 menit di memori, refresh token di cookie HttpOnly
+- Refresh token ditolak bila dipakai sebagai access token (diuji)
+- RBAC: endpoint admin menolak token mahasiswa dengan 403 (diuji)
+- Semua error memakai format RFC 7807 ProblemDetail berbahasa Indonesia
+- Swagger UI di `/api/swagger-ui.html`
+- Next.js 16 + React 19 + Tailwind 4 + shadcn/ui, tema terang dan gelap
+- Shell: icon rail + panel sub-navigasi + top bar
+
+### Portal mahasiswa
+
+Di luar enam fase rencana awal, tapi dibutuhkan agar sistem bisa dipakai.
+
+**Backend** — semua endpoint di `/api/me/*` bekerja pada pemilik token, tidak
+pernah menerima id mahasiswa dari klien:
+
+- Wizard dokumen wajib lima langkah, urutannya ditegakkan di backend
+- Validasi NIK dan nomor KK harus 16 digit
+- Mahasiswa boleh mendaftarkan sendiri Pendaftaran dan empat tahap ujian;
+  UKT tetap dibuat admin
+- Gate Pendaftaran: kategori lain terkunci sampai Pendaftaran lunas
+- Unggah bukti bayar sendiri, dengan pemeriksaan kepemilikan cicilan
+- Gambar bukti hanya bisa dibuka pemiliknya
+- Ganti kata sandi, menolak NIM sebagai kata sandi baru
+
+**Frontend** — kerangka terpisah dari panel admin: navigasi mendatar, lebar
+terbatas, dirancang untuk ponsel.
+
+- `/portal` tagihan beserta tombol bayar per cicilan
+- `/portal/dokumen` wizard bertahap dengan penanda langkah selesai
+- `/portal/riwayat` menyegarkan sendiri sambil menunggu OCR
+- `/portal/profil` dan ganti kata sandi
+- Pengarahan setelah masuk mengikuti peran: admin ke `/dashboard`,
+  mahasiswa ke `/portal`
+
+**Diuji langsung, satu alur penuh:** lompat ke Ijazah ditolak → isi lima dokumen
+berurutan → daftar Seminar Proposal ditolak karena Pendaftaran belum lunas →
+daftar UKT sendiri ditolak karena wewenang admin → daftar Pendaftaran berhasil →
+unggah bukti → bayar cicilan mahasiswa lain ditolak 409 → buka bukti mahasiswa
+lain ditolak 403 → OCR membaca Rp 1.200.000 sementara diklaim Rp 1.000.000 →
+NEEDS_REVIEW → admin verifikasi → cicilan lunas, kelebihan Rp 200.000 masuk
+saldo → Seminar Proposal terbuka.
+
+### Fase 6 — Laporan & rilis
+
+- Endpoint statistik dashboard memakai SQL agregat, bukan memuat entitas
+- Dashboard kini memakai data asli: ringkasan, rincian per kategori dan per
+  kelas dengan bar kemajuan, serta antrean verifikasi
+- Halaman Pengaturan OCR dan Rekening tersambung ke `system_settings`
+- Laporan Excel tiga lembar (Apache POI): ringkasan per kelas, tagihan per
+  mahasiswa, riwayat pembayaran
+- Kuitansi PDF (OpenPDF) lengkap dengan nomor kuitansi dan nominal terbilang;
+  hanya bisa dicetak untuk pembayaran yang sudah diverifikasi
+- Dockerfile untuk ketiga service, semuanya berjalan sebagai user non-root
+- `docker-compose.prod.yml` menyalakan seluruh sistem dalam satu perintah
+- Seeder admin dan cookie Secure kini diatur lewat environment variable
+
+**Diuji langsung:** dashboard mengembalikan angka yang cocok dengan database;
+laporan Excel 6 KB terunduh; kuitansi PDF terbaca dengan benar termasuk
+terbilang "Satu juta dua ratus ribu rupiah"; kuitansi untuk pembayaran yang
+ditolak dijawab 409.
+
+### Fase 5 — Verifikasi & alokasi
+
+- `PaymentAllocationService`: cicilan tujuan dulu, lalu FIFO jatuh tempo terlama,
+  sisanya ke saldo mahasiswa — semuanya dengan pessimistic lock
+- Sisa kecil dalam toleransi (kode unik bank) dibuang, tidak nyangkut di cicilan
+  berikutnya maupun di saldo
+- Cicilan tujuan yang sudah lunas **tidak** dialihkan diam-diam; ditandai perlu
+  ditinjau supaya aliran uang tetap bisa ditelusuri
+- Tagihan otomatis jadi COMPLETED ketika seluruh cicilannya lunas
+- Alokasi dipanggil setelah verifikasi otomatis maupun manual
+- Endpoint penyaji gambar bukti dengan pemeriksaan hak akses; berkas tidak
+  ditaruh di folder publik
+- Penyaringan pembayaran per kategori, status, mahasiswa, dan pencarian
+- Halaman Verifikasi kini memakai data asli: tabel, split-view dengan gambar
+  bukti sungguhan beserta zoom, riwayat status, tombol baca ulang, dan
+  verifikasi/tolak yang benar-benar menyentuh database
+
+**Diuji langsung:** unggah Rp 1.200.000 ke cicilan bernominal Rp 900.000 →
+cicilan 1 lunas, sisa Rp 300.000 mengalir ke cicilan 2 jadi PARTIAL, saldo tetap
+nol karena masih ada cicilan yang belum lunas.
+
+### Fase 4 — OCR
+
+- Service FastAPI di `ocr/` membungkus `ocr_processor.py`; model dimuat sekali
+  saat menyala, bukan spawn proses Python tiap unggahan seperti sistem lama
+- Python 3.14 + OpenCV 5.0 + Tesseract 5.4 dengan bahasa `ind` dan `eng`
+- Berkas bahasa dibundel di `ocr/tessdata/`, jadi tidak bergantung pada
+  instalasi Tesseract yang menyertakan bahasa Indonesia
+- Migrasi V5: `payments`, `verification_logs`, `system_settings`
+- RabbitMQ dengan dead-letter queue; pesan dikirim setelah transaksi commit
+  supaya pekerja tidak membaca baris yang belum tersimpan
+- Keputusan otomatis: terverifikasi bila keyakinan ≥ ambang dan nominal cocok,
+  ditolak bila keyakinan di bawah ambang bawah, selain itu perlu ditinjau
+- Nominal disesuaikan ke angka yang benar-benar terbaca di bukti bila berbeda
+- Keputusan manual admin tidak pernah ditimpa hasil OCR yang datang belakangan
+- Ambang keyakinan, toleransi selisih, blacklist, dan rekening tujuan disimpan
+  di `system_settings`, bisa diubah tanpa deploy ulang
+- Kunci golongan potongan kini aktif sungguhan (bukan lagi penampung sementara)
+
+**Diuji langsung:** unggah bukti Rp 1.200.000 → terbaca 100% → AUTO_VERIFIED;
+bukti dengan nominal diklaim berbeda → NEEDS_REVIEW dengan catatan selisih;
+tolak manual tanpa alasan → 409; ubah golongan mahasiswa yang sudah upload → 409;
+service OCR dimatikan → 3 percobaan ulang → dead-letter queue → status FAILED →
+"baca ulang" setelah OCR hidup → AUTO_VERIFIED.
+
+### Fase 3 — Tagihan (backend)
+
+- Migrasi V4: `payment_plans`, `installments`, `installment_amount_changes`
+- Nominal UKT dihitung dari tarif dasar dikali potongan golongan, terbukti sesuai
+  brosur untuk kelima golongan
+- Sisa pembagian menempel di cicilan terakhir; jumlah cicilan selalu sama persis
+  dengan total
+- Jatuh tempo Gasal Sep–Jan dan Genap Feb–Jun, terbukti termasuk pergantian tahun
+- Tarif dan persen potongan dibekukan di plan saat dibuat
+- Maksimal 6 semester UKT, plan ganda ditolak, kategori sekali bayar hanya sekali
+- Urutan wajib empat tahap ujian ditegakkan di backend (bukan cuma di UI)
+- Biaya ujian tidak kena potongan walau mahasiswanya golongan kerjasama
+- Ubah nominal cicilan: alasan wajib, audit tercatat, `total_amount` plan
+  dihitung ulang, `amount_paid` tidak pernah disentuh, memakai pessimistic lock
+
+### Fase 3 — UI admin tagihan
+
+- Halaman detail mahasiswa `/mahasiswa/{id}`: ringkasan total ditagih, sudah
+  dibayar, sisa, dan saldo; peringatan bila dokumen wajib belum lengkap
+- Kartu per tagihan dengan tabel cicilan: jatuh tempo, nominal, dibayar, sisa,
+  status
+- Dialog "Buat tagihan" dengan pratinjau nominal sebelum disimpan
+- Dialog ubah nominal tersambung API, lengkap dengan riwayat audit dan
+  peringatan bila nominal turun di bawah yang sudah dibayar
+- Nama mahasiswa di tabel jadi tautan ke halaman detail
+
+### Fase 2 — Master data
+
+- Migrasi V2 dan V3: kelas, mahasiswa, tarif, golongan potongan, template angsuran
+- Hitungan potongan terbukti sesuai brosur: 2.000.000 / 1.600.000 / 1.500.000 /
+  1.300.000 / 1.200.000 per cicilan
+- Import Excel dengan Apache POI: kelas dibuat otomatis, baris gagal dilaporkan
+  per baris tanpa membatalkan yang lain (diuji)
+- Halaman Mahasiswa, Import, Kelas, Tarif & Potongan tersambung ke API asli
+
+### Bug yang sudah ditemukan dan diperbaiki
+
+1. Baris keterangan di template Excel ikut terbaca sebagai data mahasiswa
+2. `GET /students` balas 500 — pola `(:param IS NULL OR ...)` gagal di
+   PostgreSQL, diganti JPA Specification
+3. Nilai enum tidak dikenal balas 500, sekarang 400 dengan daftar pilihan
+4. `LazyInitializationException` akibat `open-in-view: false`, diperbaiki
+   dengan `@EntityGraph`
+5. `Select` Base UI mengirim `string | null`, tertangkap TypeScript saat build
+6. TanStack Table v9 API-nya berubah total, diturunkan ke v8
+7. Literal enum di JPQL (`... = PaymentCategory.UKT`) membuat Hibernate mengecast
+   ke nama kelas Java `::PaymentCategory`, padahal tipe PostgreSQL-nya bernama
+   `payment_category`. Diperbaiki dengan mengirim enum sebagai parameter query.

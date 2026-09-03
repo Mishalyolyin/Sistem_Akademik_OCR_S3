@@ -1,0 +1,94 @@
+# Seluruh sistem dalam satu perintah, untuk deploy ke VPS.
+#
+#   cp .env.example .env      lalu isi kata sandinya
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Untuk pengembangan sehari-hari pakai docker-compose.yml biasa, yang hanya
+# menyalakan database dan broker sementara aplikasinya dijalankan dari mesin.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-pembayaran}
+      POSTGRES_USER: ${DB_USER:-pembayaran}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?kata sandi database wajib diisi}
+      TZ: Asia/Jakarta
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-pembayaran}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-pembayaran}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?kata sandi rabbitmq wajib diisi}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  ocr:
+    build: ./ocr
+    restart: unless-stopped
+    expose:
+      - "8000"
+
+  api:
+    build: ./api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-pembayaran}
+      DB_USERNAME: ${DB_USER:-pembayaran}
+      DB_PASSWORD: ${DB_PASSWORD}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USER: ${RABBITMQ_USER:-pembayaran}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+      OCR_URL: http://ocr:8000
+      STORAGE_ROOT: /app/storage
+      JWT_SECRET: ${JWT_SECRET:?rahasia JWT wajib diisi, minimal 32 karakter}
+      CORS_ORIGINS: ${APP_URL:-http://localhost:3000}
+      # Akun admin bawaan dimatikan di produksi.
+      APP_SEED_ADMIN: "false"
+    volumes:
+      - bukti-bayar:/app/storage
+    ports:
+      - "8080:8080"
+
+  web:
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_API_URL: ${API_URL:-http://localhost:8080/api}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres-data:
+  redis-data:
+  rabbitmq-data:
+  bukti-bayar:

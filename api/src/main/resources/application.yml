@@ -1,0 +1,103 @@
+spring:
+  application:
+    name: api
+
+  autoconfigure:
+    # Autentikasi memakai JWT, bukan UserDetailsService. Tanpa exclude ini Spring
+    # membuat user in-memory bawaan dan mencetak password acak di log.
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pembayaran}
+    username: ${DB_USERNAME:pembayaran}
+    password: ${DB_PASSWORD:pembayaran}
+
+  jpa:
+    # Skema hanya boleh diubah lewat migrasi Flyway. Hibernate cuma memvalidasi.
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: Asia/Jakarta
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  jackson:
+    default-property-inclusion: non_null
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:pembayaran}
+    password: ${RABBITMQ_PASSWORD:pembayaran}
+    listener:
+      simple:
+        # Pekerjaan yang gagal dicoba ulang beberapa kali dengan jeda menaik.
+        # Setelah habis, pesannya masuk dead-letter queue, tidak hilang.
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 5s
+          multiplier: 3
+          max-interval: 60s
+        default-requeue-rejected: false
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 12MB
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /api
+
+app:
+  # Dimatikan di produksi lewat APP_SEED_ADMIN=false.
+  seed-admin: ${APP_SEED_ADMIN:true}
+
+  cookie:
+    # WAJIB true saat sudah memakai HTTPS.
+    secure: ${COOKIE_SECURE:false}
+
+  storage:
+    root: ${STORAGE_ROOT:./storage}
+
+  ocr:
+    base-url: ${OCR_URL:http://localhost:8000}
+    timeout-seconds: ${OCR_TIMEOUT:60}
+
+  jwt:
+    # WAJIB diganti lewat environment variable di produksi.
+    secret: ${JWT_SECRET:ganti-rahasia-ini-minimal-32-karakter-untuk-hs256}
+    access-token-minutes: ${JWT_ACCESS_MINUTES:15}
+    refresh-token-days: ${JWT_REFRESH_DAYS:7}
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  level:
+    ac.kampus.pembayaran: DEBUG
