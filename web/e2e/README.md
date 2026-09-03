@@ -79,10 +79,9 @@ Kata sandi mahasiswa uji disalin hash-nya dari baris admin, jadi sama dengan
 kata sandi admin. Bcrypt tidak bisa disusun tanpa menjalankan penyandinya, dan
 menambah pustaka bcrypt di sisi uji hanya untuk ini tidak sepadan.
 
-## Yang sedang ditandai gagal
+## Catatan
 
-Satu uji memakai `test.fixme`: alur keluar lewat menu pengguna. Membuka menu itu
-melempar `Base UI error #31` di build produksi dan mematikan seluruh halaman,
-sehingga admin tidak punya jalan keluar dari UI. Pencabutan sesinya sendiri sudah
-benar dan terkunci di `AuthServiceTest` serta `AuthControllerTest`; yang rusak
-hanya pemicunya di layar. Uji itu dibiarkan sebagai penanda, bukan dihapus.
+Semua uji lolos. Kalau ada yang menambahkan menu tarik-turun berlabel, buka
+menunya di `menu.spec.ts`: `DropdownMenuLabel` wajib berada di dalam
+`DropdownMenuGroup`, dan kalau tidak, Base UI melempar galat yang mematikan
+seluruh halaman begitu menunya dibuka — bukan sekadar menunya yang tidak muncul.

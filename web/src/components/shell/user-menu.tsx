@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -67,24 +68,31 @@ export function UserMenu() {
         }
       />
       <DropdownMenuContent side="right" align="end" className="w-56">
-        <DropdownMenuLabel>
-          <span className="block text-sm font-medium">{user.name}</span>
-          <span className="block text-xs font-normal text-muted-foreground">
-            {user.email}
-          </span>
-          <span className="mt-1 inline-block rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            {roleLabels[user.role]}
-          </span>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          <UserRound />
-          Profil saya
-        </DropdownMenuItem>
-        <DropdownMenuItem variant="destructive" onClick={handleLogout}>
-          <LogOut />
-          Keluar
-        </DropdownMenuItem>
+        {/*
+          Label WAJIB berada di dalam Group. DropdownMenuLabel memakai
+          Menu.GroupLabel, dan tanpa Group di atasnya Base UI melempar galat
+          yang mematikan seluruh halaman begitu menunya dibuka.
+        */}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            <span className="block text-sm font-medium">{user.name}</span>
+            <span className="block text-xs font-normal text-muted-foreground">
+              {user.email}
+            </span>
+            <span className="mt-1 inline-block rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              {roleLabels[user.role]}
+            </span>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem>
+            <UserRound />
+            Profil saya
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" onClick={handleLogout}>
+            <LogOut />
+            Keluar
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );

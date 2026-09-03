@@ -3,7 +3,7 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 4 September 2026, 00.40
+Terakhir diperbarui: 4 September 2026, 01.10
 
 ---
 
@@ -90,24 +90,6 @@ memori tanpa fungsi.
 **6. Container OCR disamakan ke Python 3.14.** Sebelumnya `ocr/Dockerfile` memakai
 3.12 sementara pengembangan memakai 3.14. Beda minor version membuat bug
 pembacaan sulit direproduksi.
-
-### Bug terbuka
-
-**Menu pengguna mematikan halaman, admin tidak bisa keluar lewat UI.** Membuka
-menu di pojok kiri bawah melempar `Base UI error #31` di build produksi dan
-seluruh halaman ikut mati. Yang sudah dipastikan:
-
-- Terjadi di build produksi; di mode pengembangan menunya juga tidak terbuka,
-  tapi di sana tombolnya memang tertutup overlay Next.js Dev Tools, jadi mode
-  pengembangan tidak bisa dipakai untuk memastikan
-- Bukan karena pemicunya: mengubahnya jadi `<button>` asli tidak menyelesaikan
-- Bukan karena `nativeButton` pada item menu: dicoba, tidak menyelesaikan
-- Teks lengkap kode galat #31 tidak tersedia luring; pemetaannya tidak ikut
-  dipaketkan dan hanya bisa dibuka di situs Base UI
-
-Pencabutan sesinya sendiri sudah benar dan terkunci di `AuthServiceTest` serta
-`AuthControllerTest`; yang rusak hanya pemicunya di layar. Ujinya ditandai
-`test.fixme`, bukan dihapus, supaya tidak hilang dari pandangan.
 
 ### Ditemukan, belum diputuskan
 
@@ -281,7 +263,7 @@ dan sesudah, dan penolakan aturan bisnis muncul sebelum tombol simpan aktif.
 
 ### Uji end-to-end
 
-Sembilan uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
+Dua belas uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
 Spring Boot, dan PostgreSQL sungguhan, tanpa satu pun bagian yang ditiru. Port
 dan basis datanya terpisah dari yang dipakai sehari-hari (3100 / 8081 /
 `pembayaran_e2e`), jadi menjalankannya tidak mematikan server pengembangan dan
@@ -301,9 +283,16 @@ mengenali `application/json`. Badan jawaban dibaca sebagai teks, ekstraksi field
 galat di seluruh aplikasi, bukan cuma halaman login. Sudah diperbaiki.
 
 **2. Menu pengguna mematikan halaman.** Membuka menu di pojok kiri bawah
-melempar `Base UI error #31` di build produksi, dan seluruh halaman mati —
-sehingga **admin tidak punya jalan keluar dari UI sama sekali**. Belum selesai;
-lihat bagian di bawah.
+melempar `Base UI error #31` di build produksi dan seluruh halaman ikut mati,
+sehingga **admin tidak punya jalan keluar dari UI sama sekali**. Menu "Tampilkan
+kolom" di halaman verifikasi rusak dengan sebab yang persis sama.
+
+Kode #31 ternyata berarti *"MenuGroupContext is missing. Menu group parts must be
+used within `<Menu.Group>`"* — pemetaannya tidak ikut dipaketkan, tapi ada di
+sumber `@base-ui/react/menu/group/MenuGroupContext.mjs`. `DropdownMenuLabel`
+memakai `Menu.GroupLabel`, dan di kedua tempat itu ia dipakai telanjang tanpa
+`Group` di atasnya. Sudah diperbaiki, dan kedua menu kini dibuka sungguhan di
+`menu.spec.ts`.
 
 Sambil menelusurinya, lima tempat kedapatan melanggar kontrak yang sama: `Button`
 dengan `render={<Link/>}` menghasilkan `<a>` padahal Base UI menganggapnya harus

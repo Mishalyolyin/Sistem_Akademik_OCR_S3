@@ -59,13 +59,7 @@ test.describe("Batas peran di peramban", () => {
 });
 
 test.describe("Keluar", () => {
-  // BUG TERBUKA: membuka menu pengguna melempar "Base UI error #31" di build
-  // produksi, dan seluruh halaman ikut mati. Akibatnya admin tidak punya jalan
-  // keluar dari UI sama sekali. Pencabutan sesinya sendiri sudah benar dan
-  // terkunci di AuthServiceTest serta AuthControllerTest; yang rusak hanya
-  // pemicunya di layar. Uji ini sengaja dibiarkan sebagai penanda, bukan
-  // dihapus, supaya tidak hilang dari pandangan.
-  test.fixme("setelah keluar, halaman admin tidak bisa dibuka lagi", async ({ page }) => {
+  test("setelah keluar, halaman admin tidak bisa dibuka lagi", async ({ page }) => {
     await masuk(page, ADMIN.email, ADMIN.password);
     await expect(page).toHaveURL(/\/dashboard$/);
 
