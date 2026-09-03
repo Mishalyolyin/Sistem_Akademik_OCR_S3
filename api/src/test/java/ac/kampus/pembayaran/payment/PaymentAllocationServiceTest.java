@@ -64,7 +64,7 @@ class PaymentAllocationServiceTest {
 				.walletBalance(BigDecimal.ZERO).active(true)
 				.build();
 
-		when(studentRepository.findById(1L)).thenReturn(Optional.of(student));
+		when(studentRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(student));
 		when(settings.getAmount(anyString(), any())).thenReturn(BigDecimal.ZERO);
 	}
 

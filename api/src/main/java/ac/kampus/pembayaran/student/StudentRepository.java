@@ -1,11 +1,15 @@
 package ac.kampus.pembayaran.student;
 
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.lang.Nullable;
 
 import java.util.Optional;
@@ -22,6 +26,16 @@ public interface StudentRepository
 	 */
 	@EntityGraph(attributePaths = "studyClass")
 	Optional<Student> findWithClassById(Long id);
+
+	/**
+	 * Ambil mahasiswa dengan kunci baris. Wajib dipakai sebelum mengubah
+	 * {@code wallet_balance}: tanpa kunci, dua mutasi yang berjalan bersamaan
+	 * membaca saldo yang sama lalu saling menimpa, dan salah satunya hilang
+	 * tanpa jejak.
+	 */
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("SELECT s FROM Student s WHERE s.id = :id")
+	Optional<Student> findByIdForUpdate(@Param("id") Long id);
 
 	boolean existsByNim(String nim);
 

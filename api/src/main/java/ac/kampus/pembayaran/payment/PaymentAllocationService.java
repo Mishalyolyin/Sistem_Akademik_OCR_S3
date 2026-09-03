@@ -114,7 +114,9 @@ public class PaymentAllocationService {
 
 		// 3. Kelebihan masuk saldo mahasiswa.
 		if (sisa.signum() > 0) {
-			Student student = studentRepository.findById(payment.getStudent().getId())
+			// Dikunci seperti cicilan: dua pembayaran yang diverifikasi bersamaan
+			// tidak boleh membaca saldo yang sama lalu saling menimpa.
+			Student student = studentRepository.findByIdForUpdate(payment.getStudent().getId())
 					.orElseThrow(() -> NotFoundException.of("Mahasiswa", payment.getStudent().getId()));
 
 			student.setWalletBalance(student.getWalletBalance().add(sisa));

@@ -3,17 +3,17 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 3 September 2026, 22.40
+Terakhir diperbarui: 3 September 2026, 23.10
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 3 September 2026 pukul 22.40 di mesin pengembangan, semuanya lolos:
+Dijalankan 3 September 2026 pukul 23.10 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw clean verify` | ✅ 67 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw clean verify` | ✅ 84 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
 | Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
@@ -106,27 +106,14 @@ Dikerjakan berurutan, dari yang paling mendesak.
 
 | # | Pekerjaan | Kenapa urutannya begini | Status |
 |---|---|---|---|
-| 1 | Penyesuaian saldo mahasiswa | Satu-satunya fitur yang belum ada. Tanpa ini, kelebihan bayar dan koreksi golongan hanya bisa dibereskan lewat database langsung | 🔨 Dikerjakan |
-| 2 | Test controller per-endpoint | Aturan peran sudah dikunci `SecurityLayerTest`, tapi validasi masukan dan bentuk jawaban tiap endpoint belum | 🔘 Menunggu |
+| 1 | Penyesuaian saldo mahasiswa | Satu-satunya fitur yang belum ada. Tanpa ini, kelebihan bayar dan koreksi golongan hanya bisa dibereskan lewat database langsung | ✅ Selesai |
+| 2 | Test controller per-endpoint | Aturan peran sudah dikunci `SecurityLayerTest`, tapi validasi masukan dan bentuk jawaban tiap endpoint belum | 🔨 Berikutnya |
 | 3 | Playwright end-to-end | Menguji sambungan antar bagian yang tidak terlihat di test satuan: login, unggah, verifikasi, kuitansi | 🔘 Menunggu |
 | 4 | Persiapan deploy VPS | Paling akhir karena butuh keputusan paket hosting, dan lebih aman dilakukan setelah tiga hal di atas beres | 🔘 Menunggu |
 
 ---
 
 ## Yang BELUM dikerjakan
-
-### Fitur yang tidak jadi dibuat
-
-**Penyesuaian (adjustment) saldo mahasiswa** belum ada, dan menunya sudah
-dihapus dari sidebar supaya tidak jadi tautan mati. Ini perlu diperhatikan
-karena beberapa aturan bisnis merujuk padanya:
-
-- Kelebihan bayar yang muncul saat nominal cicilan diturunkan di bawah yang
-  sudah dibayar
-- Koreksi golongan potongan yang baru ketahuan setelah mahasiswa upload
-
-Sampai fitur ini ada, kedua kasus itu hanya bisa diselesaikan lewat ubah nominal
-cicilan, atau langsung di database.
 
 ### Peran DEVELOPER
 
@@ -143,7 +130,7 @@ masih dibutuhkan di sistem S3.
 
 ### Test otomatis
 
-Sudah ada **67 test** dan semuanya lolos:
+Sudah ada **84 test** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
@@ -156,6 +143,7 @@ Sudah ada **67 test** dan semuanya lolos:
   endpoint admin, dan bentuk badan jawaban penolakan
 - `AuthServiceTest` — 7 test aturan sesi dan pencabutan token
 - `StudentExcelTemplateTest` — 4 test bentuk berkas template import
+- `AdjustmentServiceTest` — 17 test aturan penyesuaian saldo dan cicilan
 
 Yang belum:
 
@@ -225,6 +213,39 @@ unggah bukti → bayar cicilan mahasiswa lain ditolak 409 → buka bukti mahasis
 lain ditolak 403 → OCR membaca Rp 1.200.000 sementara diklaim Rp 1.000.000 →
 NEEDS_REVIEW → admin verifikasi → cicilan lunas, kelebihan Rp 200.000 masuk
 saldo → Seminar Proposal terbuka.
+
+### Penyesuaian saldo dan cicilan
+
+Menutup dua kasus yang sebelumnya hanya bisa dibereskan lewat database langsung:
+kelebihan bayar saat nominal cicilan diturunkan, dan koreksi golongan yang baru
+ketahuan setelah mahasiswa mengunggah bukti.
+
+- Migrasi V7: tabel `adjustments`, terpisah dari `installment_amount_changes`
+  karena yang satu mencatat perpindahan UANG dan yang lain perubahan BESAR
+  TAGIHAN — kalau digabung, riwayatnya bercampur dan sulit ditelusuri
+- Sasarannya saldo mahasiswa atau satu cicilan tertentu; pemiliknya diambil dari
+  jalur URL, tidak pernah dari badan permintaan
+- Cicilan milik mahasiswa lain ditolak
+- Alasan wajib minimal 5 karakter, nominal nol ditolak supaya audit tidak terisi
+  baris kosong
+- Saldo maupun uang yang tercatat masuk tidak boleh jadi minus
+- Kelebihan tidak boleh menumpuk di cicilan; admin diarahkan memasukkannya ke
+  saldo, karena di cicilan uang itu tidak kelihatan di mana pun
+- Status cicilan dihitung ulang, dan tagihan ikut ditutup atau dibuka lagi
+- Tiap baris audit menyimpan nilai sesudahnya, jadi riwayat bisa dibaca tanpa
+  memutar ulang seluruh mutasi
+- Semua mutasi memakai kunci baris
+
+**Ditemukan saat mengerjakan ini:** `PaymentAllocationService` mengubah saldo
+mahasiswa **tanpa** kunci baris, padahal komentar kelasnya menyatakan seluruh
+proses terkunci. Dua pembayaran yang diverifikasi bersamaan bisa membaca saldo
+yang sama lalu saling menimpa, dan salah satunya hilang tanpa jejak. Sudah
+diperbaiki memakai `findByIdForUpdate` yang sama.
+
+**Di UI:** tombol Penyesuaian di halaman detail mahasiswa. Arah dipilih lewat
+tombol Tambah/Kurangi, bukan dengan mengetik tanda minus — salah tanda di sini
+berarti uang bergerak ke arah sebaliknya. Pratinjau menampilkan nilai sebelum
+dan sesudah, dan penolakan aturan bisnis muncul sebelum tombol simpan aktif.
 
 ### Fase 6 — Laporan & rilis
 

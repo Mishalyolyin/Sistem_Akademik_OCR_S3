@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, PencilLine, Plus, Wallet } from "lucide-react";
+import { ArrowLeft, PencilLine, Plus, Scale, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -31,6 +31,7 @@ import {
 } from "@/features/tagihan/api";
 import { DialogBuatTagihan } from "@/features/tagihan/dialog-buat-tagihan";
 import { DialogUbahNominal } from "@/features/tagihan/dialog-ubah-nominal";
+import { DialogPenyesuaian } from "@/features/penyesuaian/dialog-penyesuaian";
 import { ApiError } from "@/lib/api";
 import { formatRupiah, formatTanggal } from "@/lib/format";
 
@@ -39,6 +40,7 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
   const plans = useStudentPlans(studentId);
 
   const [buatTerbuka, setBuatTerbuka] = useState(false);
+  const [penyesuaianTerbuka, setPenyesuaianTerbuka] = useState(false);
   const [cicilanDiubah, setCicilanDiubah] = useState<Installment | null>(null);
 
   if (mahasiswa.isPending) {
@@ -91,6 +93,10 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
         title={mhs.name}
         description={`${mhs.nim} · ${mhs.className ?? "Tanpa kelas"} · ${tier.label}${tier.persen > 0 ? ` (−${tier.persen}%)` : ""}`}
       >
+        <Button variant="outline" onClick={() => setPenyesuaianTerbuka(true)}>
+          <Scale />
+          Penyesuaian
+        </Button>
         <Button onClick={() => setBuatTerbuka(true)}>
           <Plus />
           Buat tagihan
@@ -175,6 +181,14 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
         installment={cicilanDiubah}
         studentId={studentId}
         onClose={() => setCicilanDiubah(null)}
+      />
+
+      <DialogPenyesuaian
+        open={penyesuaianTerbuka}
+        onOpenChange={setPenyesuaianTerbuka}
+        studentId={studentId}
+        walletBalance={mhs.walletBalance}
+        plans={plans.data ?? []}
       />
     </div>
   );
