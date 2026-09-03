@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { LogOut, UserRound } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 const roleLabels = {
   ADMIN: "Admin",
@@ -41,20 +42,28 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
+      {/*
+        Pemicunya sengaja berupa <button> asli, bukan komponen Button kita.
+        MenuTrigger memeriksa elemen yang diberikan lewat `render`, dan sebuah
+        komponen bukan <button> di matanya — di build produksi pemeriksaan itu
+        dilempar sebagai galat, dan seluruh halaman ikut mati.
+      */}
       <DropdownMenuTrigger
         render={
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9"
+          <button
+            type="button"
             aria-label="Menu pengguna"
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "icon" }),
+              "size-9",
+            )}
           >
             <Avatar className="size-7">
               <AvatarFallback className="text-[11px] font-semibold">
                 {initialsOf(user.name)}
               </AvatarFallback>
             </Avatar>
-          </Button>
+          </button>
         }
       />
       <DropdownMenuContent side="right" align="end" className="w-56">

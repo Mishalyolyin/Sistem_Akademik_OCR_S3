@@ -83,6 +83,7 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
         variant="ghost"
         size="sm"
         className="-ml-2 w-fit text-muted-foreground"
+        nativeButton={false}
         render={<Link href="/mahasiswa" />}
       >
         <ArrowLeft />

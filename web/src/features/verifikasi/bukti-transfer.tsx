@@ -78,6 +78,7 @@ export function BuktiTransfer({ paymentId }: { paymentId: number }) {
             <Button
               variant="outline"
               size="sm"
+              nativeButton={false}
               render={<a href={data.url} target="_blank" rel="noreferrer" />}
             >
               Buka di tab baru

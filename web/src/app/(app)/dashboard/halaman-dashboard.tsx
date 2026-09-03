@@ -112,6 +112,7 @@ export function HalamanDashboard() {
           <Button
             variant="outline"
             size="sm"
+            nativeButton={false}
             render={<Link href="/verifikasi/ukt" />}
           >
             Buka verifikasi

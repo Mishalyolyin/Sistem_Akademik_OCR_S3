@@ -80,7 +80,11 @@ export function HalamanMahasiswa() {
         title="Mahasiswa"
         description="Data mahasiswa Program Doktor PAI beserta golongan potongannya"
       >
-        <Button variant="outline" render={<Link href="/mahasiswa/import" />}>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link href="/mahasiswa/import" />}
+        >
           <FileSpreadsheet />
           Import Excel
         </Button>

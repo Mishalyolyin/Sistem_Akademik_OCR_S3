@@ -80,7 +80,11 @@ export async function apiFetch<T>(
   }
 
   const contentType = response.headers.get("content-type") ?? "";
-  const payload = contentType.includes("application/json")
+  // Jawaban galat datang sebagai "application/problem+json", bukan
+  // "application/json". Mencocokkan tipe lengkapnya membuat seluruh
+  // ProblemDetail terbaca sebagai teks biasa, dan pesan yang sampai ke layar
+  // pengguna jadi JSON mentah alih-alih kalimat di field detail.
+  const payload = contentType.includes("json")
     ? await response.json().catch(() => null)
     : await response.text();
 

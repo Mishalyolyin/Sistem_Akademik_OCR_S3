@@ -3,7 +3,7 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 3 September 2026, 23.55
+Terakhir diperbarui: 4 September 2026, 00.40
 
 ---
 
@@ -91,6 +91,24 @@ memori tanpa fungsi.
 3.12 sementara pengembangan memakai 3.14. Beda minor version membuat bug
 pembacaan sulit direproduksi.
 
+### Bug terbuka
+
+**Menu pengguna mematikan halaman, admin tidak bisa keluar lewat UI.** Membuka
+menu di pojok kiri bawah melempar `Base UI error #31` di build produksi dan
+seluruh halaman ikut mati. Yang sudah dipastikan:
+
+- Terjadi di build produksi; di mode pengembangan menunya juga tidak terbuka,
+  tapi di sana tombolnya memang tertutup overlay Next.js Dev Tools, jadi mode
+  pengembangan tidak bisa dipakai untuk memastikan
+- Bukan karena pemicunya: mengubahnya jadi `<button>` asli tidak menyelesaikan
+- Bukan karena `nativeButton` pada item menu: dicoba, tidak menyelesaikan
+- Teks lengkap kode galat #31 tidak tersedia luring; pemetaannya tidak ikut
+  dipaketkan dan hanya bisa dibuka di situs Base UI
+
+Pencabutan sesinya sendiri sudah benar dan terkunci di `AuthServiceTest` serta
+`AuthControllerTest`; yang rusak hanya pemicunya di layar. Ujinya ditandai
+`test.fixme`, bukan dihapus, supaya tidak hilang dari pandangan.
+
 ### Ditemukan, belum diputuskan
 
 **Peran DEVELOPER adalah peran yatim.** Dikecualikan dari seluruh endpoint admin;
@@ -108,8 +126,8 @@ Dikerjakan berurutan, dari yang paling mendesak.
 |---|---|---|---|
 | 1 | Penyesuaian saldo mahasiswa | Satu-satunya fitur yang belum ada. Tanpa ini, kelebihan bayar dan koreksi golongan hanya bisa dibereskan lewat database langsung | ✅ Selesai |
 | 2 | Test controller per-endpoint | Aturan peran sudah dikunci `SecurityLayerTest`, tapi validasi masukan dan bentuk jawaban tiap endpoint belum | ✅ Selesai |
-| 3 | Playwright end-to-end | Menguji sambungan antar bagian yang tidak terlihat di test satuan: login, unggah, verifikasi, kuitansi | 🔨 Berikutnya |
-| 4 | Persiapan deploy VPS | Paling akhir karena butuh keputusan paket hosting, dan lebih aman dilakukan setelah tiga hal di atas beres | 🔘 Menunggu |
+| 3 | Playwright end-to-end | Menguji sambungan antar bagian yang tidak terlihat di test satuan: login, unggah, verifikasi, kuitansi | ✅ Selesai |
+| 4 | Persiapan deploy VPS | Paling akhir karena butuh keputusan paket hosting, dan lebih aman dilakukan setelah tiga hal di atas beres | 🔨 Berikutnya |
 
 ---
 
@@ -161,7 +179,6 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 
 Yang belum:
 
-- **Fase 6**: Playwright untuk alur end-to-end
 - Lima controller belum punya test sendiri: `StudyClassController`,
   `TuitionController`, `SystemSettingController`, `StudentImportController`,
   dan `ReportController`. Semuanya sudah tercakup aturan perannya lewat
@@ -261,6 +278,37 @@ diperbaiki memakai `findByIdForUpdate` yang sama.
 tombol Tambah/Kurangi, bukan dengan mengetik tanda minus — salah tanda di sini
 berarti uang bergerak ke arah sebaliknya. Pratinjau menampilkan nilai sebelum
 dan sesudah, dan penolakan aturan bisnis muncul sebelum tombol simpan aktif.
+
+### Uji end-to-end
+
+Sembilan uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
+Spring Boot, dan PostgreSQL sungguhan, tanpa satu pun bagian yang ditiru. Port
+dan basis datanya terpisah dari yang dipakai sehari-hari (3100 / 8081 /
+`pembayaran_e2e`), jadi menjalankannya tidak mematikan server pengembangan dan
+tidak mencemari datanya. Petunjuknya di `web/e2e/README.md`.
+
+Yang dibuktikan: masuk dan pesan galatnya, pengarahan menurut peran, penjagaan
+halaman admin dari mahasiswa, dan alur penyesuaian saldo dari klik admin sampai
+angka di basis data.
+
+**Dua bug ditemukan justru karena ujinya lewat peramban sungguhan.**
+
+**1. Seluruh pesan galat tampil sebagai JSON mentah.** `ProblemDetail` dikirim
+dengan tipe `application/problem+json`, sementara `web/src/lib/api.ts` hanya
+mengenali `application/json`. Badan jawaban dibaca sebagai teks, ekstraksi field
+`detail` dilewati, dan yang sampai ke layar pengguna adalah
+`{"type":"about:blank","title":"Gagal masuk",...}`. Ini berlaku untuk **setiap**
+galat di seluruh aplikasi, bukan cuma halaman login. Sudah diperbaiki.
+
+**2. Menu pengguna mematikan halaman.** Membuka menu di pojok kiri bawah
+melempar `Base UI error #31` di build produksi, dan seluruh halaman mati —
+sehingga **admin tidak punya jalan keluar dari UI sama sekali**. Belum selesai;
+lihat bagian di bawah.
+
+Sambil menelusurinya, lima tempat kedapatan melanggar kontrak yang sama: `Button`
+dengan `render={<Link/>}` menghasilkan `<a>` padahal Base UI menganggapnya harus
+`<button>`. Di mode pengembangan itu peringatan, di produksi bisa dilempar
+sebagai galat. Semuanya sudah diberi `nativeButton={false}`.
 
 ### Test lapisan controller
 

@@ -60,7 +60,7 @@ export function HalamanTagihan() {
             berikutnya: <strong>{profil.data.namaLangkahBerikutnya}</strong>.
           </p>
         </div>
-        <Button render={<Link href="/portal/dokumen" />}>
+        <Button nativeButton={false} render={<Link href="/portal/dokumen" />}>
           <FileCheck2 />
           Isi dokumen
         </Button>
