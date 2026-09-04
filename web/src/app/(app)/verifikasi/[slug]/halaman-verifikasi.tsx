@@ -110,7 +110,16 @@ export function HalamanVerifikasi({ view }: { view: VerifikasiView }) {
         />
       )}
 
-      <PanelTinjau payment={terpilih} onClose={() => setDipilih(null)} />
+      {/*
+        `key` per pembayaran membuat panelnya terpasang ulang saat berpindah
+        baris, sehingga isian alasan ikut kosong tanpa perlu effect yang
+        memicu render berantai.
+      */}
+      <PanelTinjau
+        key={terpilih?.id ?? "kosong"}
+        payment={terpilih}
+        onClose={() => setDipilih(null)}
+      />
     </div>
   );
 }

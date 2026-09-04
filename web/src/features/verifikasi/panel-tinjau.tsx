@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -47,8 +47,6 @@ export function PanelTinjau({
   const putuskan = useDecidePayment();
   const bacaUlang = useRequeueOcr();
   const riwayat = usePaymentLogs(payment?.id ?? null);
-
-  useEffect(() => setAlasan(""), [payment?.id]);
 
   if (!payment) return null;
 
@@ -110,7 +108,7 @@ export function PanelTinjau({
         {/* Split view: bukti asli di kiri, hasil baca OCR di kanan. */}
         <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="overflow-y-auto border-b border-border p-5 md:border-r md:border-b-0">
-            <BuktiTransfer paymentId={payment.id} />
+            <BuktiTransfer key={payment.id} paymentId={payment.id} />
           </div>
 
           <div className="flex flex-col gap-4 overflow-y-auto p-5">

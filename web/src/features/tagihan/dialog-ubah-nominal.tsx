@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -55,7 +55,7 @@ export function DialogUbahNominal({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     reset,
     formState: { errors },
   } = useForm<FormValues>({
@@ -69,10 +69,15 @@ export function DialogUbahNominal({
     }
   }, [installment, reset]);
 
+  // useWatch, bukan watch(): lihat catatan yang sama di halaman-kelas.tsx.
+  // Dipanggil sebelum keluar lebih awal, karena urutan hook harus tetap sama
+  // di setiap render.
+  const nominalDiisi = useWatch({ control, name: "amount" });
+
   if (!installment) return null;
 
   const sudahDibayar = Number(installment.amountPaid);
-  const nominalBaru = Number(watch("amount")) || 0;
+  const nominalBaru = Number(nominalDiisi) || 0;
   const statusBaru = hitungStatus(nominalBaru, sudahDibayar);
   const jadiLunasTanpaRefund = nominalBaru > 0 && sudahDibayar > nominalBaru;
 

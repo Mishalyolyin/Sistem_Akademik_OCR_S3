@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -172,15 +172,18 @@ function DialogTambahKelas({
     handleSubmit,
     reset,
     setValue,
-    watch,
+    control,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { name: "", academicYear: "2026/2027", kerjasama: false },
   });
 
-  const nama = watch("name");
-  const kerjasama = watch("kerjasama");
+  // useWatch, bukan watch(): watch() mengembalikan fungsi yang tidak bisa
+  // dimemoisasi dengan aman, sehingga React Compiler melewatkan seluruh
+  // komponen ini begitu saja.
+  const nama = useWatch({ control, name: "name" });
+  const kerjasama = useWatch({ control, name: "kerjasama" });
 
   function onSubmit(values: FormValues) {
     buat.mutate(values, {

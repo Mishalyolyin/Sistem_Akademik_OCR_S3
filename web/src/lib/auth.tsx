@@ -43,6 +43,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /**
+   * Perpanjangan token dijadwalkan oleh {@code applyTokens}, sementara
+   * perpanjangan itu sendiri memanggil {@code applyTokens} lagi setelah
+   * berhasil — keduanya saling membutuhkan. Ref memutus lingkarannya: penjadwal
+   * memanggil lewat sini, jadi ia tidak perlu menyebut fungsi yang belum
+   * dideklarasikan, dan tetap memakai versi terbaru saat waktunya tiba.
+   */
+  const renewRef = useRef<() => Promise<void>>(async () => {});
+
   const clearTimer = useCallback(() => {
     if (refreshTimer.current) {
       clearTimeout(refreshTimer.current);
@@ -60,10 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTimer();
       const delayMs = Math.max(tokens.expiresInSeconds - 60, 30) * 1000;
       refreshTimer.current = setTimeout(() => {
-        void renew();
+        void renewRef.current();
       }, delayMs);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [clearTimer],
   );
 
@@ -86,10 +94,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [applyTokens, signOutLocally]);
 
-  // Saat halaman dimuat ulang, access token di memori hilang — pulihkan dari cookie.
   useEffect(() => {
+    renewRef.current = renew;
+  }, [renew]);
+
+  // Saat halaman dimuat ulang, access token di memori hilang — pulihkan dari
+  // cookie. Ini justru pemakaian effect yang tepat: menyelaraskan React dengan
+  // sistem di luarnya, yaitu cookie HttpOnly yang hanya dipegang peramban.
+  // State baru berubah setelah permintaan jaringan selesai, bukan seketika,
+  // jadi tidak ada render berantai — pemeriksa tidak bisa memastikan itu.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void renew();
     return clearTimer;
+    // Sengaja hanya sekali saat provider terpasang: menjalankannya ulang setiap
+    // `renew` berubah akan memanggil endpoint refresh berkali-kali.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

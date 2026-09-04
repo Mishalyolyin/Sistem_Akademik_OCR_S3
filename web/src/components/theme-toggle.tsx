@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,15 +13,25 @@ const labels = {
   system: "Ikut sistem",
 } as const;
 
+/** Selalu palsu di server, benar di peramban. Tidak berlangganan apa pun. */
+const tanpaLangganan = () => () => {};
+
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
-  // Tema baru diketahui setelah hydrate; sebelum itu render placeholder
+  // Tema baru diketahui setelah hidrasi; sebelum itu render placeholder
   // berukuran sama supaya layout tidak melompat.
-  useEffect(() => setMounted(true), []);
+  //
+  // Memakai useSyncExternalStore, bukan state yang diisi di dalam effect:
+  // mengisi state di effect memicu render berantai, dan React 19 memang
+  // menyediakan kait ini untuk membedakan server dari peramban.
+  const sudahDiHidrasi = useSyncExternalStore(
+    tanpaLangganan,
+    () => true,
+    () => false,
+  );
 
-  if (!mounted) {
+  if (!sudahDiHidrasi) {
     return <div className="size-8" aria-hidden />;
   }
 

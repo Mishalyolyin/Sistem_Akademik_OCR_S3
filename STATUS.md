@@ -3,18 +3,19 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 4 September 2026, 03.20
+Terakhir diperbarui: 4 September 2026, 04.00
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 4 September 2026 pukul 03.20 di mesin pengembangan, semuanya lolos:
+Dijalankan 4 September 2026 pukul 04.00 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
 | Test backend | `api/mvnw clean verify` | ✅ 172 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
+| Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
 | Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
 | Service OCR (container) | `docker build` lalu `GET /health` | ✅ Python 3.14.7, OpenCV 5.0.0, Tesseract 5.5.0 |
@@ -263,6 +264,33 @@ diperbaiki memakai `findByIdForUpdate` yang sama.
 tombol Tambah/Kurangi, bukan dengan mengetik tanda minus — salah tanda di sini
 berarti uang bergerak ke arah sebaliknya. Pratinjau menampilkan nilai sebelum
 dan sesudah, dan penolakan aturan bisnis muncul sebelum tombol simpan aktif.
+
+### Lint frontend dibersihkan
+
+`npm run build` tidak menjalankan lint, jadi lima error React Hooks menumpuk
+tanpa pernah terlihat. Semuanya diperbaiki di sumbernya, bukan dibungkam:
+
+- **Tiga `setState` di dalam effect.** Pada tombol tema diganti
+  `useSyncExternalStore` untuk membedakan server dari peramban. Pada panel
+  tinjau dan gambar bukti, pengaturan ulang keadaan saat berpindah pembayaran
+  kini lewat `key` dari induknya, sehingga komponennya terpasang ulang dan
+  keadaannya kosong dengan sendirinya — tanpa render berantai.
+- **`renew` diakses sebelum dideklarasikan di `lib/auth.tsx`.** Penjadwal
+  perpanjangan token dan fungsi perpanjangannya saling membutuhkan. Lingkarannya
+  diputus dengan ref, jadi penjadwal memakai versi terbaru saat waktunya tiba
+  alih-alih menyebut fungsi yang belum ada.
+- **Dua `watch()` dari React Hook Form** diganti `useWatch`, yang aman
+  dimemoisasi. Sebelumnya React Compiler melewatkan seluruh komponen itu.
+
+Satu peringatan sengaja dibiarkan: `useReactTable` dari TanStack Table
+mengembalikan fungsi yang tidak bisa dimemoisasi dengan aman, dan tidak ada
+alternatifnya. Dibiarkan terlihat, bukan dibungkam, supaya ketahuan kalau suatu
+saat pustakanya memperbaikinya.
+
+Satu `eslint-disable` yang tersisa ada di effect pemulihan sesi: itu justru
+pemakaian effect yang tepat — menyelaraskan React dengan cookie HttpOnly yang
+hanya dipegang peramban — dan perubahan state-nya terjadi setelah permintaan
+jaringan, bukan seketika. Alasannya ditulis di sebelahnya.
 
 ### Pengelolaan kata sandi
 

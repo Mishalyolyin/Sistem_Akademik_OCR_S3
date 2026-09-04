@@ -8,6 +8,11 @@ import { useProofImage } from "./api";
 
 const ZOOM_STEPS = [1, 1.5, 2, 3];
 
+/**
+ * Perbesaran kembali ke awal saat berpindah bukti karena induknya memberi
+ * `key` per pembayaran, jadi komponennya terpasang ulang. Mengaturnya lewat
+ * effect akan memicu render berantai setiap kali bukti berganti.
+ */
 export function BuktiTransfer({ paymentId }: { paymentId: number }) {
   const { data, isPending, error } = useProofImage(paymentId);
   const [zoomIndex, setZoomIndex] = useState(0);
@@ -19,8 +24,6 @@ export function BuktiTransfer({ paymentId }: { paymentId: number }) {
       if (url) URL.revokeObjectURL(url);
     };
   }, [data?.url]);
-
-  useEffect(() => setZoomIndex(0), [paymentId]);
 
   const zoom = ZOOM_STEPS[zoomIndex];
 
