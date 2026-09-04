@@ -42,6 +42,8 @@ class SecurityLayerTest extends ControllerTestSupport {
 	}
 
 	private void repositoryMengembalikanNol() {
+		org.mockito.Mockito.when(repository.countPaymentsByStatus())
+				.thenReturn(new DashboardController.RingkasanStatus(0, 0, 0, 0, 0));
 		org.mockito.Mockito.when(repository.totalBilled()).thenReturn(BigDecimal.ZERO);
 		org.mockito.Mockito.when(repository.totalCollected()).thenReturn(BigDecimal.ZERO);
 		org.mockito.Mockito.when(repository.totalWalletBalance()).thenReturn(BigDecimal.ZERO);

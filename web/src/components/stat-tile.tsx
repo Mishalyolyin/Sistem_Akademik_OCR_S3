@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 
@@ -8,6 +9,7 @@ export function StatTile({
   icon: Icon,
   tone = "default",
   className,
+  href,
 }: {
   label: string;
   value: string;
@@ -15,14 +17,11 @@ export function StatTile({
   icon?: LucideIcon;
   tone?: "default" | "warning" | "success";
   className?: string;
+  /** Bila diisi, seluruh kotak jadi tautan ke daftar yang sudah tersaring. */
+  href?: string;
 }) {
-  return (
-    <div
-      className={cn(
-        "flex flex-col gap-1 border-r border-border px-5 py-4 last:border-r-0",
-        className,
-      )}
-    >
+  const isi = (
+    <>
       <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         {Icon && <Icon className="size-3.5" />}
         {label}
@@ -39,8 +38,25 @@ export function StatTile({
       {sublabel && (
         <div className="text-xs text-muted-foreground">{sublabel}</div>
       )}
-    </div>
+    </>
   );
+
+  const kelas = cn(
+    "flex flex-col gap-1 border-r border-border px-5 py-4 last:border-r-0",
+    href &&
+      "transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none",
+    className,
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={kelas}>
+        {isi}
+      </Link>
+    );
+  }
+
+  return <div className={kelas}>{isi}</div>;
 }
 
 /** Baris ringkasan: beberapa StatTile dalam satu kotak, bukan kartu terpisah-pisah. */

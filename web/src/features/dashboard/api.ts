@@ -27,10 +27,20 @@ export type AntreanItem = {
   diunggah: string;
 };
 
+/** Jumlah bukti bayar per status, untuk kartu ringkasan yang bisa diklik. */
+export type RingkasanStatus = {
+  menungguDibaca: number;
+  perluDitinjau: number;
+  ditolak: number;
+  terverifikasi: number;
+  gagalDibaca: number;
+};
+
 export type DashboardSummary = {
   mahasiswaAktif: number;
   perluDitinjau: number;
   gagalDibaca: number;
+  status: RingkasanStatus;
   totalTertagih: string;
   totalTerkumpul: string;
   totalSaldoMahasiswa: string;

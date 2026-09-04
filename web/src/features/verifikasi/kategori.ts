@@ -3,7 +3,8 @@ import type { PaymentCategory } from "@/features/tarif/konstanta";
 export type VerifikasiView = {
   slug: string;
   title: string;
-  category: PaymentCategory;
+  /** Kosong berarti semua kategori ditampilkan sekaligus. */
+  category?: PaymentCategory;
   /** Keterangan singkat di bawah judul halaman. */
   hint: string;
   /** Kategori bercicilan boleh disesuaikan nominalnya oleh admin. */
@@ -14,6 +15,14 @@ export type VerifikasiView = {
 export type Mismatch = { field: string; expected: string; found: string };
 
 export const verifikasiViews: VerifikasiView[] = [
+  {
+    // Dashboard menghitung lintas kategori, jadi kartunya butuh satu tujuan
+    // yang tidak terikat kategori mana pun.
+    slug: "semua",
+    title: "Semua kategori",
+    hint: "Seluruh bukti bayar dari semua kategori",
+    editableAmount: false,
+  },
   {
     slug: "pendaftaran",
     title: "Pendaftaran",

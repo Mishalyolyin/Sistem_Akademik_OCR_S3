@@ -1,7 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Clock, TriangleAlert, Users, Wallet } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  Clock,
+  Hourglass,
+  PiggyBank,
+  TriangleAlert,
+  Users,
+  Wallet,
+  XCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -69,15 +79,6 @@ export function HalamanDashboard() {
           icon={Users}
         />
         <StatTile
-          label="Perlu ditinjau"
-          value={String(data.perluDitinjau)}
-          sublabel={
-            data.gagalDibaca > 0 ? `${data.gagalDibaca} gagal dibaca` : "OCR kurang yakin"
-          }
-          icon={data.gagalDibaca > 0 ? TriangleAlert : Clock}
-          tone={data.perluDitinjau > 0 || data.gagalDibaca > 0 ? "warning" : undefined}
-        />
-        <StatTile
           label="Total tertagih"
           value={formatRupiah(tertagih)}
           icon={Wallet}
@@ -89,13 +90,65 @@ export function HalamanDashboard() {
           icon={BadgeCheck}
           tone={persen >= 100 ? "success" : undefined}
         />
+        <StatTile
+          label="Saldo mahasiswa"
+          value={formatRupiah(data.totalSaldoMahasiswa)}
+          sublabel="Kelebihan bayar"
+          icon={PiggyBank}
+        />
       </StatRow>
+
+      <section className="flex flex-col gap-2">
+        <h3 className="font-heading text-sm font-semibold">Status bukti bayar</h3>
+        {/* Tiap kotak menautkan ke daftar yang sudah tersaring statusnya, jadi
+            angka yang menarik perhatian bisa langsung ditelusuri. */}
+        <StatRow>
+          <StatTile
+            label="Menunggu dibaca"
+            value={String(data.status.menungguDibaca)}
+            sublabel="Antre di OCR"
+            icon={Hourglass}
+            href="/verifikasi/semua?status=PENDING"
+          />
+          <StatTile
+            label="Perlu ditinjau"
+            value={String(data.status.perluDitinjau)}
+            sublabel={
+              data.status.gagalDibaca > 0
+                ? `${data.status.gagalDibaca} gagal dibaca`
+                : "OCR kurang yakin"
+            }
+            icon={data.status.gagalDibaca > 0 ? TriangleAlert : Clock}
+            tone={
+              data.status.perluDitinjau > 0 || data.status.gagalDibaca > 0
+                ? "warning"
+                : undefined
+            }
+            href="/verifikasi/semua?status=NEEDS_REVIEW"
+          />
+          <StatTile
+            label="Ditolak"
+            value={String(data.status.ditolak)}
+            sublabel="Perlu unggah ulang"
+            icon={XCircle}
+            tone={data.status.ditolak > 0 ? "warning" : undefined}
+            href="/verifikasi/semua?status=REJECTED"
+          />
+          <StatTile
+            label="Terverifikasi"
+            value={String(data.status.terverifikasi)}
+            sublabel="Uang sudah masuk"
+            icon={BadgeCheck}
+            tone={data.status.terverifikasi > 0 ? "success" : undefined}
+            href="/verifikasi/semua?status=TERVERIFIKASI"
+          />
+        </StatRow>
+      </section>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <RingkasanKategori data={data.perKategori} />
         <RingkasanKelas
           data={data.perKelas}
-          totalSaldo={data.totalSaldoMahasiswa}
         />
       </div>
 
@@ -231,10 +284,8 @@ function RingkasanKategori({ data }: { data: KategoriRingkas[] }) {
 
 function RingkasanKelas({
   data,
-  totalSaldo,
 }: {
   data: { kelas: string; jumlahMahasiswa: number; tertagih: string; terkumpul: string }[];
-  totalSaldo: string;
 }) {
   return (
     <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
@@ -270,10 +321,6 @@ function RingkasanKelas({
             })}
           </ul>
         )}
-      </div>
-      <div className="flex items-center justify-between border-t border-border px-5 py-3 text-sm">
-        <span className="text-muted-foreground">Saldo mahasiswa (kelebihan bayar)</span>
-        <span className="font-medium tabular-nums">{formatRupiah(totalSaldo)}</span>
       </div>
     </section>
   );

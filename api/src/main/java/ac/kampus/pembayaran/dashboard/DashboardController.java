@@ -22,10 +22,21 @@ public class DashboardController {
 
 	private final DashboardRepository repository;
 
+	/** Jumlah bukti bayar per status, untuk kartu ringkasan yang bisa diklik. */
+	public record RingkasanStatus(
+			long menungguDibaca,
+			long perluDitinjau,
+			long ditolak,
+			long terverifikasi,
+			long gagalDibaca
+	) {
+	}
+
 	public record Summary(
 			long mahasiswaAktif,
 			long perluDitinjau,
 			long gagalDibaca,
+			RingkasanStatus status,
 			BigDecimal totalTertagih,
 			BigDecimal totalTerkumpul,
 			BigDecimal totalSaldoMahasiswa,
@@ -67,10 +78,14 @@ public class DashboardController {
 	@Operation(summary = "Angka ringkasan untuk dashboard admin")
 	@Transactional(readOnly = true)
 	public Summary summary() {
+		RingkasanStatus status = repository.countPaymentsByStatus();
+
 		return new Summary(
 				repository.countActiveStudents(),
-				repository.countPaymentsNeedingReview(),
-				repository.countFailedPayments(),
+				// Dipertahankan supaya klien lama tetap terbaca; sumbernya sama.
+				status.perluDitinjau(),
+				status.gagalDibaca(),
+				status,
 				repository.totalBilled(),
 				repository.totalCollected(),
 				repository.totalWalletBalance(),

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { BadgeCheck, Clock, TriangleAlert, Wallet } from "lucide-react";
 import { StatRow, StatTile } from "@/components/stat-tile";
 import {
@@ -17,26 +18,40 @@ import { ApiError } from "@/lib/api";
 import { formatRupiah } from "@/lib/format";
 
 const SEMUA = "SEMUA";
+const TERVERIFIKASI = "TERVERIFIKASI";
+
+/** Satu pilihan saringan bisa mewakili lebih dari satu status di backend. */
+function statusYangDiminta(filter: string): PaymentStatus[] | undefined {
+  if (filter === SEMUA) return undefined;
+  if (filter === TERVERIFIKASI) return ["VERIFIED", "AUTO_VERIFIED"];
+  return [filter as PaymentStatus];
+}
 
 export function HalamanVerifikasi({ view }: { view: VerifikasiView }) {
-  const [statusFilter, setStatusFilter] = useState<string>(SEMUA);
+  // Kartu di dashboard menautkan ke sini beserta status yang ingin dilihat,
+  // jadi saringannya berangkat dari URL kalau ada.
+  const statusDariUrl = useSearchParams().get("status");
+  const [statusFilter, setStatusFilter] = useState<string>(
+    statusDariUrl ?? SEMUA,
+  );
   const [search, setSearch] = useState("");
   const [dipilih, setDipilih] = useState<PaymentRow | null>(null);
 
   const { data, isPending, error } = usePayments({
-    status: statusFilter === SEMUA ? undefined : [statusFilter as PaymentStatus],
+    status: statusYangDiminta(statusFilter),
     size: 100,
   });
 
   // Penyaringan kategori dilakukan di klien karena satu halaman hanya
-  // menampilkan satu kategori dan jumlahnya masih kecil.
-  const rows = useMemo(
-    () =>
-      (data?.content ?? []).filter(
-        (row) => row.categoryLabel === view.title || row.categoryLabel === null,
-      ),
-    [data, view.title],
-  );
+  // menampilkan satu kategori dan jumlahnya masih kecil. Tampilan "Semua
+  // kategori" tidak punya kategori, jadi tidak menyaring apa pun.
+  const rows = useMemo(() => {
+    const semua = data?.content ?? [];
+    if (!view.category) return semua;
+    return semua.filter(
+      (row) => row.categoryLabel === view.title || row.categoryLabel === null,
+    );
+  }, [data, view.category, view.title]);
 
   const terpilih = dipilih
     ? (rows.find((r) => r.id === dipilih.id) ?? dipilih)

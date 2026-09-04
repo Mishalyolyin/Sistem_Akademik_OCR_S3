@@ -50,6 +50,9 @@ const statusFilters = [
   { value: "SEMUA", label: "Semua" },
   { value: "NEEDS_REVIEW", label: "Perlu ditinjau" },
   { value: "PENDING", label: "Menunggu OCR" },
+  // Gabungan otomatis dan manual: keduanya sama-sama berarti uangnya sudah
+  // masuk, dan itu yang biasanya ingin dilihat sekaligus.
+  { value: "TERVERIFIKASI", label: "Terverifikasi" },
   { value: "AUTO_VERIFIED", label: "Otomatis" },
   { value: "VERIFIED", label: "Manual" },
   { value: "REJECTED", label: "Ditolak" },

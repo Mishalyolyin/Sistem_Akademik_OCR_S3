@@ -6,6 +6,8 @@ import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 /**
@@ -26,14 +28,26 @@ public class DashboardRepository {
 				.query(Long.class).single();
 	}
 
-	public long countPaymentsNeedingReview() {
-		return jdbc.sql("SELECT COUNT(*) FROM payments WHERE status = 'NEEDS_REVIEW'")
-				.query(Long.class).single();
-	}
+	/**
+	 * Jumlah bukti bayar per status, dalam satu kueri.
+	 *
+	 * <p>Sengaja tidak satu kueri per status: dashboard memerlukan kelimanya
+	 * sekaligus, dan memecahnya berarti lima kali bolak-balik ke database untuk
+	 * pertanyaan yang sebenarnya sama.
+	 */
+	public DashboardController.RingkasanStatus countPaymentsByStatus() {
+		Map<String, Long> jumlah = new HashMap<>();
+		jdbc.sql("SELECT status::text AS status, COUNT(*) AS jumlah FROM payments GROUP BY status")
+				.query((rs, n) -> Map.entry(rs.getString("status"), rs.getLong("jumlah")))
+				.list()
+				.forEach(baris -> jumlah.put(baris.getKey(), baris.getValue()));
 
-	public long countFailedPayments() {
-		return jdbc.sql("SELECT COUNT(*) FROM payments WHERE status = 'FAILED'")
-				.query(Long.class).single();
+		return new DashboardController.RingkasanStatus(
+				jumlah.getOrDefault("PENDING", 0L),
+				jumlah.getOrDefault("NEEDS_REVIEW", 0L),
+				jumlah.getOrDefault("REJECTED", 0L),
+				jumlah.getOrDefault("VERIFIED", 0L) + jumlah.getOrDefault("AUTO_VERIFIED", 0L),
+				jumlah.getOrDefault("FAILED", 0L));
 	}
 
 	public BigDecimal totalBilled() {

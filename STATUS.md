@@ -3,13 +3,13 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 4 September 2026, 04.00
+Terakhir diperbarui: 4 September 2026, 05.10
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 4 September 2026 pukul 04.00 di mesin pengembangan, semuanya lolos:
+Dijalankan 4 September 2026 pukul 05.10 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
@@ -265,6 +265,26 @@ tombol Tambah/Kurangi, bukan dengan mengetik tanda minus — salah tanda di sini
 berarti uang bergerak ke arah sebaliknya. Pratinjau menampilkan nilai sebelum
 dan sesudah, dan penolakan aturan bisnis muncul sebelum tombol simpan aktif.
 
+### Ringkasan status di dashboard
+
+Empat kotak baru menghitung bukti bayar per status — menunggu dibaca, perlu
+ditinjau, ditolak, dan terverifikasi — dan **tiap kotak bisa diklik** menuju
+daftar yang sudah tersaring statusnya.
+
+- Hitungannya satu kueri `GROUP BY`, bukan lima kueri terpisah untuk pertanyaan
+  yang sebenarnya sama
+- Halaman verifikasi selama ini selalu per kategori, jadi kartu yang menghitung
+  lintas kategori tidak punya tujuan yang benar. Ditambahkan tampilan
+  **Semua kategori** (`/verifikasi/semua`), yang juga masuk ke menu samping
+- Saringan status kini bisa datang dari URL, sehingga tautannya mendarat dalam
+  keadaan tersaring, bukan di daftar penuh
+- "Terverifikasi" mencakup otomatis dan manual sekaligus. Menautkannya ke salah
+  satu saja akan membuat angka di kartu tidak cocok dengan isi daftarnya, jadi
+  ditambahkan pilihan saringan gabungan
+
+Saldo mahasiswa naik jadi kotak tersendiri di baris ringkasan, dan barisnya yang
+lama di kartu "Per kelas" dihapus supaya tidak tampil dua kali.
+
 ### Lint frontend dibersihkan
 
 `npm run build` tidak menjalankan lint, jadi lima error React Hooks menumpuk
@@ -349,7 +369,7 @@ dijangkau lewat reverse proxy.
 
 ### Uji end-to-end
 
-Tujuh belas uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
+Dua puluh dua uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
 Spring Boot, dan PostgreSQL sungguhan, tanpa satu pun bagian yang ditiru. Port
 dan basis datanya terpisah dari yang dipakai sehari-hari (3100 / 8081 /
 `pembayaran_e2e`), jadi menjalankannya tidak mematikan server pengembangan dan

@@ -38,6 +38,11 @@ export const navSections: NavSection[] = [
     icon: BadgeCheck,
     children: [
       {
+        title: "Semua kategori",
+        href: "/verifikasi/semua",
+        hint: "Seluruh bukti bayar",
+      },
+      {
         title: "Pendaftaran",
         href: "/verifikasi/pendaftaran",
         hint: "Rp 1 jt, sekali",
