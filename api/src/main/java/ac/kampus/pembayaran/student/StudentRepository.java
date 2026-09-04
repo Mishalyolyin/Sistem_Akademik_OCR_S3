@@ -39,6 +39,9 @@ public interface StudentRepository
 
 	boolean existsByNim(String nim);
 
+	/** Dipakai sebelum menonaktifkan golongan potongan. */
+	long countByDiscountTier(String discountTier);
+
 	Optional<Student> findByUserId(Long userId);
 
 	/** Mahasiswa yang sedang login, beserta kelas dan akunnya. */

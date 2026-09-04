@@ -4,6 +4,7 @@ import ac.kampus.pembayaran.common.AcademicTerm;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -43,7 +44,7 @@ public class StudentController {
 			String phone,
 			Long studyClassId,
 			String className,
-			DiscountTier discountTier,
+			String discountTier,
 			AcademicTerm startTerm,
 			String startAcademicYear,
 			BigDecimal walletBalance,
@@ -76,8 +77,10 @@ public class StudentController {
 	}
 
 	public record ChangeTierRequest(
-			@NotNull(message = "Golongan wajib dipilih.")
-			DiscountTier discountTier
+			// Kodenya diperiksa di service terhadap daftar golongan yang ada,
+			// karena golongan bisa ditambah admin dan tidak lagi berupa enum.
+			@NotBlank(message = "Golongan wajib dipilih.")
+			String discountTier
 	) {
 	}
 
@@ -86,7 +89,7 @@ public class StudentController {
 	public Page<StudentSummary> list(
 			@RequestParam(required = false) String search,
 			@RequestParam(required = false) Long classId,
-			@RequestParam(required = false) DiscountTier tier,
+			@RequestParam(required = false) String tier,
 			@RequestParam(required = false) Boolean active,
 			@RequestParam(defaultValue = "0") int page,
 			@RequestParam(defaultValue = "20") int size) {

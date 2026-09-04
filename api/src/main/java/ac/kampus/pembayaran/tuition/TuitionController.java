@@ -1,15 +1,20 @@
 package ac.kampus.pembayaran.tuition;
 
+import ac.kampus.pembayaran.common.BusinessRuleException;
 import ac.kampus.pembayaran.common.NotFoundException;
 import ac.kampus.pembayaran.common.PaymentCategory;
-import ac.kampus.pembayaran.student.DiscountTier;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import ac.kampus.pembayaran.student.StudentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +24,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
@@ -33,6 +39,7 @@ public class TuitionController {
 
 	private final TuitionRateRepository rateRepository;
 	private final DiscountTierRateRepository tierRepository;
+	private final StudentRepository studentRepository;
 
 	public record RateRequest(
 			@NotNull(message = "Kategori wajib dipilih.")
@@ -70,9 +77,11 @@ public class TuitionController {
 	}
 
 	public record TierResponse(
-			DiscountTier tier,
+			String tier,
 			String label,
 			BigDecimal percent,
+			boolean active,
+			int sortOrder,
 			/** UKT satu semester setelah potongan, memakai tarif dasar tahun yang diminta. */
 			BigDecimal uktPerSemester,
 			BigDecimal uktPerInstallment
@@ -82,7 +91,37 @@ public class TuitionController {
 	public record TierRequest(
 			@NotNull(message = "Persentase wajib diisi.")
 			@DecimalMin(value = "0", message = "Persentase tidak boleh negatif.")
-			BigDecimal percent
+			@DecimalMax(value = "100", message = "Persentase tidak boleh lebih dari 100.")
+			BigDecimal percent,
+
+			@Size(max = 60, message = "Nama golongan maksimal 60 karakter.")
+			String label,
+
+			Boolean active,
+			Integer sortOrder
+	) {
+	}
+
+	/** Golongan baru; kodenya ikut dikirim karena belum ada di jalur URL. */
+	public record TierBaruRequest(
+			@NotBlank(message = "Kode golongan wajib diisi.")
+			@Pattern(
+					regexp = "^[A-Z][A-Z0-9_]*$",
+					message = "Kode hanya boleh huruf kapital, angka, dan garis bawah, "
+							+ "contoh: MITRA_INSTANSI.")
+			@Size(max = 40, message = "Kode golongan maksimal 40 karakter.")
+			String tier,
+
+			@NotBlank(message = "Nama golongan wajib diisi.")
+			@Size(max = 60, message = "Nama golongan maksimal 60 karakter.")
+			String label,
+
+			@NotNull(message = "Persentase wajib diisi.")
+			@DecimalMin(value = "0", message = "Persentase tidak boleh negatif.")
+			@DecimalMax(value = "100", message = "Persentase tidak boleh lebih dari 100.")
+			BigDecimal percent,
+
+			Integer sortOrder
 	) {
 	}
 
@@ -133,35 +172,88 @@ public class TuitionController {
 				.orElseThrow(() -> new NotFoundException(
 						"Tarif UKT untuk tahun %s belum diatur.".formatted(academicYear)));
 
-		return tierRepository.findAllByOrderByPercentAsc().stream()
+		return tierRepository.findAllByOrderBySortOrderAscTierAsc().stream()
 				.map(tier -> {
 					BigDecimal perSemester = tier.applyTo(baseUkt);
 					return new TierResponse(
 							tier.getTier(),
 							tier.getLabel(),
 							tier.getPercent(),
+							tier.isActive(),
+							tier.getSortOrder(),
 							perSemester,
 							perSemester.divide(BigDecimal.valueOf(5), 0, java.math.RoundingMode.DOWN));
 				})
 				.toList();
 	}
 
+	@PostMapping("/tiers")
+	@ResponseStatus(HttpStatus.CREATED)
+	@Operation(summary = "Tambah golongan potongan baru")
+	@Transactional
+	public TierResponse createTier(@Valid @RequestBody TierBaruRequest request) {
+		if (tierRepository.existsById(request.tier())) {
+			throw new BusinessRuleException(
+					"Golongan dengan kode %s sudah ada.".formatted(request.tier()));
+		}
+
+		tierRepository.save(DiscountTierRate.builder()
+				.tier(request.tier())
+				.label(request.label().trim())
+				.percent(request.percent())
+				.active(true)
+				.sortOrder(request.sortOrder() == null ? urutanBerikutnya() : request.sortOrder())
+				.build());
+
+		return cariTier(request.tier());
+	}
+
 	@PutMapping("/tiers/{tier}")
-	@Operation(summary = "Ubah persentase potongan satu golongan")
+	@Operation(summary = "Ubah golongan potongan")
 	@Transactional
 	public TierResponse updateTier(
-			@PathVariable DiscountTier tier,
+			@PathVariable String tier,
 			@Valid @RequestBody TierRequest request) {
 
 		DiscountTierRate entity = tierRepository.findById(tier)
 				.orElseThrow(() -> NotFoundException.of("Golongan", tier));
 
 		entity.setPercent(request.percent());
+		if (request.label() != null && !request.label().isBlank()) {
+			entity.setLabel(request.label().trim());
+		}
+		if (request.sortOrder() != null) {
+			entity.setSortOrder(request.sortOrder());
+		}
+		if (request.active() != null) {
+			// Golongan yang masih dipakai mahasiswa tidak boleh dinonaktifkan:
+			// tagihan berikutnya untuk mereka tidak akan bisa dihitung.
+			if (!request.active()) {
+				long dipakai = studentRepository.countByDiscountTier(tier);
+				if (dipakai > 0) {
+					throw new BusinessRuleException(
+							("Golongan ini masih dipakai %d mahasiswa. Pindahkan mereka dulu "
+									+ "sebelum menonaktifkannya.").formatted(dipakai));
+				}
+			}
+			entity.setActive(request.active());
+		}
 		tierRepository.save(entity);
 
+		return cariTier(tier);
+	}
+
+	private TierResponse cariTier(String tier) {
 		return tiers("2026/2027").stream()
-				.filter(response -> response.tier() == tier)
+				.filter(response -> response.tier().equals(tier))
 				.findFirst()
 				.orElseThrow(() -> NotFoundException.of("Golongan", tier));
+	}
+
+	private int urutanBerikutnya() {
+		return tierRepository.findAll().stream()
+				.mapToInt(DiscountTierRate::getSortOrder)
+				.max()
+				.orElse(0) + 1;
 	}
 }

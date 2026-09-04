@@ -3,17 +3,17 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 4 September 2026, 05.10
+Terakhir diperbarui: 4 September 2026, 20.55
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 4 September 2026 pukul 05.10 di mesin pengembangan, semuanya lolos:
+Dijalankan 4 September 2026 pukul 20.55 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw clean verify` | ✅ 172 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 192 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
@@ -128,48 +128,52 @@ masih dibutuhkan di sistem S3.
 |---|---|---|
 | ~~`.env` di server~~ | ~~Isi rahasia sebelum deploy~~ Sudah dipaksa: compose menolak menyala kalau kosong | ✅ |
 | ~~`COOKIE_SECURE=true`~~ | Sudah jadi bawaan di compose produksi | ✅ |
-| `web/src/features/tarif/konstanta.ts` | Label dan pratinjau saja; sumber kebenaran ada di API | — |
+| `web/src/features/tarif/konstanta.ts` | Tinggal label kategori dan rumus tampilan; angka tarifnya hanya cadangan saat API belum termuat | — |
 
 ### Test otomatis
 
-Sudah ada **172 test** dan semuanya lolos:
+Sudah ada **192 test** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
 - `PaymentAllocationServiceTest` — 11 test aturan pembagian uang ke cicilan
 - `ApiApplicationTests` — 1 test yang menyalakan PostgreSQL asli lewat
-  Testcontainers, sekaligus memverifikasi keenam migrasi Flyway
+  Testcontainers, sekaligus memverifikasi kedelapan migrasi Flyway
 - `OcrJobConsumerTest` — 10 test keputusan otomatis atas hasil pembacaan bukti,
   termasuk kapan nominal boleh ditulis ulang
 - `SecurityLayerTest` — 8 test lapisan HTTP: peran mana yang diterima di
   endpoint admin, dan bentuk badan jawaban penolakan
 - `AuthServiceTest` — 7 test aturan sesi dan pencabutan token
-- `StudentExcelTemplateTest` — 4 test bentuk berkas template import
+- `StudentExcelTemplateTest` — 7 test bentuk berkas template import, termasuk
+  daftar golongan yang mengikuti isi database
 - `AdjustmentServiceTest` — 17 test aturan penyesuaian saldo dan cicilan
 - `InitialAdminSeederTest` — 4 test pembuatan admin pertama
 - `PasswordServiceTest` — 6 test aturan penggantian kata sandi
-- `StudentServiceTest` — 5 test pengembalian kata sandi mahasiswa ke NIM
+- `StudentServiceTest` — 8 test pengembalian kata sandi mahasiswa ke NIM dan
+  pemeriksaan golongan saat mahasiswa dipindah
+- `StudentImportServiceTest` — 5 test pemeriksaan golongan pada berkas import
 
 **Lapisan controller**, memakai rantai filter keamanan yang sesungguhnya —
 bukan dimatikan seperti kebiasaan pada uji controller, karena justru di sanalah
 aturan peran dan bentuk jawaban penolakan ditegakkan:
 
-- `AuthControllerTest` — 9 test; termasuk penjagaan bahwa refresh token tidak
+- `AuthControllerTest` — 14 test; termasuk penjagaan bahwa refresh token tidak
   pernah ikut ke badan jawaban
 - `ProofFileControllerTest` — 8 test kepemilikan gambar bukti
 - `AdjustmentControllerTest` — 11 test
 - `PaymentControllerTest` — 10 test
 - `BillingControllerTest` — 9 test
-- `StudentControllerTest` — 9 test
-- `StudentSelfControllerTest` — 8 test batas wewenang portal
+- `StudentControllerTest` — 13 test
+- `StudentSelfControllerTest` — 9 test batas wewenang portal
+- `TuitionControllerTest` — 8 test pengelolaan golongan potongan
 - `SecurityLayerTest` — 8 test
 
 Yang belum:
 
-- Lima controller belum punya test sendiri: `StudyClassController`,
-  `TuitionController`, `SystemSettingController`, `StudentImportController`,
-  dan `ReportController`. Semuanya sudah tercakup aturan perannya lewat
-  `@PreAuthorize` yang sama, tapi validasi masukannya belum dikunci
+- Empat controller belum punya test sendiri: `StudyClassController`,
+  `SystemSettingController`, `StudentImportController`, dan `ReportController`.
+  Semuanya sudah tercakup aturan perannya lewat `@PreAuthorize` yang sama, tapi
+  validasi masukannya belum dikunci
 
 ### Keputusan yang masih menggantung
 
@@ -186,6 +190,49 @@ Yang belum:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### Golongan potongan jadi data, bukan enum
+
+Menambah satu golongan baru — misalnya kerja sama dengan satu instansi yang
+potongannya 30% — sebelumnya berarti mengubah tipe enum di PostgreSQL, mengubah
+enum di Java, mengubah union di TypeScript, lalu deploy ulang. Itu pekerjaan
+pengembang untuk sesuatu yang sebenarnya keputusan bagian keuangan, dan di sistem
+yang sudah jalan artinya golongan baru harus menunggu.
+
+Sekarang golongan adalah baris di `discount_tier_rates`, dan `students` menunjuk
+ke sana lewat kunci asing. Migrasi V8 melepas tipe enumnya dan menggantinya
+dengan kode teks, ditambah kolom `active` dan `sort_order`.
+
+- **Kodenya dibatasi `^[A-Z][A-Z0-9_]*$`**, di validasi permintaan maupun di
+  `CHECK` database. Kode itu dipakai apa adanya di kolom `discount_tier` berkas
+  import, jadi spasi atau huruf kecil di sana akan menghasilkan berkas yang
+  ditolak tanpa admin tahu sebabnya
+- **Golongan lama dinonaktifkan, bukan dihapus** — mahasiswa dan tagihan yang
+  terlanjur memakainya tetap harus bisa dibaca. Menonaktifkan golongan yang
+  masih dipakai ditolak, dan jumlah mahasiswanya ikut disebut supaya admin tahu
+  seberapa besar pekerjaan memindahkan mereka
+- **Kode golongan diperiksa di service**, bukan hanya diserahkan ke kunci asing.
+  Tanpa itu, salah ketik sampai ke pengguna sebagai kegagalan teknis; sekarang
+  jawabannya menyebut pilihan yang ada
+- **Template Excel menyusun daftar golongannya dari database.** Petunjuk yang
+  menyebut daftar lama justru menuntun orang mengisi kode yang ditolak importer,
+  dan baris contohnya kini memakai kode yang benar-benar aktif
+- **Portal mahasiswa ikut mengirim nama golongan**, karena portal tidak boleh
+  memanggil endpoint admin untuk sekadar menerjemahkan kode jadi label
+
+**Di UI:** tombol "Tambah golongan" di halaman Tarif & Potongan. Kodenya terisi
+otomatis dari nama supaya admin tidak perlu memikirkan bentuknya, tapi tetap
+bisa disunting. Pratinjau memakai tarif dasar UKT yang sungguhan dari API, bukan
+angka brosur di konstanta. Golongan nonaktif ditandai di tabel dan bisa
+diaktifkan lagi.
+
+**Diuji langsung terhadap sistem yang hidup:** tambah golongan MITRA_INSTANSI 30%
+→ 201 → kode ganda ditolak 409 → kode berspasi ditolak 400 → mahasiswa dipindah
+ke golongan itu → salah ketik satu huruf ditolak 409 dengan daftar pilihan →
+nonaktifkan golongan yang dipakai 1 mahasiswa ditolak 409 → buat tagihan UKT:
+10.000.000 − 30% = 7.000.000 terbagi 5 × 1.400.000 → template import terunduh
+sudah memuat MITRA_INSTANSI di petunjuk dan di baris contoh. Data uji dibersihkan
+lagi setelahnya.
 
 ### Fase 1 — Fondasi
 

@@ -11,6 +11,7 @@ export type Profil = {
   email: string | null;
   kelas: string | null;
   golongan: string;
+  golonganLabel: string;
   telepon: string | null;
   alamat: string | null;
   dokumenLengkap: boolean;

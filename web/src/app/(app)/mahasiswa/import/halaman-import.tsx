@@ -20,7 +20,7 @@ import {
   useImportStudents,
   type ImportResult,
 } from "@/features/mahasiswa/api-import";
-import { potongan } from "@/features/tarif/konstanta";
+import { useGolongan } from "@/features/tarif/api";
 import { ApiError } from "@/lib/api";
 
 export function HalamanImport() {
@@ -208,6 +208,7 @@ function Angka({
 }
 
 function PetunjukKolom() {
+  const golongan = useGolongan();
   return (
     <div className="flex flex-col gap-3 text-sm">
       <p className="text-muted-foreground">
@@ -231,9 +232,11 @@ function PetunjukKolom() {
             />
             <Baris
               kolom="discount_tier"
-              isi={Object.entries(potongan)
-                .map(([key, value]) =>
-                  value.persen > 0 ? `${key} (−${value.persen}%)` : key,
+              isi={golongan.aktif
+                .map((tier) =>
+                  Number(tier.percent) > 0
+                    ? `${tier.tier} (−${Number(tier.percent)}%)`
+                    : tier.tier,
                 )
                 .join(", ")}
             />

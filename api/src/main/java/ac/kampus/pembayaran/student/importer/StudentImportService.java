@@ -2,7 +2,8 @@ package ac.kampus.pembayaran.student.importer;
 
 import ac.kampus.pembayaran.common.AcademicTerm;
 import ac.kampus.pembayaran.common.BusinessRuleException;
-import ac.kampus.pembayaran.student.DiscountTier;
+import ac.kampus.pembayaran.tuition.DiscountTierRate;
+import ac.kampus.pembayaran.tuition.DiscountTierRateRepository;
 import ac.kampus.pembayaran.student.Student;
 import ac.kampus.pembayaran.student.StudentRepository;
 import ac.kampus.pembayaran.studyclass.StudyClass;
@@ -47,6 +48,7 @@ public class StudentImportService {
 
 	private final ImportBatchRepository importBatchRepository;
 	private final StudentRowWriter rowWriter;
+	private final DiscountTierRateRepository tierRepository;
 
 	private static final DataFormatter FORMATTER = new DataFormatter();
 
@@ -78,6 +80,13 @@ public class StudentImportService {
 				}
 			}
 
+			// Dibaca sekali untuk seluruh berkas, bukan sekali per baris.
+			List<String> golongan = tierRepository
+					.findByActiveTrueOrderBySortOrderAscTierAsc()
+					.stream()
+					.map(DiscountTierRate::getTier)
+					.toList();
+
 			for (int r = headerRow.getRowNum() + 1; r <= sheet.getLastRowNum(); r++) {
 				Row row = sheet.getRow(r);
 				if (isEmpty(row, columns)) continue;
@@ -87,7 +96,7 @@ public class StudentImportService {
 				String nim = value(row, columns, "nim");
 
 				try {
-					rowWriter.write(parse(row, columns, excelRowNumber));
+					rowWriter.write(parse(row, columns, excelRowNumber, golongan));
 					success++;
 				} catch (Exception e) {
 					errors.add(new ImportBatch.RowError(excelRowNumber, nim, pesan(e)));
@@ -110,7 +119,8 @@ public class StudentImportService {
 		return importBatchRepository.save(batch);
 	}
 
-	private ParsedRow parse(Row row, Map<String, Integer> columns, int excelRowNumber) {
+	private ParsedRow parse(Row row, Map<String, Integer> columns, int excelRowNumber,
+			List<String> golonganAktif) {
 		String nim = require(row, columns, "nim");
 		String name = require(row, columns, "name");
 		String className = require(row, columns, "class");
@@ -119,13 +129,14 @@ public class StudentImportService {
 		String academicYear = require(row, columns, "academic_year");
 		String phone = value(row, columns, "phone");
 
-		DiscountTier tier;
-		try {
-			tier = DiscountTier.valueOf(tierRaw.trim().toUpperCase(Locale.ROOT));
-		} catch (IllegalArgumentException e) {
+		// Golongan diperiksa terhadap daftar yang benar-benar ada di database,
+		// bukan daftar tetap di kode: admin bisa menambah golongan baru, dan
+		// berkas import harus langsung menerimanya tanpa deploy ulang.
+		String tier = tierRaw.trim().toUpperCase(Locale.ROOT);
+		if (!golonganAktif.contains(tier)) {
 			throw new IllegalArgumentException(
-					"Golongan \"%s\" tidak dikenal. Pilihan: NON_ALUMNI, KERABAT_ALUMNI, ALUMNI, ALUMNI_PASUTRI, KERJASAMA."
-							.formatted(tierRaw));
+					"Golongan \"%s\" tidak dikenal. Pilihan: %s."
+							.formatted(tierRaw, String.join(", ", golonganAktif)));
 		}
 
 		AcademicTerm term;
@@ -186,7 +197,7 @@ public class StudentImportService {
 			String nim,
 			String name,
 			String className,
-			DiscountTier discountTier,
+			String discountTier,
 			AcademicTerm startTerm,
 			String academicYear,
 			String phone
@@ -222,8 +233,9 @@ public class StudentImportService {
 							.active(true)
 							.build()));
 
-			// Email dan kata sandi awal diturunkan dari NIM; mahasiswa wajib
-			// menggantinya saat pertama masuk.
+			// Email dan kata sandi awal diturunkan dari NIM. Mahasiswa memang
+			// tidak mengganti kata sandinya sendiri; kalau lupa, admin
+			// mengembalikannya ke NIM lewat halaman detail mahasiswa.
 			String email = row.nim() + "@student.kampus.ac.id";
 			if (userRepository.existsByEmailIgnoreCase(email)) {
 				throw new IllegalArgumentException("Akun untuk NIM %s sudah ada.".formatted(row.nim()));

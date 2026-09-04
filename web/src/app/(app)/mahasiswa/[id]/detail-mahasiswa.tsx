@@ -23,7 +23,7 @@ import {
   TableSkeleton,
 } from "@/components/page-header";
 import { documentStepLabels, useStudent } from "@/features/mahasiswa/api";
-import { potongan } from "@/features/tarif/konstanta";
+import { useGolongan } from "@/features/tarif/api";
 import {
   useStudentPlans,
   type Installment,
@@ -39,6 +39,7 @@ import { formatRupiah, formatTanggal } from "@/lib/format";
 export function DetailMahasiswa({ studentId }: { studentId: number }) {
   const mahasiswa = useStudent(studentId);
   const plans = useStudentPlans(studentId);
+  const golongan = useGolongan();
 
   const [buatTerbuka, setBuatTerbuka] = useState(false);
   const [penyesuaianTerbuka, setPenyesuaianTerbuka] = useState(false);
@@ -68,7 +69,10 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
   }
 
   const mhs = mahasiswa.data;
-  const tier = potongan[mhs.discountTier];
+  const tier = {
+    label: golongan.label(mhs.discountTier),
+    persen: golongan.persen(mhs.discountTier),
+  };
 
   const totalDitagih = (plans.data ?? []).reduce(
     (sum, plan) => sum + Number(plan.totalAmount),

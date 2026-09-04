@@ -15,6 +15,8 @@ export type TierRate = {
   tier: DiscountTier;
   label: string;
   percent: string;
+  active: boolean;
+  sortOrder: number;
   uktPerSemester: string;
   uktPerInstallment: string;
 };
@@ -59,15 +61,57 @@ export function useUpdateTuitionRate() {
   });
 }
 
+/**
+ * Golongan potongan beserta pencari labelnya.
+ *
+ * <p>Daftarnya datang dari database karena admin bisa menambah golongan baru.
+ * Selagi masih dimuat, kode golongan dipakai apa adanya supaya layar tidak
+ * menampilkan tempat kosong.
+ */
+export function useGolongan(academicYear = "2026/2027") {
+  const query = useTierRates(academicYear);
+  const daftar = query.data ?? [];
+
+  return {
+    ...query,
+    daftar,
+    aktif: daftar.filter((tier) => tier.active),
+    label: (kode: DiscountTier) =>
+      daftar.find((tier) => tier.tier === kode)?.label ?? kode,
+    persen: (kode: DiscountTier) =>
+      Number(daftar.find((tier) => tier.tier === kode)?.percent ?? 0),
+  };
+}
+
+export function useCreateTier() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (body: {
+      tier: string;
+      label: string;
+      percent: number;
+      sortOrder?: number;
+    }) => apiFetch<TierRate>("/tuition/tiers", { method: "POST", body }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [TIERS_KEY] }),
+  });
+}
+
 export function useUpdateTierPercent() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ tier, percent }: { tier: DiscountTier; percent: number }) =>
-      apiFetch<TierRate>(`/tuition/tiers/${tier}`, {
-        method: "PUT",
-        body: { percent },
-      }),
+    mutationFn: ({
+      tier,
+      ...body
+    }: {
+      tier: DiscountTier;
+      percent: number;
+      label?: string;
+      active?: boolean;
+      sortOrder?: number;
+    }) =>
+      apiFetch<TierRate>(`/tuition/tiers/${tier}`, { method: "PUT", body }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [TIERS_KEY] }),
   });
 }

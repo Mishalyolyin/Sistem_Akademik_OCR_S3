@@ -5,6 +5,8 @@ import ac.kampus.pembayaran.common.BusinessRuleException;
 import ac.kampus.pembayaran.common.NotFoundException;
 import ac.kampus.pembayaran.studyclass.StudyClass;
 import ac.kampus.pembayaran.studyclass.StudyClassRepository;
+import ac.kampus.pembayaran.tuition.DiscountTierRate;
+import ac.kampus.pembayaran.tuition.DiscountTierRateRepository;
 import ac.kampus.pembayaran.user.User;
 import ac.kampus.pembayaran.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,10 +30,11 @@ public class StudentService {
 	private final StudentTierLockPolicy tierLockPolicy;
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
+	private final DiscountTierRateRepository tierRepository;
 
 	@Transactional(readOnly = true)
 	public Page<Student> search(
-			String search, Long classId, DiscountTier tier, Boolean active, Pageable pageable) {
+			String search, Long classId, String tier, Boolean active, Pageable pageable) {
 
 		Specification<Student> spec = Specification
 				.allOf(StudentSpecifications.nameOrNimContains(search),
@@ -82,10 +85,24 @@ public class StudentService {
 	 * mengunggah bukti bayar. Lihat {@link StudentTierLockPolicy}.
 	 */
 	@Transactional
-	public Student changeDiscountTier(Long id, DiscountTier tier) {
+	public Student changeDiscountTier(Long id, String tier) {
 		Student student = get(id);
 		tierLockPolicy.assertTierChangeAllowed(student);
-		student.setDiscountTier(tier);
+
+		// Golongan bukan lagi enum, jadi kodenya tidak tersaring saat kompilasi.
+		// Tanpa pemeriksaan ini, salah ketik menghasilkan mahasiswa yang
+		// tarifnya tidak bisa dihitung sama sekali.
+		DiscountTierRate golongan = tierRepository.findById(tier)
+				.orElseThrow(() -> new BusinessRuleException(
+						"Golongan potongan \"%s\" tidak dikenal. Pilihan: %s."
+								.formatted(tier, kodeGolonganAktif())));
+		if (!golongan.isActive()) {
+			throw new BusinessRuleException(
+					"Golongan %s sudah tidak aktif, tidak bisa dipakai lagi."
+							.formatted(golongan.getLabel()));
+		}
+
+		student.setDiscountTier(golongan.getTier());
 		return studentRepository.save(student);
 	}
 
@@ -118,6 +135,13 @@ public class StudentService {
 		log.info("Kata sandi mahasiswa {} dikembalikan ke NIM; sesi lama dicabut.",
 				student.getNim());
 		return student.getNim();
+	}
+
+	/** Daftar kode golongan aktif, untuk pesan galat yang menuntun. */
+	private String kodeGolonganAktif() {
+		return tierRepository.findByActiveTrueOrderBySortOrderAscTierAsc().stream()
+				.map(DiscountTierRate::getTier)
+				.collect(java.util.stream.Collectors.joining(", "));
 	}
 
 	@Transactional(readOnly = true)

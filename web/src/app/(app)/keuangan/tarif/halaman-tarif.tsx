@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Check, Info, PencilLine, X } from "lucide-react";
+import { Ban, Check, Info, PencilLine, Plus, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -26,13 +26,25 @@ import {
   type TierRate,
   type TuitionRate,
 } from "@/features/tarif/api";
-import { JUMLAH_SEMESTER_UKT } from "@/features/tarif/konstanta";
+import { DialogTambahGolongan } from "@/features/tarif/dialog-tambah-golongan";
+import {
+  JUMLAH_SEMESTER_UKT,
+  tarifDasar,
+} from "@/features/tarif/konstanta";
 import { ApiError } from "@/lib/api";
 import { formatRupiah } from "@/lib/format";
 
 export function HalamanTarif() {
+  const [tambahTerbuka, setTambahTerbuka] = useState(false);
   const rates = useTuitionRates();
   const tiers = useTierRates();
+
+  // Pratinjau di dialog memakai tarif dasar yang sungguhan, bukan angka brosur
+  // di konstanta — tarif UKT bisa diubah admin di tabel tepat di atasnya.
+  const tarifDasarUkt = Number(
+    rates.data?.find((rate) => rate.category === "UKT" && rate.active)?.amount ??
+      tarifDasar.UKT,
+  );
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -70,14 +82,20 @@ export function HalamanTarif() {
       </section>
 
       <section className="flex flex-col gap-3">
-        <div>
-          <h3 className="font-heading text-sm font-semibold">
-            Golongan potongan
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Potongan hanya berlaku untuk UKT. Pendaftaran dan biaya ujian sama
-            untuk semua golongan.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="font-heading text-sm font-semibold">
+              Golongan potongan
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Potongan hanya berlaku untuk UKT. Pendaftaran dan biaya ujian sama
+              untuk semua golongan.
+            </p>
+          </div>
+          <Button variant="outline" onClick={() => setTambahTerbuka(true)}>
+            <Plus />
+            Tambah golongan
+          </Button>
         </div>
         {tiers.isPending ? (
           <TableSkeleton rows={5} />
@@ -93,6 +111,12 @@ export function HalamanTarif() {
           <TabelGolongan data={tiers.data} />
         )}
       </section>
+
+      <DialogTambahGolongan
+        open={tambahTerbuka}
+        onOpenChange={setTambahTerbuka}
+        tarifDasarUkt={tarifDasarUkt}
+      />
     </div>
   );
 }
@@ -240,6 +264,29 @@ function TabelGolongan({ data }: { data: TierRate[] }) {
     );
   }
 
+  /**
+   * Golongan lama dinonaktifkan, bukan dihapus: mahasiswa dan tagihan yang
+   * terlanjur memakainya tetap harus bisa dibaca. Backend menolak selama masih
+   * ada mahasiswa di golongan itu, dan alasannya ditampilkan apa adanya.
+   */
+  function ubahAktif(tier: TierRate) {
+    ubah.mutate(
+      { tier: tier.tier, percent: Number(tier.percent), active: !tier.active },
+      {
+        onSuccess: (updated) =>
+          toast.success(
+            updated.active
+              ? `Golongan ${updated.label} bisa dipilih lagi.`
+              : `Golongan ${updated.label} dinonaktifkan — tidak lagi bisa dipilih untuk mahasiswa baru.`,
+          ),
+        onError: (e) =>
+          toast.error(
+            e instanceof ApiError ? e.message : "Gagal mengubah golongan.",
+          ),
+      },
+    );
+  }
+
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <Table>
@@ -252,13 +299,22 @@ function TabelGolongan({ data }: { data: TierRate[] }) {
             <TableHead className="text-right">
               Total {JUMLAH_SEMESTER_UKT} semester
             </TableHead>
-            <TableHead className="w-24" />
+            <TableHead className="w-28" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((tier) => (
             <TableRow key={tier.tier}>
-              <TableCell className="font-medium">{tier.label}</TableCell>
+              <TableCell className="font-medium">
+                <span className={tier.active ? undefined : "text-muted-foreground"}>
+                  {tier.label}
+                </span>
+                {!tier.active && (
+                  <span className="ml-2 rounded border border-border px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
+                    nonaktif
+                  </span>
+                )}
+              </TableCell>
               <TableCell className="text-right">
                 {editTier === tier.tier ? (
                   <Input
@@ -309,18 +365,32 @@ function TabelGolongan({ data }: { data: TierRate[] }) {
                     </Button>
                   </div>
                 ) : (
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    className="ml-auto flex"
-                    aria-label={`Ubah potongan ${tier.label}`}
-                    onClick={() => {
-                      setEditTier(tier.tier);
-                      setPersen(String(Number(tier.percent)));
-                    }}
-                  >
-                    <PencilLine />
-                  </Button>
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={`Ubah potongan ${tier.label}`}
+                      onClick={() => {
+                        setEditTier(tier.tier);
+                        setPersen(String(Number(tier.percent)));
+                      }}
+                    >
+                      <PencilLine />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="ghost"
+                      disabled={ubah.isPending}
+                      aria-label={
+                        tier.active
+                          ? `Nonaktifkan golongan ${tier.label}`
+                          : `Aktifkan lagi golongan ${tier.label}`
+                      }
+                      onClick={() => ubahAktif(tier)}
+                    >
+                      {tier.active ? <Ban /> : <Undo2 />}
+                    </Button>
+                  </div>
                 )}
               </TableCell>
             </TableRow>

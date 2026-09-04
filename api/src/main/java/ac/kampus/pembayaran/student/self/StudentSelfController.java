@@ -9,6 +9,8 @@ import ac.kampus.pembayaran.common.PaymentCategory;
 import ac.kampus.pembayaran.payment.Payment;
 import ac.kampus.pembayaran.payment.PaymentRepository;
 import ac.kampus.pembayaran.payment.PaymentService;
+import ac.kampus.pembayaran.tuition.DiscountTierRate;
+import ac.kampus.pembayaran.tuition.DiscountTierRateRepository;
 import ac.kampus.pembayaran.payment.PaymentSpecifications;
 import ac.kampus.pembayaran.payment.PaymentStatus;
 import ac.kampus.pembayaran.student.Student;
@@ -58,6 +60,7 @@ public class StudentSelfController {
 	private final PaymentPlanRepository planRepository;
 	private final PaymentRepository paymentRepository;
 	private final PaymentService paymentService;
+	private final DiscountTierRateRepository tierRepository;
 
 	// --- DTO ---
 
@@ -68,6 +71,8 @@ public class StudentSelfController {
 			String email,
 			String kelas,
 			String golongan,
+			/** Nama golongan yang bisa dibaca; portal tidak boleh memanggil endpoint admin. */
+			String golonganLabel,
 			String telepon,
 			String alamat,
 			boolean dokumenLengkap,
@@ -291,7 +296,10 @@ public class StudentSelfController {
 				student.getName(),
 				student.getUser() == null ? null : student.getUser().getEmail(),
 				student.getStudyClass() == null ? null : student.getStudyClass().displayName(),
-				student.getDiscountTier().name(),
+				student.getDiscountTier(),
+				tierRepository.findById(student.getDiscountTier())
+						.map(DiscountTierRate::getLabel)
+						.orElse(student.getDiscountTier()),
 				student.getPhone(),
 				student.getAddress(),
 				langkah == null,

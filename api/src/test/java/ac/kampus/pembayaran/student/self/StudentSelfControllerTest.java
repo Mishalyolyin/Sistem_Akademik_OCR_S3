@@ -4,8 +4,9 @@ import ac.kampus.pembayaran.billing.PaymentGenerationService;
 import ac.kampus.pembayaran.billing.PaymentPlanRepository;
 import ac.kampus.pembayaran.payment.PaymentRepository;
 import ac.kampus.pembayaran.payment.PaymentService;
-import ac.kampus.pembayaran.student.DiscountTier;
 import ac.kampus.pembayaran.student.Student;
+import ac.kampus.pembayaran.tuition.DiscountTierRate;
+import ac.kampus.pembayaran.tuition.DiscountTierRateRepository;
 import ac.kampus.pembayaran.support.ControllerTest;
 import ac.kampus.pembayaran.support.ControllerTestSupport;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,19 +51,26 @@ class StudentSelfControllerTest extends ControllerTestSupport {
 	private PaymentRepository paymentRepository;
 	@MockitoBean
 	private PaymentService paymentService;
+	@MockitoBean
+	private DiscountTierRateRepository tierRepository;
 
 	@BeforeEach
 	void setUp() {
 		when(selfService.current()).thenReturn(mahasiswaDokumenLengkap());
 		when(planRepository.findByStudentIdOrderByCategoryAscSemesterNumberAsc(any()))
 				.thenReturn(List.of());
+		when(tierRepository.findById("NON_ALUMNI")).thenReturn(java.util.Optional.of(
+				DiscountTierRate.builder()
+						.tier("NON_ALUMNI").label("Non alumni")
+						.percent(BigDecimal.ZERO).active(true).sortOrder(1)
+						.build()));
 	}
 
 	/** Mahasiswa yang seluruh dokumen wajibnya sudah terisi. */
 	private static Student mahasiswaDokumenLengkap() {
 		return Student.builder()
 				.id(1L).nim("2612600001").name("Uji Coba")
-				.discountTier(DiscountTier.NON_ALUMNI)
+				.discountTier("NON_ALUMNI")
 				.walletBalance(BigDecimal.ZERO).active(true)
 				.profilePicture("foto.png")
 				.nik("3201010101010001").ktpFilePath("ktp.png")
@@ -95,7 +103,9 @@ class StudentSelfControllerTest extends ControllerTestSupport {
 	void mahasiswaBolehLihatProfil() throws Exception {
 		mockMvc.perform(sebagaiMahasiswa(get("/me/profil")))
 				.andExpect(status().isOk())
-				.andExpect(jsonPath("$.nim").value("2612600001"));
+				.andExpect(jsonPath("$.nim").value("2612600001"))
+				.andExpect(jsonPath("$.golongan").value("NON_ALUMNI"))
+				.andExpect(jsonPath("$.golonganLabel").value("Non alumni"));
 	}
 
 	// --- Tagihan yang boleh didaftarkan sendiri ---

@@ -35,8 +35,8 @@ public final class StudentSpecifications {
 		return (root, query, cb) -> cb.equal(root.get("studyClass").get("id"), classId);
 	}
 
-	public static Specification<Student> hasTier(DiscountTier tier) {
-		if (tier == null) return null;
+	public static Specification<Student> hasTier(String tier) {
+		if (tier == null || tier.isBlank()) return null;
 		return (root, query, cb) -> cb.equal(root.get("discountTier"), tier);
 	}
 

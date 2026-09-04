@@ -11,9 +11,14 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Component;
 
+import ac.kampus.pembayaran.tuition.DiscountTierRate;
+import ac.kampus.pembayaran.tuition.DiscountTierRateRepository;
+import lombok.RequiredArgsConstructor;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,17 +28,21 @@ import java.util.List;
  * satu kolom discount_tier.
  */
 @Component
+@RequiredArgsConstructor
 public class StudentExcelTemplate {
 
 	static final List<String> HEADERS = List.of(
 			"nim", "name", "class", "discount_tier", "start_term", "academic_year", "phone");
 
-	private static final List<List<String>> CONTOH = List.of(
-			List.of("2612600001", "Contoh Mahasiswa", "A", "NON_ALUMNI", "GASAL", "2026/2027", "081234567890"),
-			List.of("2612600002", "Contoh Alumni", "B", "ALUMNI", "GASAL", "2026/2027", "081234567891"),
-			List.of("2612600003", "Contoh Kerjasama", "Kerjasama A", "KERJASAMA", "GENAP", "2026/2027", "081234567892"));
+	private final DiscountTierRateRepository tierRepository;
 
 	public byte[] build() {
+		// Golongan dibaca dari database, bukan didaftar di kode: admin bisa
+		// menambah golongan baru, dan template yang menyebut daftar lama akan
+		// menuntun orang mengisi kode yang justru ditolak importer.
+		List<DiscountTierRate> golongan =
+				tierRepository.findByActiveTrueOrderBySortOrderAscTierAsc();
+
 		try (Workbook workbook = new XSSFWorkbook();
 			 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
@@ -61,9 +70,10 @@ public class StudentExcelTemplate {
 				cell.setCellValue(HEADERS.get(i));
 				cell.setCellStyle(headerStyle);
 			}
-			for (int r = 0; r < CONTOH.size(); r++) {
+			List<List<String>> barisContoh = contoh(golongan);
+			for (int r = 0; r < barisContoh.size(); r++) {
 				Row row = contoh.createRow(r + 1);
-				List<String> values = CONTOH.get(r);
+				List<String> values = barisContoh.get(r);
 				for (int c = 0; c < values.size(); c++) {
 					row.createCell(c).setCellValue(values.get(c));
 				}
@@ -75,26 +85,25 @@ public class StudentExcelTemplate {
 			// Petunjuk juga di sheet terpisah. Kalau ditaruh di sheet data,
 			// barisnya ikut terbaca sebagai baris mahasiswa saat diunggah.
 			Sheet petunjuk = workbook.createSheet("Petunjuk");
-			List<String> catatan = List.of(
+			List<String> catatan = new ArrayList<>(List.of(
 					"Cara mengisi:",
 					"",
 					"nim            Nomor induk mahasiswa, wajib, tidak boleh sama dengan yang sudah ada.",
 					"name           Nama lengkap, wajib.",
 					"class          Nama kelas bebas: A, B, C, atau Kerjasama A. Dibuat otomatis kalau belum ada.",
 					"               Nama yang mengandung kata \"Kerjasama\" otomatis ditandai sebagai kelas kerjasama.",
-					"discount_tier  Golongan potongan UKT, wajib. Pilihan:",
-					"                 NON_ALUMNI      potongan 0%   UKT 10.000.000 per semester",
-					"                 KERABAT_ALUMNI  potongan 20%  UKT  8.000.000 per semester",
-					"                 ALUMNI          potongan 25%  UKT  7.500.000 per semester",
-					"                 ALUMNI_PASUTRI  potongan 35%  UKT  6.500.000 per semester",
-					"                 KERJASAMA       potongan 40%  UKT  6.000.000 per semester",
+					"discount_tier  Golongan potongan UKT, wajib. Pilihan:"));
+
+			catatan.addAll(pilihanGolongan(golongan));
+
+			catatan.addAll(List.of(
 					"start_term     GASAL atau GENAP, wajib.",
 					"academic_year  Format 2026/2027, wajib.",
 					"phone          Boleh dikosongkan.",
 					"",
 					"Isi data di sheet Mahasiswa; hanya sheet itu yang dibaca saat diunggah.",
-					"Sheet Contoh berisi tiga baris teladan dan boleh dibiarkan apa adanya.",
-					"Baris yang gagal akan dilaporkan satu per satu tanpa membatalkan baris lain.");
+					"Sheet Contoh berisi baris teladan dan boleh dibiarkan apa adanya.",
+					"Baris yang gagal akan dilaporkan satu per satu tanpa membatalkan baris lain."));
 
 			for (int i = 0; i < catatan.size(); i++) {
 				petunjuk.createRow(i).createCell(0).setCellValue(catatan.get(i));
@@ -106,6 +115,40 @@ public class StudentExcelTemplate {
 		} catch (IOException e) {
 			throw new UncheckedIOException("Gagal membuat template Excel.", e);
 		}
+	}
+
+	/**
+	 * Baris teladan, kode golongannya diambil dari golongan yang benar-benar
+	 * aktif supaya contohnya selalu bisa diunggah apa adanya.
+	 */
+	private static List<List<String>> contoh(List<DiscountTierRate> golongan) {
+		List<List<String>> baris = new ArrayList<>();
+		baris.add(List.of("2612600001", "Contoh Mahasiswa", "A",
+				kode(golongan, 0), "GASAL", "2026/2027", "081234567890"));
+		baris.add(List.of("2612600002", "Contoh Mahasiswa Dua", "B",
+				kode(golongan, 1), "GASAL", "2026/2027", "081234567891"));
+		baris.add(List.of("2612600003", "Contoh Kelas Kerjasama", "Kerjasama A",
+				kode(golongan, golongan.size() - 1), "GENAP", "2026/2027", "081234567892"));
+		return baris;
+	}
+
+	/** Golongan ke-i, atau yang pertama bila daftarnya lebih pendek dari itu. */
+	private static String kode(List<DiscountTierRate> golongan, int index) {
+		if (golongan.isEmpty()) return "";
+		return golongan.get(Math.min(Math.max(index, 0), golongan.size() - 1)).getTier();
+	}
+
+	private static List<String> pilihanGolongan(List<DiscountTierRate> golongan) {
+		if (golongan.isEmpty()) {
+			return List.of("                 (belum ada golongan aktif — atur dulu di menu "
+					+ "Tarif & Potongan sebelum mengimpor)");
+		}
+		return golongan.stream()
+				.map(tier -> "                 %-16s potongan %s%%  %s".formatted(
+						tier.getTier(),
+						tier.getPercent().stripTrailingZeros().toPlainString(),
+						tier.getLabel()))
+				.toList();
 	}
 
 	private CellStyle headerStyle(Workbook workbook) {

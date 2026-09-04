@@ -23,11 +23,11 @@ import {
 } from "@/components/ui/select";
 import {
   kategoriLabel,
-  potongan,
   tarifDasar,
   urutanUjian,
   type PaymentCategory,
 } from "@/features/tarif/konstanta";
+import { useGolongan } from "@/features/tarif/api";
 import type { DiscountTier } from "@/features/tarif/konstanta";
 import type { AcademicTerm } from "@/features/mahasiswa/api";
 import { useCreatePlan } from "./api";
@@ -56,10 +56,11 @@ export function DialogBuatTagihan({
   const [term, setTerm] = useState<AcademicTerm>("GASAL");
 
   const buat = useCreatePlan(studentId);
+  const golongan = useGolongan();
 
   // Pratinjau nominal, supaya admin tahu yang akan terbentuk sebelum menekan simpan.
   const kenaPotongan = category === "UKT";
-  const persen = kenaPotongan ? potongan[studentTier].persen : 0;
+  const persen = kenaPotongan ? golongan.persen(studentTier) : 0;
   const total = Math.round(tarifDasar[category] * (1 - persen / 100));
   const jumlahCicilan = category === "UKT" ? 5 : 1;
 
@@ -150,7 +151,7 @@ export function DialogBuatTagihan({
             </div>
             <div className="flex justify-between px-3 py-2">
               <dt className="text-muted-foreground">
-                Potongan {potongan[studentTier].label}
+                Potongan {golongan.label(studentTier)}
               </dt>
               <dd>
                 {kenaPotongan && persen > 0 ? (

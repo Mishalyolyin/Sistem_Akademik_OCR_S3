@@ -46,13 +46,15 @@ import {
   type StudentSummary,
 } from "@/features/mahasiswa/api";
 import { useClasses } from "@/features/kelas/api";
-import { potongan, type DiscountTier } from "@/features/tarif/konstanta";
+import type { DiscountTier } from "@/features/tarif/konstanta";
+import { useGolongan } from "@/features/tarif/api";
 import { ApiError } from "@/lib/api";
 import { formatRupiah } from "@/lib/format";
 
 const SEMUA = "SEMUA";
 
 export function HalamanMahasiswa() {
+  const golongan = useGolongan();
   const [search, setSearch] = useState("");
   const [classId, setClassId] = useState<string>(SEMUA);
   const [tier, setTier] = useState<string>(SEMUA);
@@ -125,10 +127,10 @@ export function HalamanMahasiswa() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={SEMUA}>Semua golongan</SelectItem>
-            {Object.entries(potongan).map(([key, value]) => (
-              <SelectItem key={key} value={key}>
-                {value.label}
-                {value.persen > 0 ? ` (−${value.persen}%)` : ""}
+            {golongan.aktif.map((tier) => (
+              <SelectItem key={tier.tier} value={tier.tier}>
+                {tier.label}
+                {Number(tier.percent) > 0 ? ` (−${Number(tier.percent)}%)` : ""}
               </SelectItem>
             ))}
           </SelectContent>
@@ -185,6 +187,7 @@ export function HalamanMahasiswa() {
 }
 
 function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
+  const golongan = useGolongan();
   const ubahTier = useChangeDiscountTier();
 
   return (
@@ -226,7 +229,7 @@ function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
                       render={
                         <span className="inline-flex cursor-help items-center gap-1.5 text-sm">
                           <Lock className="size-3.5 text-muted-foreground" />
-                          {potongan[mhs.discountTier].label}
+                          {golongan.label(mhs.discountTier)}
                         </span>
                       }
                     />
@@ -244,7 +247,7 @@ function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
                         {
                           onSuccess: (updated) =>
                             toast.success(
-                              `${updated.name} kini ${potongan[updated.discountTier].label}.`,
+                              `${updated.name} kini ${golongan.label(updated.discountTier)}.`,
                             ),
                           onError: (e) =>
                             toast.error(
@@ -263,10 +266,12 @@ function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {Object.entries(potongan).map(([key, value]) => (
-                        <SelectItem key={key} value={key}>
-                          {value.label}
-                          {value.persen > 0 ? ` (−${value.persen}%)` : ""}
+                      {golongan.aktif.map((tier) => (
+                        <SelectItem key={tier.tier} value={tier.tier}>
+                          {tier.label}
+                          {Number(tier.percent) > 0
+                            ? ` (−${Number(tier.percent)}%)`
+                            : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>

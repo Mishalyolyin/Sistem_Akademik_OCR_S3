@@ -2,7 +2,6 @@
 
 import { ErrorState, TableSkeleton } from "@/components/page-header";
 import { useProfil } from "@/features/portal/api";
-import { potongan, type DiscountTier } from "@/features/tarif/konstanta";
 import { ApiError } from "@/lib/api";
 import { formatRupiah } from "@/lib/format";
 
@@ -19,8 +18,6 @@ export function HalamanProfil() {
       />
     );
   }
-
-  const golongan = potongan[data.golongan as DiscountTier];
 
   return (
     <div className="flex flex-col gap-6">
@@ -41,9 +38,7 @@ export function HalamanProfil() {
         <Baris
           label="Golongan potongan"
           nilai={
-            golongan
-              ? `${golongan.label}${golongan.persen > 0 ? ` (−${golongan.persen}% UKT)` : ""}`
-              : data.golongan
+            data.golonganLabel
           }
         />
         <Baris label="Nomor WhatsApp" nilai={data.telepon ?? "—"} />

@@ -3,7 +3,6 @@ package ac.kampus.pembayaran.billing;
 import ac.kampus.pembayaran.common.AcademicTerm;
 import ac.kampus.pembayaran.common.BusinessRuleException;
 import ac.kampus.pembayaran.common.PaymentCategory;
-import ac.kampus.pembayaran.student.DiscountTier;
 import ac.kampus.pembayaran.student.Student;
 import ac.kampus.pembayaran.template.InstallmentTemplate;
 import ac.kampus.pembayaran.template.InstallmentTemplateItem;
@@ -67,7 +66,7 @@ class PaymentGenerationServiceTest {
 		when(planRepository.lastSemesterNumber(anyLong(), any(), any())).thenReturn(0);
 	}
 
-	private Student mahasiswa(DiscountTier tier) {
+	private Student mahasiswa(String tier) {
 		return Student.builder()
 				.id(1L)
 				.nim("2612600001")
@@ -87,10 +86,10 @@ class PaymentGenerationServiceTest {
 						.amount(amount).active(true).build()));
 	}
 
-	private void siapkanPotongan(DiscountTier tier, String percent) {
+	private void siapkanPotongan(String tier, String percent) {
 		var rate = new DiscountTierRate();
 		rate.setTier(tier);
-		rate.setLabel(tier.name());
+		rate.setLabel(tier);
 		rate.setPercent(new BigDecimal(percent));
 		when(tierRepository.findById(tier)).thenReturn(Optional.of(rate));
 	}
@@ -120,7 +119,7 @@ class PaymentGenerationServiceTest {
 				"ALUMNI_PASUTRI, 35,  6500000, 1300000",
 				"KERJASAMA,      40,  6000000, 1200000",
 		})
-		void sesuaiBrosur(DiscountTier tier, String persen, String perSemester, String perCicilan) {
+		void sesuaiBrosur(String tier, String persen, String perSemester, String perCicilan) {
 			siapkanTarif(PaymentCategory.UKT, UKT_DASAR);
 			siapkanPotongan(tier, persen);
 			siapkanTemplate(PaymentCategory.UKT, AcademicTerm.GASAL, 5);
@@ -139,11 +138,11 @@ class PaymentGenerationServiceTest {
 		void jumlahCicilanSamaDenganTotal() {
 			// 10.000.001 tidak habis dibagi 5.
 			siapkanTarif(PaymentCategory.UKT, new BigDecimal("10000001"));
-			siapkanPotongan(DiscountTier.NON_ALUMNI, "0");
+			siapkanPotongan("NON_ALUMNI", "0");
 			siapkanTemplate(PaymentCategory.UKT, AcademicTerm.GASAL, 5);
 
 			PaymentPlan plan = service.generate(
-					mahasiswa(DiscountTier.NON_ALUMNI), PaymentCategory.UKT, TAHUN, AcademicTerm.GASAL);
+					mahasiswa("NON_ALUMNI"), PaymentCategory.UKT, TAHUN, AcademicTerm.GASAL);
 
 			BigDecimal jumlah = plan.getInstallments().stream()
 					.map(Installment::getAmount)
@@ -161,11 +160,11 @@ class PaymentGenerationServiceTest {
 		@DisplayName("tarif dan potongan dibekukan di plan")
 		void tarifDibekukan() {
 			siapkanTarif(PaymentCategory.UKT, UKT_DASAR);
-			siapkanPotongan(DiscountTier.ALUMNI, "25");
+			siapkanPotongan("ALUMNI", "25");
 			siapkanTemplate(PaymentCategory.UKT, AcademicTerm.GASAL, 5);
 
 			PaymentPlan plan = service.generate(
-					mahasiswa(DiscountTier.ALUMNI), PaymentCategory.UKT, TAHUN, AcademicTerm.GASAL);
+					mahasiswa("ALUMNI"), PaymentCategory.UKT, TAHUN, AcademicTerm.GASAL);
 
 			assertThat(plan.getBaseAmount()).isEqualByComparingTo(UKT_DASAR);
 			assertThat(plan.getDiscountPercent()).isEqualByComparingTo("25");
@@ -180,11 +179,11 @@ class PaymentGenerationServiceTest {
 		@DisplayName("Gasal: September sampai Januari")
 		void gasal() {
 			siapkanTarif(PaymentCategory.UKT, UKT_DASAR);
-			siapkanPotongan(DiscountTier.NON_ALUMNI, "0");
+			siapkanPotongan("NON_ALUMNI", "0");
 			siapkanTemplate(PaymentCategory.UKT, AcademicTerm.GASAL, 5);
 
 			List<LocalDate> tanggal = service
-					.generate(mahasiswa(DiscountTier.NON_ALUMNI), PaymentCategory.UKT, TAHUN, AcademicTerm.GASAL)
+					.generate(mahasiswa("NON_ALUMNI"), PaymentCategory.UKT, TAHUN, AcademicTerm.GASAL)
 					.getInstallments().stream().map(Installment::getDueDate).toList();
 
 			assertThat(tanggal).containsExactly(
@@ -199,11 +198,11 @@ class PaymentGenerationServiceTest {
 		@DisplayName("Genap: Februari sampai Juni, memakai tahun kedua")
 		void genap() {
 			siapkanTarif(PaymentCategory.UKT, UKT_DASAR);
-			siapkanPotongan(DiscountTier.NON_ALUMNI, "0");
+			siapkanPotongan("NON_ALUMNI", "0");
 			siapkanTemplate(PaymentCategory.UKT, AcademicTerm.GENAP, 5);
 
 			List<LocalDate> tanggal = service
-					.generate(mahasiswa(DiscountTier.NON_ALUMNI), PaymentCategory.UKT, TAHUN, AcademicTerm.GENAP)
+					.generate(mahasiswa("NON_ALUMNI"), PaymentCategory.UKT, TAHUN, AcademicTerm.GENAP)
 					.getInstallments().stream().map(Installment::getDueDate).toList();
 
 			assertThat(tanggal).containsExactly(
@@ -226,7 +225,7 @@ class PaymentGenerationServiceTest {
 					.thenReturn(6L);
 
 			assertThatThrownBy(() -> service.generate(
-					mahasiswa(DiscountTier.NON_ALUMNI), PaymentCategory.UKT, TAHUN, AcademicTerm.GASAL))
+					mahasiswa("NON_ALUMNI"), PaymentCategory.UKT, TAHUN, AcademicTerm.GASAL))
 					.isInstanceOf(BusinessRuleException.class)
 					.hasMessageContaining("hanya 6 semester");
 		}
@@ -238,7 +237,7 @@ class PaymentGenerationServiceTest {
 					anyLong(), any(), any(), any(), any())).thenReturn(true);
 
 			assertThatThrownBy(() -> service.generate(
-					mahasiswa(DiscountTier.NON_ALUMNI), PaymentCategory.UKT, TAHUN, AcademicTerm.GASAL))
+					mahasiswa("NON_ALUMNI"), PaymentCategory.UKT, TAHUN, AcademicTerm.GASAL))
 					.isInstanceOf(BusinessRuleException.class)
 					.hasMessageContaining("sudah punya tagihan UKT");
 		}
@@ -250,7 +249,7 @@ class PaymentGenerationServiceTest {
 					.thenReturn(true);
 
 			assertThatThrownBy(() -> service.generate(
-					mahasiswa(DiscountTier.NON_ALUMNI), PaymentCategory.PENDAFTARAN, TAHUN, AcademicTerm.GASAL))
+					mahasiswa("NON_ALUMNI"), PaymentCategory.PENDAFTARAN, TAHUN, AcademicTerm.GASAL))
 					.isInstanceOf(BusinessRuleException.class)
 					.hasMessageContaining("sudah pernah ditagih");
 		}
@@ -262,7 +261,7 @@ class PaymentGenerationServiceTest {
 			siapkanTemplate(PaymentCategory.SEMINAR_PROPOSAL, AcademicTerm.GASAL, 1);
 
 			PaymentPlan plan = service.generate(
-					mahasiswa(DiscountTier.KERJASAMA), PaymentCategory.SEMINAR_PROPOSAL,
+					mahasiswa("KERJASAMA"), PaymentCategory.SEMINAR_PROPOSAL,
 					TAHUN, AcademicTerm.GASAL);
 
 			assertThat(plan.getTotalAmount()).isEqualByComparingTo("5000000");
@@ -279,7 +278,7 @@ class PaymentGenerationServiceTest {
 		@DisplayName("Ujian Kelayakan ditolak bila Seminar Proposal belum pernah ditagih")
 		void tahapSebelumnyaBelumAda() {
 			assertThatThrownBy(() -> service.generate(
-					mahasiswa(DiscountTier.NON_ALUMNI), PaymentCategory.UJIAN_KELAYAKAN,
+					mahasiswa("NON_ALUMNI"), PaymentCategory.UJIAN_KELAYAKAN,
 					TAHUN, AcademicTerm.GASAL))
 					.isInstanceOf(BusinessRuleException.class)
 					.hasMessageContaining("Seminar Proposal harus lunas dulu");
@@ -305,7 +304,7 @@ class PaymentGenerationServiceTest {
 					anyLong(), any(), any())).thenReturn(Optional.of(belumLunas));
 
 			assertThatThrownBy(() -> service.generate(
-					mahasiswa(DiscountTier.NON_ALUMNI), PaymentCategory.UJIAN_KELAYAKAN,
+					mahasiswa("NON_ALUMNI"), PaymentCategory.UJIAN_KELAYAKAN,
 					TAHUN, AcademicTerm.GASAL))
 					.isInstanceOf(BusinessRuleException.class)
 					.hasMessageContaining("belum lunas");
@@ -333,7 +332,7 @@ class PaymentGenerationServiceTest {
 			siapkanTemplate(PaymentCategory.UJIAN_KELAYAKAN, AcademicTerm.GASAL, 1);
 
 			PaymentPlan plan = service.generate(
-					mahasiswa(DiscountTier.NON_ALUMNI), PaymentCategory.UJIAN_KELAYAKAN,
+					mahasiswa("NON_ALUMNI"), PaymentCategory.UJIAN_KELAYAKAN,
 					TAHUN, AcademicTerm.GASAL);
 
 			assertThat(plan.getTotalAmount()).isEqualByComparingTo("5000000");
@@ -346,7 +345,7 @@ class PaymentGenerationServiceTest {
 			siapkanTemplate(PaymentCategory.SEMINAR_PROPOSAL, AcademicTerm.GASAL, 1);
 
 			PaymentPlan plan = service.generate(
-					mahasiswa(DiscountTier.NON_ALUMNI), PaymentCategory.SEMINAR_PROPOSAL,
+					mahasiswa("NON_ALUMNI"), PaymentCategory.SEMINAR_PROPOSAL,
 					TAHUN, AcademicTerm.GASAL);
 
 			assertThat(plan.getInstallments()).hasSize(1);

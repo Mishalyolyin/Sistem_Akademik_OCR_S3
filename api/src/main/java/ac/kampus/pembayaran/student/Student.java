@@ -56,10 +56,15 @@ public class Student {
 	@JoinColumn(name = "study_class_id")
 	private StudyClass studyClass;
 
-	@Enumerated(EnumType.STRING)
-	@JdbcTypeCode(SqlTypes.NAMED_ENUM)
-	@Column(name = "discount_tier", nullable = false, columnDefinition = "discount_tier")
-	private DiscountTier discountTier;
+	/**
+	 * Kode golongan potongan, menunjuk ke {@code discount_tier_rates.tier}.
+	 *
+	 * <p>Bukan enum Java: golongan bisa ditambah admin tanpa deploy ulang, jadi
+	 * daftarnya tidak bisa dikunci saat kompilasi. Kunci asing di database yang
+	 * menjaga nilainya tetap sah.
+	 */
+	@Column(name = "discount_tier", nullable = false, length = 40)
+	private String discountTier;
 
 	@Enumerated(EnumType.STRING)
 	@JdbcTypeCode(SqlTypes.NAMED_ENUM)

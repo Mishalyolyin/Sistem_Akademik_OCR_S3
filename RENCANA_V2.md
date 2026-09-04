@@ -196,7 +196,6 @@ Tiga modul terpisah: `web/` (Next.js), `api/` (Spring Boot), `ocr/` (FastAPI).
 | Enum | Nilai |
 |---|---|
 | `payment_category` | `PENDAFTARAN`, `UKT`, `SEMINAR_PROPOSAL`, `UJIAN_KELAYAKAN`, `UJIAN_TERTUTUP`, `UJIAN_TERBUKA` |
-| `discount_tier` | `NON_ALUMNI`, `KERABAT_ALUMNI`, `ALUMNI`, `ALUMNI_PASUTRI`, `KERJASAMA` |
 | `term` | `GASAL`, `GENAP` |
 | `installment_status` | `UNPAID`, `PARTIAL`, `PAID`, `OVERDUE` |
 | `payment_status` | `PENDING`, `NEEDS_REVIEW`, `AUTO_VERIFIED`, `VERIFIED`, `REJECTED`, `FAILED` |
@@ -220,9 +219,15 @@ kelas lewat menu Kelas. Tidak ada daftar kelas yang di-hardcode di kode manapun.
 ### Potongan
 
 ```
-students.discount_tier   -- sumber kebenaran, per mahasiswa
-discount_tiers(tier, percent)  -- persentase, bisa diubah admin
+discount_tier_rates(tier, label, percent, active, sort_order)  -- daftar golongan
+students.discount_tier  -- kode golongan mahasiswa, kunci asing ke tabel di atas
 ```
+
+**Golongan adalah data, bukan tipe enum.** Sempat dibuat sebagai enum native PostgreSQL berisi
+lima nilai tetap, tapi itu membuat penambahan golongan — keputusan bagian keuangan — jadi
+pekerjaan pengembang: ubah tipe di database, ubah enum di Java, deploy ulang. Migrasi V8
+mengubahnya jadi kode teks dengan kunci asing; golongan lama dinonaktifkan lewat `active`, tidak
+dihapus, supaya mahasiswa dan tagihan yang memakainya tetap bisa dibaca.
 
 Mahasiswa yang dimasukkan ke kelas kerjasama **default** ke tier `KERJASAMA` (40%), tapi tier
 tetap disimpan per mahasiswa supaya pengecualian tetap mungkin tanpa memindahkan kelas.

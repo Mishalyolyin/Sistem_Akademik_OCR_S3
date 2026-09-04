@@ -44,11 +44,26 @@ class StudentControllerTest extends ControllerTestSupport {
 	@Test
 	@DisplayName("golongan yang tidak dikenal ditolak 400 beserta daftar pilihannya")
 	void golonganTidakDikenal() throws Exception {
+		// Golongan bisa ditambah admin, jadi daftarnya tidak lagi tetap di kode
+		// dan pemeriksaannya pindah dari lapisan HTTP ke service. Yang penting
+		// pesannya tetap menyebut pilihan yang sah.
+		when(service.changeDiscountTier(anyLong(), any())).thenThrow(new BusinessRuleException(
+				"Golongan potongan \"SULTAN\" tidak dikenal. Pilihan: NON_ALUMNI, KERJASAMA."));
+
 		mockMvc.perform(sebagaiAdmin(patch("/students/1/discount-tier"))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(json(Map.of("discountTier", "SULTAN"))))
-				.andExpect(status().isBadRequest())
+				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.detail", containsString("KERJASAMA")));
+	}
+
+	@Test
+	@DisplayName("golongan kosong ditolak 400 sebelum menyentuh service")
+	void golonganKosongDitolakDiPintu() throws Exception {
+		mockMvc.perform(sebagaiAdmin(patch("/students/1/discount-tier"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("discountTier", "   "))))
+				.andExpect(status().isBadRequest());
 
 		verify(service, never()).changeDiscountTier(anyLong(), any());
 	}

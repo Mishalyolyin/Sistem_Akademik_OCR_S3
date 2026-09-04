@@ -14,12 +14,13 @@ export type PaymentCategory =
   | "UJIAN_TERTUTUP"
   | "UJIAN_TERBUKA";
 
-export type DiscountTier =
-  | "NON_ALUMNI"
-  | "KERABAT_ALUMNI"
-  | "ALUMNI"
-  | "ALUMNI_PASUTRI"
-  | "KERJASAMA";
+/**
+ * Kode golongan potongan, misalnya "ALUMNI".
+ *
+ * Sengaja bukan union tetap: golongan bisa ditambah admin tanpa deploy ulang,
+ * jadi daftarnya datang dari API lewat {@link useGolongan}, bukan dari kode.
+ */
+export type DiscountTier = string;
 
 export const kategoriLabel: Record<PaymentCategory, string> = {
   PENDAFTARAN: "Pendaftaran",
@@ -43,30 +44,18 @@ export const tarifDasar: Record<PaymentCategory, number> = {
 export const JUMLAH_SEMESTER_UKT = 6;
 export const JUMLAH_CICILAN_UKT = 5;
 
-/** Potongan hanya berlaku untuk UKT. Pendaftaran dan biaya ujian tetap penuh. */
-export const potongan: Record<
-  DiscountTier,
-  { label: string; persen: number }
-> = {
-  NON_ALUMNI: { label: "Non alumni", persen: 0 },
-  KERABAT_ALUMNI: { label: "Kerabat alumni", persen: 20 },
-  ALUMNI: { label: "Alumni", persen: 25 },
-  ALUMNI_PASUTRI: { label: "Alumni + pasutri", persen: 35 },
-  KERJASAMA: { label: "Kerjasama", persen: 40 },
-};
-
-/** UKT satu semester setelah potongan. */
-export function uktPerSemester(tier: DiscountTier): number {
-  return Math.round(tarifDasar.UKT * (1 - potongan[tier].persen / 100));
+/** UKT satu semester setelah potongan. Potongan hanya berlaku untuk UKT. */
+export function uktPerSemester(persen: number): number {
+  return Math.round(tarifDasar.UKT * (1 - persen / 100));
 }
 
 /** Nominal satu cicilan UKT. */
-export function uktPerCicilan(tier: DiscountTier): number {
-  return Math.floor(uktPerSemester(tier) / JUMLAH_CICILAN_UKT);
+export function uktPerCicilan(persen: number): number {
+  return Math.floor(uktPerSemester(persen) / JUMLAH_CICILAN_UKT);
 }
 
 /** Total seluruh biaya studi untuk satu tingkat potongan. */
-export function totalBiayaStudi(tier: DiscountTier): number {
+export function totalBiayaStudi(persen: number): number {
   const biayaUjian =
     tarifDasar.SEMINAR_PROPOSAL +
     tarifDasar.UJIAN_KELAYAKAN +
@@ -75,7 +64,7 @@ export function totalBiayaStudi(tier: DiscountTier): number {
 
   return (
     tarifDasar.PENDAFTARAN +
-    uktPerSemester(tier) * JUMLAH_SEMESTER_UKT +
+    uktPerSemester(persen) * JUMLAH_SEMESTER_UKT +
     biayaUjian
   );
 }
