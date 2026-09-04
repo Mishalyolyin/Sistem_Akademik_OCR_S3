@@ -5,6 +5,9 @@ import ac.kampus.pembayaran.common.BusinessRuleException;
 import ac.kampus.pembayaran.common.NotFoundException;
 import ac.kampus.pembayaran.studyclass.StudyClass;
 import ac.kampus.pembayaran.studyclass.StudyClassRepository;
+import ac.kampus.pembayaran.adjustment.AdjustmentRepository;
+import ac.kampus.pembayaran.billing.PaymentPlanRepository;
+import ac.kampus.pembayaran.payment.PaymentRepository;
 import ac.kampus.pembayaran.tuition.DiscountTierRate;
 import ac.kampus.pembayaran.tuition.DiscountTierRateRepository;
 import ac.kampus.pembayaran.user.User;
@@ -17,6 +20,9 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import java.time.Instant;
 
@@ -31,6 +37,9 @@ public class StudentService {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final DiscountTierRateRepository tierRepository;
+	private final PaymentPlanRepository planRepository;
+	private final PaymentRepository paymentRepository;
+	private final AdjustmentRepository adjustmentRepository;
 
 	@Transactional(readOnly = true)
 	public Page<Student> search(
@@ -149,8 +158,86 @@ public class StudentService {
 		return tierLockPolicy.hasUploadedProof(student.getId());
 	}
 
+	/**
+	 * Menghapus mahasiswa yang belum punya riwayat keuangan apa pun.
+	 *
+	 * <p>Penjagaan di bawah bukan formalitas: {@code payment_plans},
+	 * {@code payments}, dan {@code adjustments} semuanya
+	 * {@code ON DELETE CASCADE} ke mahasiswa. Tanpa penjagaan ini, menghapus satu
+	 * mahasiswa ikut menghapus seluruh tagihan, pembayaran yang sudah
+	 * diverifikasi, dan jejak audit penyesuaiannya — diam-diam, dalam satu
+	 * perintah, tanpa satu pun galat.
+	 *
+	 * <p>Jadi penghapusan hanya untuk salah entri saat import. Mahasiswa yang
+	 * sudah berjalan cukup dinonaktifkan.
+	 */
 	@Transactional
 	public void delete(Long id) {
-		studentRepository.delete(get(id));
+		Student student = get(id);
+		String penghalang = penghalangPenghapusan(student.getId());
+		if (penghalang != null) {
+			throw new BusinessRuleException(
+					("Mahasiswa %s sudah punya %s, jadi tidak bisa dihapus — riwayat uangnya "
+							+ "akan ikut terhapus. Nonaktifkan saja lewat Ubah data.")
+							.formatted(student.getName(), penghalang));
+		}
+
+		User akun = student.getUser();
+		studentRepository.delete(student);
+
+		// Akun tanpa data mahasiswa masih bisa masuk, tapi tiap halaman portal
+		// menjawab "tidak terhubung ke data mahasiswa". Ikut dihapus supaya tidak
+		// ada pintu masuk yang menuju ke mana-mana.
+		if (akun != null) {
+			userRepository.delete(akun);
+		}
+	}
+
+	/** Hasil satu baris pada penghapusan massal. */
+	public record HasilHapus(Long id, String nim, String nama, boolean berhasil, String alasan) {
+	}
+
+	/**
+	 * Penghapusan massal, dilaporkan per baris.
+	 *
+	 * <p>Satu mahasiswa yang ditolak tidak boleh membatalkan penghapusan yang
+	 * lain — kebiasaan yang sama dengan import Excel, karena keduanya menangani
+	 * sekumpulan baris yang nasibnya berdiri sendiri-sendiri.
+	 */
+	@Transactional
+	public List<HasilHapus> deleteMassal(List<Long> ids) {
+		List<HasilHapus> hasil = new ArrayList<>();
+
+		for (Long id : ids.stream().distinct().toList()) {
+			Student student = studentRepository.findWithClassById(id).orElse(null);
+			if (student == null) {
+				hasil.add(new HasilHapus(id, null, null, false, "Mahasiswa tidak ditemukan."));
+				continue;
+			}
+
+			String penghalang = penghalangPenghapusan(id);
+			if (penghalang != null) {
+				hasil.add(new HasilHapus(id, student.getNim(), student.getName(), false,
+						"Sudah punya %s.".formatted(penghalang)));
+				continue;
+			}
+
+			User akun = student.getUser();
+			studentRepository.delete(student);
+			if (akun != null) {
+				userRepository.delete(akun);
+			}
+			hasil.add(new HasilHapus(id, student.getNim(), student.getName(), true, null));
+		}
+
+		return hasil;
+	}
+
+	/** Sebutan riwayat yang menghalangi penghapusan, atau null bila aman dihapus. */
+	private String penghalangPenghapusan(Long studentId) {
+		if (paymentRepository.existsByStudentId(studentId)) return "bukti pembayaran";
+		if (planRepository.existsByStudentId(studentId)) return "tagihan";
+		if (adjustmentRepository.existsByStudentId(studentId)) return "penyesuaian saldo";
+		return null;
 	}
 }

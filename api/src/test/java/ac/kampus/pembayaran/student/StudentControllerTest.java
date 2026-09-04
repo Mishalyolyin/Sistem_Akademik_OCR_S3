@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.containsString;
@@ -184,5 +185,48 @@ class StudentControllerTest extends ControllerTestSupport {
 	void mahasiswaTidakBolehMelihatDaftar() throws Exception {
 		mockMvc.perform(sebagaiMahasiswa(get("/students")))
 				.andExpect(status().isForbidden());
+	}
+
+	// --- Hapus massal ---
+
+	@Test
+	@DisplayName("hapus massal melaporkan jumlah berhasil dan ditolak beserta rinciannya")
+	void hapusMassal() throws Exception {
+		when(service.deleteMassal(List.of(1L, 2L))).thenReturn(List.of(
+				new StudentService.HasilHapus(1L, "2612600001", "Uji Satu", true, null),
+				new StudentService.HasilHapus(2L, "2612600002", "Uji Dua", false,
+						"Sudah punya bukti pembayaran.")));
+
+		mockMvc.perform(sebagaiAdmin(post("/students/hapus-massal"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("ids", List.of(1, 2)))))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.diminta").value(2))
+				.andExpect(jsonPath("$.berhasil").value(1))
+				.andExpect(jsonPath("$.ditolak").value(1))
+				.andExpect(jsonPath("$.rincian[1].alasan",
+						containsString("bukti pembayaran")));
+	}
+
+	@Test
+	@DisplayName("daftar kosong ditolak 400 sebelum menyentuh service")
+	void hapusMassalTanpaPilihan() throws Exception {
+		mockMvc.perform(sebagaiAdmin(post("/students/hapus-massal"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("ids", List.of()))))
+				.andExpect(status().isBadRequest());
+
+		verify(service, never()).deleteMassal(any());
+	}
+
+	@Test
+	@DisplayName("mahasiswa tidak boleh menghapus siapa pun")
+	void hapusMassalDitolakUntukMahasiswa() throws Exception {
+		mockMvc.perform(sebagaiMahasiswa(post("/students/hapus-massal"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("ids", List.of(1)))))
+				.andExpect(status().isForbidden());
+
+		verify(service, never()).deleteMassal(any());
 	}
 }

@@ -18,6 +18,9 @@ public interface PaymentPlanRepository extends JpaRepository<PaymentPlan, Long> 
 	@EntityGraph(attributePaths = "installments")
 	List<PaymentPlan> findByStudentIdOrderByCategoryAscSemesterNumberAsc(Long studentId);
 
+	/** Dipakai sebelum menghapus mahasiswa. */
+	boolean existsByStudentId(Long studentId);
+
 	boolean existsByStudentIdAndCategoryAndAcademicYearAndTermAndStatusNot(
 			Long studentId, PaymentCategory category, String academicYear,
 			AcademicTerm term, PlanStatus status);

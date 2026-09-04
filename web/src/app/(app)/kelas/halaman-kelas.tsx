@@ -5,7 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Handshake, Plus, Trash2 } from "lucide-react";
+import { Ban, Handshake, Loader2, Plus, Trash2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -36,6 +36,7 @@ import {
   useClasses,
   useCreateClass,
   useDeleteClass,
+  useUpdateClass,
   type StudyClass,
 } from "@/features/kelas/api";
 import { ApiError } from "@/lib/api";
@@ -87,7 +88,8 @@ export function HalamanKelas() {
 }
 
 function TabelKelas({ data }: { data: StudyClass[] }) {
-  const hapus = useDeleteClass();
+  const ubah = useUpdateClass();
+  const [dihapus, setDihapus] = useState<StudyClass | null>(null);
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-card">
@@ -130,32 +132,126 @@ function TabelKelas({ data }: { data: StudyClass[] }) {
                 </span>
               </TableCell>
               <TableCell>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Hapus ${kelas.displayName}`}
-                  disabled={hapus.isPending}
-                  onClick={() =>
-                    hapus.mutate(kelas.id, {
-                      onSuccess: () =>
-                        toast.success(`${kelas.displayName} dihapus.`),
-                      onError: (e) =>
-                        toast.error(
-                          e instanceof ApiError
-                            ? e.message
-                            : "Gagal menghapus kelas.",
-                        ),
-                    })
-                  }
-                >
-                  <Trash2 className="text-danger" />
-                </Button>
+                <div className="flex justify-end gap-1">
+                  {/* Menonaktifkan adalah jalur biasanya: kelas yang pernah
+                      dipakai tetap harus bisa dibaca di riwayat mahasiswa. */}
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={
+                      kelas.active
+                        ? `Nonaktifkan ${kelas.displayName}`
+                        : `Aktifkan lagi ${kelas.displayName}`
+                    }
+                    disabled={ubah.isPending}
+                    onClick={() =>
+                      ubah.mutate(
+                        {
+                          id: kelas.id,
+                          name: kelas.name,
+                          academicYear: kelas.academicYear,
+                          kerjasama: kelas.kerjasama,
+                          active: !kelas.active,
+                        },
+                        {
+                          onSuccess: (hasil) =>
+                            toast.success(
+                              hasil.active
+                                ? `${hasil.displayName} diaktifkan lagi.`
+                                : `${hasil.displayName} dinonaktifkan.`,
+                            ),
+                          onError: (e) =>
+                            toast.error(
+                              e instanceof ApiError
+                                ? e.message
+                                : "Gagal mengubah kelas.",
+                            ),
+                        },
+                      )
+                    }
+                  >
+                    {kelas.active ? <Ban /> : <Undo2 />}
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Hapus ${kelas.displayName}`}
+                    onClick={() => setDihapus(kelas)}
+                  >
+                    <Trash2 className="text-danger" />
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      {dihapus && (
+        <DialogHapusKelas kelas={dihapus} onClose={() => setDihapus(null)} />
+      )}
     </div>
+  );
+}
+
+/**
+ * Penghapusan kelas dikonfirmasi dulu karena tidak bisa dibatalkan, sementara
+ * menonaktifkan bisa. Kelas yang masih berisi mahasiswa ditolak backend, dan
+ * alasannya ditampilkan apa adanya supaya admin tahu harus memindahkan siapa.
+ */
+function DialogHapusKelas({
+  kelas,
+  onClose,
+}: {
+  kelas: StudyClass;
+  onClose: () => void;
+}) {
+  const hapus = useDeleteClass();
+
+  return (
+    <Dialog open onOpenChange={(next) => (next ? undefined : onClose())}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Hapus kelas?</DialogTitle>
+          <DialogDescription>{kelas.displayName}</DialogDescription>
+        </DialogHeader>
+
+        <p className="rounded-lg border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
+          Kelas yang pernah dipakai sebaiknya <strong>dinonaktifkan</strong>
+          {" "}saja — namanya tetap terbaca di riwayat mahasiswa. Menghapus hanya
+          cocok untuk kelas yang salah dibuat.
+        </p>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Batal
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={hapus.isPending}
+            onClick={() =>
+              hapus.mutate(kelas.id, {
+                onSuccess: () => {
+                  toast.success(`${kelas.displayName} dihapus.`);
+                  onClose();
+                },
+                onError: (e) =>
+                  toast.error(
+                    e instanceof ApiError
+                      ? e.message
+                      : "Gagal menghapus kelas.",
+                  ),
+              })
+            }
+          >
+            {hapus.isPending && <Loader2 className="animate-spin" />}
+            Hapus
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -3,17 +3,17 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 4 September 2026, 22.10
+Terakhir diperbarui: 4 September 2026, 23.30
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 4 September 2026 pukul 22.10 di mesin pengembangan, semuanya lolos:
+Dijalankan 4 September 2026 pukul 23.30 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 202 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 211 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
@@ -132,7 +132,7 @@ masih dibutuhkan di sistem S3.
 
 ### Test otomatis
 
-Sudah ada **202 test** dan semuanya lolos:
+Sudah ada **211 test** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
@@ -149,8 +149,8 @@ Sudah ada **202 test** dan semuanya lolos:
 - `AdjustmentServiceTest` — 17 test aturan penyesuaian saldo dan cicilan
 - `InitialAdminSeederTest` — 4 test pembuatan admin pertama
 - `PasswordServiceTest` — 6 test aturan penggantian kata sandi
-- `StudentServiceTest` — 8 test pengembalian kata sandi mahasiswa ke NIM dan
-  pemeriksaan golongan saat mahasiswa dipindah
+- `StudentServiceTest` — 14 test pengembalian kata sandi mahasiswa ke NIM,
+  pemeriksaan golongan saat mahasiswa dipindah, dan penjagaan penghapusan
 - `StudentImportServiceTest` — 5 test pemeriksaan golongan pada berkas import
 
 **Lapisan controller**, memakai rantai filter keamanan yang sesungguhnya —
@@ -163,7 +163,7 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 - `AdjustmentControllerTest` — 11 test
 - `PaymentControllerTest` — 10 test
 - `BillingControllerTest` — 9 test
-- `StudentControllerTest` — 13 test
+- `StudentControllerTest` — 16 test
 - `StudentSelfControllerTest` — 9 test batas wewenang portal
 - `StudentDocumentControllerTest` — 10 test pembukaan dokumen wajib
 - `TuitionControllerTest` — 8 test pengelolaan golongan potongan
@@ -191,6 +191,51 @@ Yang belum:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### Mahasiswa dan kelas akhirnya bisa dikelola dari layar
+
+`useUpdateStudent`, `useDeleteStudent`, dan `useUpdateClass` sudah ditulis
+lengkap sejak lama — dan tidak pernah dipanggil dari mana pun. Akibatnya satu
+huruf yang salah pada nama saat import hanya bisa dibetulkan lewat basis data
+langsung, dan kelas cuma bisa dihapus permanen, bukan dinonaktifkan seperti yang
+direncanakan.
+
+**Temuan yang menghentikan pekerjaan sejenak:** `payment_plans`, `payments`, dan
+`adjustments` semuanya `ON DELETE CASCADE` ke `students`. Artinya `DELETE
+/students/{id}` yang sudah ada sejak awal akan menghapus seluruh tagihan,
+pembayaran yang sudah diverifikasi beserta kuitansinya, dan jejak audit
+penyesuaian — dalam satu perintah, tanpa satu pun galat. Memasang tombol hapus
+di layar tanpa membereskan ini sama saja menyediakan tombol penghapus riwayat
+keuangan.
+
+- Penghapusan kini ditolak bila mahasiswanya sudah punya bukti bayar, tagihan,
+  atau penyesuaian saldo, dan penolakannya menunjuk jalan keluar yang benar:
+  nonaktifkan saja
+- Akun penggunanya ikut terhapus. Akun tanpa data mahasiswa masih bisa masuk,
+  tapi tiap halaman portal menjawab "tidak terhubung ke data mahasiswa"
+- Hapus massal untuk membereskan salah import, dilaporkan **per baris** seperti
+  import Excel: satu mahasiswa yang ditolak tidak membatalkan yang lain
+- Menghapus kelas yang masih berisi mahasiswa dulunya dijawab **500** — kunci
+  asingnya tidak punya `ON DELETE`, jadi penolakan database jatuh ke penangkap
+  serba-guna. Sekarang 409 dengan jumlah penghuninya disebut
+
+**Di UI:** dialog Ubah data mahasiswa (nama, telepon, kelas, aktif) di halaman
+detail, tombol hapus dengan konfirmasi, kolom pilih beserta hapus massal di
+tabel mahasiswa, dan di halaman Kelas tombol nonaktifkan/aktifkan sebagai aksi
+utama — hapus permanen dipindah ke belakang konfirmasi.
+
+Kolom pilih ditambahkan ke tabel biasa, **bukan** dengan memindahkannya ke
+TanStack Table seperti rencana awal. Yang dibutuhkan hanya aksi massal; menyeret
+seluruh tabel ke pustaka lain hanya untuk itu menambah satu peringatan lint yang
+tidak bisa diperbaiki, tanpa memberi apa pun yang dipakai.
+
+**Diuji langsung terhadap sistem yang hidup:** hapus mahasiswa yang punya bukti
+bayar ditolak 409 → hapus kelas berisi 1 mahasiswa ditolak 409 → hapus massal
+tiga id (satu bersih, satu punya bukti bayar, satu tidak ada) menjawab 1
+berhasil dan 2 ditolak beserta alasan masing-masing → baris mahasiswa dan akun
+penggunanya benar-benar hilang, sementara bukti bayar mahasiswa lain tetap utuh
+→ ubah nama dan telepon tersimpan → kelas dinonaktifkan lalu diaktifkan lagi.
+Data ujinya dikembalikan seperti semula.
 
 ### Dokumen wajib akhirnya bisa dibuka
 

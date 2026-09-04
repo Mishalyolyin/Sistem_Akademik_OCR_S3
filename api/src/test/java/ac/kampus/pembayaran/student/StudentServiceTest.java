@@ -2,6 +2,9 @@ package ac.kampus.pembayaran.student;
 
 import ac.kampus.pembayaran.common.BusinessRuleException;
 import ac.kampus.pembayaran.common.NotFoundException;
+import ac.kampus.pembayaran.adjustment.AdjustmentRepository;
+import ac.kampus.pembayaran.billing.PaymentPlanRepository;
+import ac.kampus.pembayaran.payment.PaymentRepository;
 import ac.kampus.pembayaran.studyclass.StudyClassRepository;
 import ac.kampus.pembayaran.tuition.DiscountTierRate;
 import ac.kampus.pembayaran.tuition.DiscountTierRateRepository;
@@ -38,6 +41,11 @@ import static org.mockito.Mockito.when;
  * saat kompilasi maupun oleh pengurai JSON. Kalau service membiarkannya lewat,
  * yang tersisa hanya kunci asing di database — dan mahasiswanya sudah telanjur
  * disimpan dengan golongan yang tarifnya tidak bisa dihitung.
+ *
+ * <p>Penghapusan diuji paling ketat di sini karena taruhannya paling besar:
+ * tagihan, pembayaran, dan penyesuaian semuanya {@code ON DELETE CASCADE} ke
+ * mahasiswa, jadi satu penghapusan yang lolos penjagaan akan menghapus riwayat
+ * uang sekaligus, tanpa galat dan tanpa jejak.
  */
 class StudentServiceTest {
 
@@ -46,6 +54,9 @@ class StudentServiceTest {
 	private StudentRepository studentRepository;
 	private UserRepository userRepository;
 	private DiscountTierRateRepository tierRepository;
+	private PaymentPlanRepository planRepository;
+	private PaymentRepository paymentRepository;
+	private AdjustmentRepository adjustmentRepository;
 	private PasswordEncoder encoder;
 	private StudentService service;
 
@@ -59,10 +70,14 @@ class StudentServiceTest {
 		StudyClassRepository studyClassRepository = mock(StudyClassRepository.class);
 		StudentTierLockPolicy tierLockPolicy = mock(StudentTierLockPolicy.class);
 		tierRepository = mock(DiscountTierRateRepository.class);
+		planRepository = mock(PaymentPlanRepository.class);
+		paymentRepository = mock(PaymentRepository.class);
+		adjustmentRepository = mock(AdjustmentRepository.class);
 		encoder = new BCryptPasswordEncoder(4);
 
 		service = new StudentService(studentRepository, studyClassRepository,
-				tierLockPolicy, userRepository, encoder, tierRepository);
+				tierLockPolicy, userRepository, encoder, tierRepository,
+				planRepository, paymentRepository, adjustmentRepository);
 
 		user = User.builder()
 				.id(5L).name("Uji Coba").email("uji@kampus.ac.id")
@@ -180,5 +195,88 @@ class StudentServiceTest {
 
 		assertThat(student.getDiscountTier()).isEqualTo("NON_ALUMNI");
 		verify(studentRepository, never()).save(any());
+	}
+
+	// --- Penghapusan ---
+
+	@Test
+	@DisplayName("mahasiswa tanpa riwayat keuangan boleh dihapus, akunnya ikut")
+	void hapusYangMasihBersih() {
+		service.delete(1L);
+
+		verify(studentRepository).delete(student);
+		// Akun yang tertinggal masih bisa masuk tapi tidak menuju ke mana-mana.
+		verify(userRepository).delete(user);
+	}
+
+	@Test
+	@DisplayName("mahasiswa yang punya bukti pembayaran tidak bisa dihapus")
+	void hapusDitolakKarenaPembayaran() {
+		when(paymentRepository.existsByStudentId(1L)).thenReturn(true);
+
+		assertThatThrownBy(() -> service.delete(1L))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessageContaining("bukti pembayaran")
+				.hasMessageContaining("Nonaktifkan");
+
+		verify(studentRepository, never()).delete(any(Student.class));
+		verify(userRepository, never()).delete(any(User.class));
+	}
+
+	@Test
+	@DisplayName("tagihan saja sudah cukup untuk menahan penghapusan")
+	void hapusDitolakKarenaTagihan() {
+		when(planRepository.existsByStudentId(1L)).thenReturn(true);
+
+		assertThatThrownBy(() -> service.delete(1L))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessageContaining("tagihan");
+
+		verify(studentRepository, never()).delete(any(Student.class));
+	}
+
+	@Test
+	@DisplayName("penyesuaian saldo juga menahan, karena jejak auditnya ikut terhapus")
+	void hapusDitolakKarenaPenyesuaian() {
+		when(adjustmentRepository.existsByStudentId(1L)).thenReturn(true);
+
+		assertThatThrownBy(() -> service.delete(1L))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessageContaining("penyesuaian saldo");
+
+		verify(studentRepository, never()).delete(any(Student.class));
+	}
+
+	@Test
+	@DisplayName("hapus massal melaporkan per baris; yang ditolak tidak membatalkan yang lain")
+	void hapusMassalPerBaris() {
+		Student kedua = Student.builder()
+				.id(2L).nim("2612600002").name("Uji Dua")
+				.discountTier("NON_ALUMNI").walletBalance(BigDecimal.ZERO).active(true)
+				.build();
+		when(studentRepository.findWithClassById(2L)).thenReturn(Optional.of(kedua));
+		when(paymentRepository.existsByStudentId(2L)).thenReturn(true);
+		when(studentRepository.findWithClassById(77L)).thenReturn(Optional.empty());
+
+		var hasil = service.deleteMassal(List.of(1L, 2L, 77L));
+
+		assertThat(hasil).hasSize(3);
+		assertThat(hasil.get(0).berhasil()).isTrue();
+		assertThat(hasil.get(1).berhasil()).isFalse();
+		assertThat(hasil.get(1).alasan()).contains("bukti pembayaran");
+		assertThat(hasil.get(2).alasan()).contains("tidak ditemukan");
+
+		// Yang bersih tetap terhapus walau ada baris lain yang gagal.
+		verify(studentRepository).delete(student);
+		verify(studentRepository, never()).delete(kedua);
+	}
+
+	@Test
+	@DisplayName("id yang disebut dua kali hanya diproses sekali")
+	void hapusMassalTidakGanda() {
+		var hasil = service.deleteMassal(List.of(1L, 1L));
+
+		assertThat(hasil).hasSize(1);
+		verify(studentRepository).delete(student);
 	}
 }

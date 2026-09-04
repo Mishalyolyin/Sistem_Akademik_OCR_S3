@@ -2,7 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, KeyRound, PencilLine, Plus, Scale, Wallet } from "lucide-react";
+import {
+  ArrowLeft,
+  KeyRound,
+  PencilLine,
+  Plus,
+  Scale,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -33,6 +41,8 @@ import { DialogBuatTagihan } from "@/features/tagihan/dialog-buat-tagihan";
 import { DialogUbahNominal } from "@/features/tagihan/dialog-ubah-nominal";
 import { DialogPenyesuaian } from "@/features/penyesuaian/dialog-penyesuaian";
 import { DialogResetSandi } from "@/features/mahasiswa/dialog-reset-sandi";
+import { DialogUbahMahasiswa } from "@/features/mahasiswa/dialog-ubah-mahasiswa";
+import { DialogHapusMahasiswa } from "@/features/mahasiswa/dialog-hapus-mahasiswa";
 import { KartuDokumen } from "@/features/mahasiswa/kartu-dokumen";
 import { ApiError } from "@/lib/api";
 import { formatRupiah, formatTanggal } from "@/lib/format";
@@ -45,6 +55,8 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
   const [buatTerbuka, setBuatTerbuka] = useState(false);
   const [penyesuaianTerbuka, setPenyesuaianTerbuka] = useState(false);
   const [resetSandiTerbuka, setResetSandiTerbuka] = useState(false);
+  const [ubahTerbuka, setUbahTerbuka] = useState(false);
+  const [hapusTerbuka, setHapusTerbuka] = useState(false);
   const [cicilanDiubah, setCicilanDiubah] = useState<Installment | null>(null);
 
   if (mahasiswa.isPending) {
@@ -101,6 +113,14 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
         title={mhs.name}
         description={`${mhs.nim} · ${mhs.className ?? "Tanpa kelas"} · ${tier.label}${tier.persen > 0 ? ` (−${tier.persen}%)` : ""}`}
       >
+        <Button variant="destructive" onClick={() => setHapusTerbuka(true)}>
+          <Trash2 />
+          Hapus
+        </Button>
+        <Button variant="outline" onClick={() => setUbahTerbuka(true)}>
+          <PencilLine />
+          Ubah data
+        </Button>
         <Button variant="outline" onClick={() => setResetSandiTerbuka(true)}>
           <KeyRound />
           Reset kata sandi
@@ -205,6 +225,21 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
         studentId={studentId}
         walletBalance={mhs.walletBalance}
         plans={plans.data ?? []}
+      />
+
+      <DialogUbahMahasiswa
+        // key: isian dialog berangkat dari data terbaru tiap kali dibuka,
+        // tanpa perlu effect penyetel ulang.
+        key={`ubah-${mhs.name}-${mhs.phone}-${mhs.studyClassId}-${mhs.active}`}
+        open={ubahTerbuka}
+        onOpenChange={setUbahTerbuka}
+        mahasiswa={mhs}
+      />
+
+      <DialogHapusMahasiswa
+        open={hapusTerbuka}
+        onOpenChange={setHapusTerbuka}
+        mahasiswa={mhs}
       />
 
       <DialogResetSandi

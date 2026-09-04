@@ -9,9 +9,11 @@ import {
   FileSpreadsheet,
   Lock,
   Search,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -45,6 +47,7 @@ import {
   useStudents,
   type StudentSummary,
 } from "@/features/mahasiswa/api";
+import { DialogHapusMassal } from "@/features/mahasiswa/dialog-hapus-massal";
 import { useClasses } from "@/features/kelas/api";
 import type { DiscountTier } from "@/features/tarif/konstanta";
 import { useGolongan } from "@/features/tarif/api";
@@ -189,12 +192,75 @@ export function HalamanMahasiswa() {
 function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
   const golongan = useGolongan();
   const ubahTier = useChangeDiscountTier();
+  const [terpilih, setTerpilih] = useState<number[]>([]);
+  const [hapusTerbuka, setHapusTerbuka] = useState(false);
+
+  // Pilihan hanya berlaku untuk baris yang sedang tampil; berpindah halaman
+  // atau menyaring ulang membuat daftar idnya tidak lagi ada di layar.
+  const idHalamanIni = data.map((mhs) => mhs.id);
+  const dipilihDiHalamanIni = terpilih.filter((id) => idHalamanIni.includes(id));
+  const semuaTerpilih =
+    data.length > 0 && dipilihDiHalamanIni.length === data.length;
+
+  const mahasiswaTerpilih = data.filter((mhs) => terpilih.includes(mhs.id));
+
+  function toggleSatu(id: number, pilih: boolean) {
+    setTerpilih((sebelumnya) =>
+      pilih
+        ? [...sebelumnya, id]
+        : sebelumnya.filter((terdaftar) => terdaftar !== id),
+    );
+  }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-card">
+    <div className="flex flex-col gap-3">
+      {dipilihDiHalamanIni.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-2.5">
+          <span className="text-sm">
+            <strong>{dipilihDiHalamanIni.length}</strong> mahasiswa dipilih
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setTerpilih([])}
+            >
+              Batalkan pilihan
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setHapusTerbuka(true)}
+            >
+              <Trash2 />
+              Hapus terpilih
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-x-auto rounded-lg border border-border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className="w-10">
+              <Checkbox
+                checked={semuaTerpilih}
+                aria-label="Pilih semua mahasiswa di halaman ini"
+                onCheckedChange={(checked) =>
+                  setTerpilih((sebelumnya) =>
+                    checked
+                      ? [
+                          ...sebelumnya.filter(
+                            (id) => !idHalamanIni.includes(id),
+                          ),
+                          ...idHalamanIni,
+                        ]
+                      : sebelumnya.filter((id) => !idHalamanIni.includes(id)),
+                  )
+                }
+              />
+            </TableHead>
             <TableHead>Mahasiswa</TableHead>
             <TableHead>Kelas</TableHead>
             <TableHead>Golongan potongan</TableHead>
@@ -206,6 +272,14 @@ function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
         <TableBody>
           {data.map((mhs) => (
             <TableRow key={mhs.id}>
+              <TableCell>
+                <Checkbox
+                  checked={terpilih.includes(mhs.id)}
+                  aria-label={`Pilih ${mhs.name}`}
+                  onCheckedChange={(checked) => toggleSatu(mhs.id, !!checked)}
+                />
+              </TableCell>
+
               <TableCell>
                 <Link
                   href={`/mahasiswa/${mhs.id}`}
@@ -309,6 +383,18 @@ function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
           ))}
         </TableBody>
       </Table>
+      </div>
+
+      <DialogHapusMassal
+        open={hapusTerbuka}
+        onOpenChange={setHapusTerbuka}
+        terpilih={mahasiswaTerpilih}
+        onSelesai={(idTerhapus) =>
+          setTerpilih((sebelumnya) =>
+            sebelumnya.filter((id) => !idTerhapus.includes(id)),
+          )
+        }
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -138,6 +139,21 @@ public class StudentController {
 	public record ResetSandiResponse(String kataSandiBaru) {
 	}
 
+	public record HapusMassalRequest(
+			@NotEmpty(message = "Pilih dulu mahasiswa yang mau dihapus.")
+			@Size(max = 200, message = "Maksimal 200 mahasiswa sekali hapus.")
+			List<Long> ids
+	) {
+	}
+
+	public record HapusMassalResponse(
+			int diminta,
+			int berhasil,
+			int ditolak,
+			List<StudentService.HasilHapus> rincian
+	) {
+	}
+
 	@PostMapping("/{id}/reset-kata-sandi")
 	@Operation(summary = "Kembalikan kata sandi mahasiswa ke NIM-nya; sesi lama dicabut")
 	public ResetSandiResponse resetKataSandi(@PathVariable Long id) {
@@ -146,9 +162,23 @@ public class StudentController {
 
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	@Operation(summary = "Hapus mahasiswa")
+	@Operation(summary = "Hapus mahasiswa; ditolak bila sudah punya riwayat keuangan")
 	public void delete(@PathVariable Long id) {
 		service.delete(id);
+	}
+
+	/**
+	 * Hapus beberapa sekaligus, untuk membereskan salah import. Dilaporkan per
+	 * baris: satu mahasiswa yang ditolak tidak membatalkan yang lain.
+	 */
+	@PostMapping("/hapus-massal")
+	@Operation(summary = "Hapus beberapa mahasiswa sekaligus")
+	public HapusMassalResponse hapusMassal(@Valid @RequestBody HapusMassalRequest request) {
+		var rincian = service.deleteMassal(request.ids());
+		int berhasil = (int) rincian.stream().filter(StudentService.HasilHapus::berhasil).count();
+
+		return new HapusMassalResponse(
+				rincian.size(), berhasil, rincian.size() - berhasil, rincian);
 	}
 
 	private StudentSummary toSummary(Student student) {

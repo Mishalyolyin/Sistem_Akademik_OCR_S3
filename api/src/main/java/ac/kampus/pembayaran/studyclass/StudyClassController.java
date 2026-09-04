@@ -31,6 +31,7 @@ import java.util.List;
 public class StudyClassController {
 
 	private final StudyClassRepository repository;
+	private final ac.kampus.pembayaran.student.StudentRepository studentRepository;
 
 	public record ClassRequest(
 			@NotBlank(message = "Nama kelas wajib diisi.")
@@ -123,11 +124,22 @@ public class StudyClassController {
 
 	@DeleteMapping("/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	@Operation(summary = "Hapus kelas")
+	@Operation(summary = "Hapus kelas; ditolak bila masih ada mahasiswa di dalamnya")
 	@Transactional
 	public void delete(@PathVariable Long id) {
 		StudyClass entity = repository.findById(id)
 				.orElseThrow(() -> NotFoundException.of("Kelas", id));
+
+		// Tanpa penjagaan ini, kunci asing di database yang menolak — dan
+		// penolakannya sampai ke admin sebagai 500 tanpa keterangan apa pun.
+		long penghuni = studentRepository.countByStudyClassId(id);
+		if (penghuni > 0) {
+			throw new BusinessRuleException(
+					("Kelas %s masih berisi %d mahasiswa. Pindahkan mereka dulu, atau "
+							+ "nonaktifkan kelasnya saja supaya riwayatnya tetap utuh.")
+							.formatted(entity.displayName(), penghuni));
+		}
+
 		repository.delete(entity);
 	}
 }

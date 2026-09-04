@@ -121,6 +121,45 @@ export function useDeleteStudent() {
   });
 }
 
+export type HasilHapus = {
+  id: number;
+  berhasil: boolean;
+  /**
+   * Ketiganya bisa TIDAK ADA di badan jawaban, bukan sekadar null: backend
+   * menghilangkan field kosong. Baris yang mahasiswanya tidak ditemukan hanya
+   * membawa id dan alasan.
+   */
+  nim?: string;
+  nama?: string;
+  alasan?: string;
+};
+
+export type HapusMassalResponse = {
+  diminta: number;
+  berhasil: number;
+  ditolak: number;
+  rincian: HasilHapus[];
+};
+
+/**
+ * Hapus beberapa mahasiswa sekaligus, untuk membereskan salah import.
+ *
+ * Backend melaporkannya per baris: mahasiswa yang sudah punya riwayat uang
+ * ditolak, dan penolakannya tidak membatalkan penghapusan yang lain.
+ */
+export function useHapusMassalStudents() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ids: number[]) =>
+      apiFetch<HapusMassalResponse>("/students/hapus-massal", {
+        method: "POST",
+        body: { ids },
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
 /**
  * Mengembalikan kata sandi mahasiswa ke NIM-nya. Mahasiswa tidak mengelola
  * kata sandinya sendiri; kalau lupa, admin yang mengembalikannya.

@@ -7,4 +7,7 @@ import java.util.List;
 public interface AdjustmentRepository extends JpaRepository<Adjustment, Long> {
 
 	List<Adjustment> findByStudentIdOrderByCreatedAtDescIdDesc(Long studentId);
+
+	/** Dipakai sebelum menghapus mahasiswa. */
+	boolean existsByStudentId(Long studentId);
 }

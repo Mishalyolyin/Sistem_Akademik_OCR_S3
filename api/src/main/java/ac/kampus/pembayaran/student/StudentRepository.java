@@ -42,6 +42,9 @@ public interface StudentRepository
 	/** Dipakai sebelum menonaktifkan golongan potongan. */
 	long countByDiscountTier(String discountTier);
 
+	/** Dipakai sebelum menghapus kelas. */
+	long countByStudyClassId(Long studyClassId);
+
 	Optional<Student> findByUserId(Long userId);
 
 	/** Mahasiswa yang sedang login, beserta kelas dan akunnya. */
