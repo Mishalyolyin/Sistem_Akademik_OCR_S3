@@ -90,16 +90,6 @@ public class StudentSelfController {
 	) {
 	}
 
-	public record GantiSandiRequest(
-			@NotBlank(message = "Kata sandi lama wajib diisi.")
-			String lama,
-
-			@NotBlank(message = "Kata sandi baru wajib diisi.")
-			@Size(min = 8, message = "Kata sandi baru minimal 8 karakter.")
-			String baru
-	) {
-	}
-
 	public record DaftarTagihanRequest(
 			@NotNull(message = "Kategori wajib dipilih.")
 			PaymentCategory category
@@ -182,13 +172,6 @@ public class StudentSelfController {
 	@Operation(summary = "Simpan alamat, langkah terakhir dokumen wajib")
 	public ProfilResponse simpanAlamat(@Valid @RequestBody AlamatRequest request) {
 		return toProfil(selfService.simpanAlamat(request.alamat(), request.telepon()));
-	}
-
-	@PostMapping("/kata-sandi")
-	@ResponseStatus(HttpStatus.NO_CONTENT)
-	@Operation(summary = "Ganti kata sandi")
-	public void gantiKataSandi(@Valid @RequestBody GantiSandiRequest request) {
-		selfService.gantiKataSandi(request.lama(), request.baru());
 	}
 
 	// --- Tagihan ---

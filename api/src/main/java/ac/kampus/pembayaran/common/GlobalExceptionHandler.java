@@ -10,10 +10,13 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -155,6 +158,28 @@ public class GlobalExceptionHandler {
 		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
 		problem.setTitle("Permintaan tidak valid");
 		problem.setDetail(e.getMessage());
+		return problem;
+	}
+
+	/**
+	 * Alamat yang tidak dikenal, atau metode HTTP yang salah untuk alamat yang
+	 * ada. Keduanya kesalahan pemanggil, bukan kegagalan server — tanpa
+	 * penanganan ini keduanya jatuh ke penangkap serba-guna di bawah dan dijawab
+	 * 500, sekaligus mengotori log dengan ERROR untuk hal yang bukan galat.
+	 */
+	@ExceptionHandler({ NoResourceFoundException.class, NoHandlerFoundException.class })
+	public ProblemDetail handleNoHandler(Exception e) {
+		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
+		problem.setTitle("Tidak ditemukan");
+		problem.setDetail("Alamat yang diminta tidak ada.");
+		return problem;
+	}
+
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	public ProblemDetail handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.METHOD_NOT_ALLOWED);
+		problem.setTitle("Metode tidak didukung");
+		problem.setDetail("Metode %s tidak berlaku untuk alamat ini.".formatted(e.getMethod()));
 		return problem;
 	}
 

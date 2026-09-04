@@ -52,6 +52,19 @@ export const MAHASISWA = {
  */
 const HASH_ADMIN = "$2a$12$1qmfdlxDhAdE21HNTY.oQeHZX4NClr6uSQfYrlmuPU70OSAgaLDu2";
 
+/**
+ * Mahasiswa kedua, dipakai khusus oleh uji reset kata sandi. Uji itu mengubah
+ * kata sandinya di basis data, sementara penyemaian hanya berjalan sekali di
+ * awal — memakai mahasiswa utama akan merusak uji lain yang ikut masuk sebagai
+ * mahasiswa.
+ */
+export const MAHASISWA_RESET = {
+  nim: "2612690002",
+  nama: "Uji Reset Sandi",
+  email: "uji.reset@kampus.ac.id",
+  password: ADMIN.password,
+};
+
 const CONTAINER = process.env.E2E_PG_CONTAINER ?? "pembayaran-postgres";
 const DATABASE = process.env.E2E_PG_DATABASE ?? "pembayaran_e2e";
 
@@ -94,6 +107,8 @@ export default async function globalSetup() {
     DELETE FROM students WHERE nim = '${MAHASISWA.nim}';
     DELETE FROM users WHERE email = '${MAHASISWA.email}';
     DELETE FROM users WHERE email = '${ADMIN_SANDI.email}';
+    DELETE FROM students WHERE nim = '${MAHASISWA_RESET.nim}';
+    DELETE FROM users WHERE email = '${MAHASISWA_RESET.email}';
     DELETE FROM study_classes WHERE name = 'E2E' AND academic_year = '2026/2027';
   `);
 
@@ -123,12 +138,34 @@ export default async function globalSetup() {
       'ijazah.png', 'Jalan Uji Nomor Satu, Bandung', 0, TRUE);
   `);
 
+  psql(`
+    INSERT INTO users (name, email, password_hash, role, active)
+    VALUES ('${MAHASISWA_RESET.nama}', '${MAHASISWA_RESET.email}', '${HASH_ADMIN}',
+            'MAHASISWA', TRUE);
+
+    INSERT INTO students (
+      user_id, nim, name, study_class_id, discount_tier,
+      start_term, start_academic_year, wallet_balance, active)
+    VALUES (
+      (SELECT id FROM users WHERE email = '${MAHASISWA_RESET.email}'),
+      '${MAHASISWA_RESET.nim}', '${MAHASISWA_RESET.nama}',
+      (SELECT id FROM study_classes WHERE name = 'E2E'),
+      'NON_ALUMNI', 'GASAL', '2026/2027', 0, TRUE);
+  `);
+
   const jumlah = psql(
     `SELECT count(*) FROM students WHERE nim = '${MAHASISWA.nim}'`,
   );
   if (jumlah !== "1") {
     throw new Error(`Penyemaian mahasiswa gagal, ditemukan ${jumlah} baris.`);
   }
+}
+
+/** Id mahasiswa kedua, yang dipakai uji reset kata sandi. */
+export function idMahasiswaReset(): number {
+  return Number(
+    psql(`SELECT id FROM students WHERE nim = '${MAHASISWA_RESET.nim}'`),
+  );
 }
 
 /** Id mahasiswa yang disemai, dibaca ulang saat uji membutuhkannya. */

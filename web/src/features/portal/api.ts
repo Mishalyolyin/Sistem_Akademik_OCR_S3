@@ -172,10 +172,3 @@ export function useUnggahBukti() {
     onSuccess: segarkan,
   });
 }
-
-export function useGantiKataSandi() {
-  return useMutation({
-    mutationFn: (body: { lama: string; baru: string }) =>
-      apiFetch<void>("/me/kata-sandi", { method: "POST", body }),
-  });
-}

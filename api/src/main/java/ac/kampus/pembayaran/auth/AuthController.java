@@ -12,6 +12,7 @@ import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -81,9 +82,11 @@ public class AuthController {
 	}
 
 	/**
-	 * Berlaku untuk semua peran. Portal mahasiswa punya jalurnya sendiri karena
-	 * di sana ada aturan tambahan, tapi admin hanya punya yang ini.
+	 * Hanya untuk staf. Mahasiswa sengaja tidak mengelola kata sandinya sendiri:
+	 * kalau lupa, admin mengembalikannya ke NIM lewat
+	 * {@code POST /students/{id}/reset-kata-sandi}.
 	 */
+	@PreAuthorize("hasAnyRole('ADMIN', 'DEVELOPER')")
 	@PostMapping("/kata-sandi")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	@Operation(summary = "Ganti kata sandi sendiri; seluruh sesi lain ikut dicabut")

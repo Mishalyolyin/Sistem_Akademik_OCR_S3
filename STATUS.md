@@ -3,17 +3,17 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 4 September 2026, 02.40
+Terakhir diperbarui: 4 September 2026, 03.20
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 4 September 2026 pukul 02.40 di mesin pengembangan, semuanya lolos:
+Dijalankan 4 September 2026 pukul 03.20 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw clean verify` | ✅ 163 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw clean verify` | ✅ 172 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
 | Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
@@ -131,7 +131,7 @@ masih dibutuhkan di sistem S3.
 
 ### Test otomatis
 
-Sudah ada **163 test** dan semuanya lolos:
+Sudah ada **172 test** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
@@ -147,6 +147,7 @@ Sudah ada **163 test** dan semuanya lolos:
 - `AdjustmentServiceTest` — 17 test aturan penyesuaian saldo dan cicilan
 - `InitialAdminSeederTest` — 4 test pembuatan admin pertama
 - `PasswordServiceTest` — 6 test aturan penggantian kata sandi
+- `StudentServiceTest` — 5 test pengembalian kata sandi mahasiswa ke NIM
 
 **Lapisan controller**, memakai rantai filter keamanan yang sesungguhnya —
 bukan dimatikan seperti kebiasaan pada uji controller, karena justru di sanalah
@@ -177,9 +178,9 @@ Yang belum:
 3. ~~**Python 3.14** dan wheel `opencv-python`.~~ Terjawab: OpenCV 5.0.0 dan
    `pytesseract` terpasang normal di Python 3.14.7, `ocr/main.py` bisa diimpor
    tanpa galat. Tidak perlu Python 3.12 khusus untuk service OCR.
-4. **Kata sandi awal mahasiswa = NIM.** Halaman ganti kata sandi sudah ada dan
-   menolak NIM sebagai kata sandi baru, tapi belum ada pemaksaan ganti saat
-   pertama kali masuk.
+4. ~~**Kata sandi awal mahasiswa = NIM.**~~ Terjawab: mahasiswa memang tidak
+   mengelola kata sandinya sendiri. NIM adalah kata sandinya, dan kalau lupa,
+   admin mengembalikannya lewat tombol di halaman detail mahasiswa.
 
 ---
 
@@ -211,7 +212,6 @@ pernah menerima id mahasiswa dari klien:
 - Gate Pendaftaran: kategori lain terkunci sampai Pendaftaran lunas
 - Unggah bukti bayar sendiri, dengan pemeriksaan kepemilikan cicilan
 - Gambar bukti hanya bisa dibuka pemiliknya
-- Ganti kata sandi, menolak NIM sebagai kata sandi baru
 
 **Frontend** — kerangka terpisah dari panel admin: navigasi mendatar, lebar
 terbatas, dirancang untuk ponsel.
@@ -219,7 +219,7 @@ terbatas, dirancang untuk ponsel.
 - `/portal` tagihan beserta tombol bayar per cicilan
 - `/portal/dokumen` wizard bertahap dengan penanda langkah selesai
 - `/portal/riwayat` menyegarkan sendiri sambil menunggu OCR
-- `/portal/profil` dan ganti kata sandi
+- `/portal/profil`
 - Pengarahan setelah masuk mengikuti peran: admin ke `/dashboard`,
   mahasiswa ke `/portal`
 
@@ -264,26 +264,34 @@ tombol Tambah/Kurangi, bukan dengan mengetik tanda minus — salah tanda di sini
 berarti uang bergerak ke arah sebaliknya. Pratinjau menampilkan nilai sebelum
 dan sesudah, dan penolakan aturan bisnis muncul sebelum tombol simpan aktif.
 
-### Ganti kata sandi untuk semua peran
+### Pengelolaan kata sandi
 
-Sebelumnya hanya mahasiswa yang punya jalur ganti kata sandi. Admin tidak punya
-apa pun, di UI maupun di API — kata sandi yang diisi saat deploy akan menetap
-sampai diubah langsung di basis data.
+Pembagiannya mengikuti cara kerja bagian keuangan: **staf mengurus kata sandinya
+sendiri, mahasiswa tidak.**
 
-- `POST /auth/kata-sandi` berlaku untuk peran apa pun
-- Aturan bersamanya pindah ke `PasswordService`: kata sandi lama wajib cocok,
-  yang baru minimal 8 karakter dan tidak boleh sama dengan yang lama. Aturan
-  khusus mahasiswa — tidak boleh sama dengan NIM — tetap diperiksa di jalur
-  mahasiswa sebelum menyerahkan sisanya
-- Menu "Profil saya" yang selama ini tidak melakukan apa-apa diganti jadi
-  "Ganti kata sandi" yang benar-benar bekerja
+**Staf** — `POST /auth/kata-sandi`, khusus peran ADMIN dan DEVELOPER. Menu
+"Profil saya" yang selama ini tidak melakukan apa-apa diganti jadi "Ganti kata
+sandi" yang benar-benar bekerja. Aturannya di `PasswordService`: kata sandi lama
+wajib cocok, yang baru minimal 8 karakter dan tidak boleh sama dengan yang lama.
+
+**Mahasiswa** — kata sandinya adalah NIM-nya, disetel saat import. Ia tidak
+punya jalur untuk menggantinya; kalau lupa, ia datang ke bagian keuangan dan
+admin menekan **Reset kata sandi** di halaman detail mahasiswa, yang
+mengembalikannya ke NIM. Jalur ganti kata sandi mandiri di portal sudah dicabut.
 
 **Celah yang ikut tertutup:** mengganti kata sandi sebelumnya tidak mencabut
 sesi mana pun, jadi refresh token lama tetap sah tujuh hari penuh. Padahal orang
 mengganti kata sandi justru karena curiga ada yang tahu. Sekarang seluruh sesi
-dicabut, dan karena sesi yang sedang dipakai ikut terkena, penggantinya langsung
-diantar ke halaman masuk alih-alih dibiarkan terlempar sendiri beberapa menit
+dicabut — pada reset mahasiswa ini penting sekali, karena NIM diketahui banyak
+orang. Untuk staf, karena sesi yang sedang dipakai ikut terkena, penggantinya
+langsung diantar ke halaman masuk alih-alih terlempar sendiri beberapa menit
 kemudian tanpa penjelasan.
+
+**Ditemukan saat mengerjakan ini:** alamat yang tidak dikenal dijawab **500**,
+bukan 404 — penangkap serba-guna di `GlobalExceptionHandler` menelan exception
+routing Spring, sekaligus mencatatnya sebagai ERROR di log padahal itu kesalahan
+pemanggil. Metode HTTP yang salah juga begitu. Keduanya sudah ditangani dan
+dikunci uji.
 
 ### Persiapan deploy
 
@@ -313,7 +321,7 @@ dijangkau lewat reverse proxy.
 
 ### Uji end-to-end
 
-Lima belas uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
+Tujuh belas uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
 Spring Boot, dan PostgreSQL sungguhan, tanpa satu pun bagian yang ditiru. Port
 dan basis datanya terpisah dari yang dipakai sehari-hari (3100 / 8081 /
 `pembayaran_e2e`), jadi menjalankannya tidak mematikan server pengembangan dan

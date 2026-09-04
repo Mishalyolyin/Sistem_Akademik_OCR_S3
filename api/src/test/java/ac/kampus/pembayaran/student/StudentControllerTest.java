@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -109,6 +110,36 @@ class StudentControllerTest extends ControllerTestSupport {
 		mockMvc.perform(sebagaiAdmin(get("/students/1")))
 				.andExpect(status().isNotFound())
 				.andExpect(jsonPath("$.detail").isNotEmpty());
+	}
+
+	// --- Reset kata sandi ---
+
+	@Test
+	@DisplayName("admin mengembalikan kata sandi, jawabannya menyebut NIM sebagai sandi barunya")
+	void resetMengembalikanNim() throws Exception {
+		when(service.resetKataSandi(1L)).thenReturn("2612600001");
+
+		mockMvc.perform(sebagaiAdmin(post("/students/1/reset-kata-sandi")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.kataSandiBaru").value("2612600001"));
+	}
+
+	@Test
+	@DisplayName("mahasiswa tidak boleh mengembalikan kata sandi siapa pun, termasuk dirinya")
+	void mahasiswaTidakBolehReset() throws Exception {
+		mockMvc.perform(sebagaiMahasiswa(post("/students/1/reset-kata-sandi")))
+				.andExpect(status().isForbidden());
+
+		verify(service, never()).resetKataSandi(anyLong());
+	}
+
+	@Test
+	@DisplayName("tanpa token ditolak 401")
+	void resetTanpaToken() throws Exception {
+		mockMvc.perform(post("/students/1/reset-kata-sandi"))
+				.andExpect(status().isUnauthorized());
+
+		verify(service, never()).resetKataSandi(anyLong());
 	}
 
 	// --- Peran ---

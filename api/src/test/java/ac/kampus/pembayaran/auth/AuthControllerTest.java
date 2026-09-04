@@ -178,12 +178,14 @@ class AuthControllerTest extends ControllerTestSupport {
 	}
 
 	@Test
-	@DisplayName("mahasiswa juga boleh, jalur ini tidak dibatasi peran tertentu")
-	void mahasiswaJugaBoleh() throws Exception {
+	@DisplayName("mahasiswa ditolak: kata sandinya dikembalikan admin, bukan diganti sendiri")
+	void mahasiswaDitolak() throws Exception {
 		mockMvc.perform(sebagaiMahasiswa(post("/auth/kata-sandi"))
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(json(Map.of("lama", "sandi-lama", "baru", "sandi-baru-kuat"))))
-				.andExpect(status().isNoContent());
+				.andExpect(status().isForbidden());
+
+		verify(authService, never()).gantiKataSandi(any(), any());
 	}
 
 	@Test

@@ -106,6 +106,19 @@ export function useDeleteStudent() {
   });
 }
 
+/**
+ * Mengembalikan kata sandi mahasiswa ke NIM-nya. Mahasiswa tidak mengelola
+ * kata sandinya sendiri; kalau lupa, admin yang mengembalikannya.
+ */
+export function useResetKataSandi() {
+  return useMutation({
+    mutationFn: (id: number) =>
+      apiFetch<{ kataSandiBaru: string }>(`/students/${id}/reset-kata-sandi`, {
+        method: "POST",
+      }),
+  });
+}
+
 export const documentStepLabels: Record<DocumentStep, string> = {
   PHOTO: "Foto profil",
   KTP: "KTP",

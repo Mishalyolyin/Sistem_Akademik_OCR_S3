@@ -9,7 +9,6 @@ import ac.kampus.pembayaran.student.Student;
 import ac.kampus.pembayaran.student.StudentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import ac.kampus.pembayaran.user.PasswordService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,7 +37,6 @@ public class StudentSelfService {
 
 	private final StudentRepository studentRepository;
 	private final FileStorageService storage;
-	private final PasswordService passwordService;
 
 	@Transactional(readOnly = true)
 	public Student current() {
@@ -114,23 +112,6 @@ public class StudentSelfService {
 			student.setPhone(telepon.trim());
 		}
 		return studentRepository.save(student);
-	}
-
-	/**
-	 * Aturan umumnya ada di {@link PasswordService}; yang khusus mahasiswa cuma
-	 * satu, dan diperiksa di sini sebelum menyerahkan sisanya.
-	 */
-	@Transactional
-	public void gantiKataSandi(String lama, String baru) {
-		Student student = current();
-
-		if (baru != null && baru.equals(student.getNim())) {
-			throw new BusinessRuleException(
-					"Kata sandi tidak boleh sama dengan NIM. Pilih yang lain.");
-		}
-
-		passwordService.ubah(student.getUser(), lama, baru);
-		log.info("Mahasiswa {} mengganti kata sandi.", student.getNim());
 	}
 
 	/**

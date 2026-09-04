@@ -16,6 +16,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -124,6 +125,15 @@ public class StudentController {
 			@Valid @RequestBody ChangeTierRequest request) {
 
 		return toSummary(service.changeDiscountTier(id, request.discountTier()));
+	}
+
+	public record ResetSandiResponse(String kataSandiBaru) {
+	}
+
+	@PostMapping("/{id}/reset-kata-sandi")
+	@Operation(summary = "Kembalikan kata sandi mahasiswa ke NIM-nya; sesi lama dicabut")
+	public ResetSandiResponse resetKataSandi(@PathVariable Long id) {
+		return new ResetSandiResponse(service.resetKataSandi(id));
 	}
 
 	@DeleteMapping("/{id}")

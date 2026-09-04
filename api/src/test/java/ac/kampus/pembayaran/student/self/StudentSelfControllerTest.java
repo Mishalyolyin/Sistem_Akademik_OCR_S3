@@ -137,17 +137,27 @@ class StudentSelfControllerTest extends ControllerTestSupport {
 		verify(generationService, never()).generate(any(), any(), anyString(), any());
 	}
 
-	// --- Ganti kata sandi ---
+	// --- Kata sandi ---
 
 	@Test
-	@DisplayName("kata sandi baru yang terlalu pendek ditolak 400")
-	void sandiTerlaluPendek() throws Exception {
+	@DisplayName("mahasiswa tidak lagi punya jalur ganti kata sandi sendiri")
+	void jalurGantiSandiSudahDicabut() throws Exception {
 		mockMvc.perform(sebagaiMahasiswa(post("/me/kata-sandi"))
 						.contentType(MediaType.APPLICATION_JSON)
-						.content(json(Map.of("lama", "2612600001", "baru", "pendek"))))
-				.andExpect(status().isBadRequest());
+						.content(json(Map.of("lama", "2612600001", "baru", "sandi-baru-kuat"))))
+				.andExpect(status().isNotFound())
+				// Alamat tak dikenal sempat dijawab 500 karena tertelan penangkap
+				// serba-guna. Bentuk jawabannya ikut dikunci di sini.
+				.andExpect(jsonPath("$.status").value(404))
+				.andExpect(jsonPath("$.detail").isNotEmpty());
+	}
 
-		verify(selfService, never()).gantiKataSandi(anyString(), anyString());
+	@Test
+	@DisplayName("metode yang salah untuk alamat yang ada dijawab 405, bukan 500")
+	void metodeSalah() throws Exception {
+		mockMvc.perform(sebagaiMahasiswa(get("/me/dokumen/alamat")))
+				.andExpect(status().isMethodNotAllowed())
+				.andExpect(jsonPath("$.detail").isNotEmpty());
 	}
 
 	// --- Alamat ---
