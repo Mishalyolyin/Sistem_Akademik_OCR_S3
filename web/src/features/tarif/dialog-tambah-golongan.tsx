@@ -17,19 +17,8 @@ import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api";
 import { formatRupiah } from "@/lib/format";
 import { tarifDasar } from "./konstanta";
+import { kodeDariNama, POLA_KODE } from "./kode-golongan";
 import { useCreateTier } from "./api";
-
-/** Kode dipakai apa adanya di berkas import, jadi bentuknya dibatasi. */
-const POLA_KODE = /^[A-Z][A-Z0-9_]*$/;
-
-/** Mengubah nama jadi kode yang sah, supaya admin tidak perlu memikirkannya. */
-function kodeDariNama(nama: string): string {
-  return nama
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .replace(/^([0-9])/, "G$1");
-}
 
 export function DialogTambahGolongan({
   open,

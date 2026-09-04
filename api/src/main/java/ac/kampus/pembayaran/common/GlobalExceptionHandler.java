@@ -12,9 +12,11 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -172,6 +174,30 @@ public class GlobalExceptionHandler {
 		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
 		problem.setTitle("Tidak ditemukan");
 		problem.setDetail("Alamat yang diminta tidak ada.");
+		return problem;
+	}
+
+	/**
+	 * Bagian permintaan yang wajib tapi tidak dikirim: berkas pada unggahan
+	 * multipart, atau parameter wajib di URL.
+	 *
+	 * <p>Keduanya kesalahan pemanggil. Tanpa penanganan ini keduanya jatuh ke
+	 * penangkap serba-guna di bawah dan dijawab 500 — bentuk kegagalan yang sama
+	 * dengan alamat tidak dikenal dan metode HTTP yang salah, yang sudah
+	 * diperbaiki lebih dulu.
+	 */
+	@ExceptionHandler({
+			MissingServletRequestPartException.class,
+			MissingServletRequestParameterException.class
+	})
+	public ProblemDetail handleBagianHilang(Exception e) {
+		String nama = e instanceof MissingServletRequestPartException part
+				? part.getRequestPartName()
+				: ((MissingServletRequestParameterException) e).getParameterName();
+
+		ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+		problem.setTitle("Data tidak valid");
+		problem.setDetail("Bagian \"%s\" wajib disertakan dalam permintaan.".formatted(nama));
 		return problem;
 	}
 

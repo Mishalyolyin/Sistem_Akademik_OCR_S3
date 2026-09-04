@@ -3,18 +3,19 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 4 September 2026, 23.30
+Terakhir diperbarui: 5 September 2026, 00.20
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 4 September 2026 pukul 23.30 di mesin pengembangan, semuanya lolos:
+Dijalankan 5 September 2026 pukul 00.20 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 211 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 244 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
+| Test unit frontend | `npm test` | ✅ 33 test lolos di 4 berkas |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
 | Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
@@ -132,7 +133,7 @@ masih dibutuhkan di sistem S3.
 
 ### Test otomatis
 
-Sudah ada **211 test** dan semuanya lolos:
+Sudah ada **244 test backend** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
@@ -166,15 +167,15 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 - `StudentControllerTest` — 16 test
 - `StudentSelfControllerTest` — 9 test batas wewenang portal
 - `StudentDocumentControllerTest` — 10 test pembukaan dokumen wajib
+- `StudyClassControllerTest` — 8 test pengelolaan kelas
+- `SystemSettingControllerTest` — 6 test pengaturan sistem
+- `StudentImportControllerTest` — 7 test unggahan Excel
+- `ReportControllerTest` — 7 test laporan dan kuitansi
+- `DashboardControllerTest` — 5 test bentuk angka ringkasan
 - `TuitionControllerTest` — 8 test pengelolaan golongan potongan
 - `SecurityLayerTest` — 8 test
 
-Yang belum:
-
-- Empat controller belum punya test sendiri: `StudyClassController`,
-  `SystemSettingController`, `StudentImportController`, dan `ReportController`.
-  Semuanya sudah tercakup aturan perannya lewat `@PreAuthorize` yang sama, tapi
-  validasi masukannya belum dikunci
+**Seluruh controller kini punya test sendiri.** Empat belas dari empat belas.
 
 ### Keputusan yang masih menggantung
 
@@ -191,6 +192,51 @@ Yang belum:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### CI, test unit frontend, dan lima controller terakhir
+
+Tiga hal yang tertulis di rencana sejak awal tapi tidak pernah ada: GitHub
+Actions, Vitest, dan test untuk lima controller terakhir.
+
+**CI.** `.github/workflows/ci.yml` menjalankan dua pekerjaan paralel — backend
+(`mvnw verify`, Testcontainers menyalakan PostgreSQL sungguhan di runner) dan
+frontend (ketikan, lint, test unit, build). Lint sengaja dijalankan sebagai
+langkah terpisah karena `next build` **tidak** menjalankannya; justru begitulah
+dulu lima galat React Hooks sempat menumpuk tanpa terlihat. Laporan surefire
+diunggah sebagai artifact kalau backend gagal.
+
+> **Belum menyala.** Branch `migrasi-v2` belum pernah didorong ke `origin`, jadi
+> workflow-nya belum pernah dijalankan GitHub. Ia baru hidup setelah branch ini
+> di-push.
+
+**Vitest.** 33 test unit di empat berkas, semuanya logika murni yang memang
+pernah salah atau memang penting:
+
+- `lib/api.test.ts` — penguraian `application/problem+json`. Bug yang dulu
+  membuat **seluruh** pesan galat di aplikasi tampil sebagai JSON mentah di
+  layar; sekarang dikunci, bersama pembuangan parameter kosong dan pengiriman
+  FormData tanpa dipaksa jadi JSON
+- `features/tarif/konstanta.test.ts` — kelima angka brosur, dan bahwa lima
+  cicilan berjumlah tepat sama dengan UKT satu semester
+- `features/tarif/kode-golongan.test.ts` — kode golongan yang diturunkan dari
+  namanya diuji terhadap pola yang sama persis dengan yang ditegakkan backend
+- `lib/format.test.ts` — nominal yang datang sebagai string BigDecimal, dan
+  nilai kosong yang tidak boleh berubah jadi "Rp NaN"
+
+`@types/node` ikut dinaikkan dari 20 ke 24, mengikuti Node yang benar-benar
+dipakai (24.19.0). Sebelumnya tipe dan runtime-nya memang sudah tidak cocok.
+
+**Lima controller terakhir** kini punya test sendiri: `StudyClass`,
+`SystemSetting`, `StudentImport`, `Report`, dan `Dashboard`. Yang terakhir luput
+dari catatan sebelumnya — endpointnya cuma tersentuh `SecurityLayerTest` untuk
+aturan peran, sementara bentuk jawaban suksesnya tidak dikunci sama sekali.
+
+**Bug yang ketahuan justru karena menulis testnya:** unggah import **tanpa
+berkas** dijawab **500**. `MissingServletRequestPartException` tidak tertangani
+dan jatuh ke penangkap serba-guna — keluarga yang persis sama dengan alamat
+tidak dikenal dan metode HTTP salah yang sudah diperbaiki lebih dulu. Sekarang
+400 dengan menyebut bagian mana yang kurang. Terbukti di sistem hidup: dulu 500,
+sekarang `Bagian "file" wajib disertakan dalam permintaan.`
 
 ### Mahasiswa dan kelas akhirnya bisa dikelola dari layar
 
