@@ -1,6 +1,7 @@
 package ac.kampus.pembayaran.auth;
 
 import ac.kampus.pembayaran.config.JwtProperties;
+import ac.kampus.pembayaran.user.PasswordService;
 import ac.kampus.pembayaran.user.User;
 import ac.kampus.pembayaran.user.UserRepository;
 import ac.kampus.pembayaran.user.UserRole;
@@ -47,7 +48,8 @@ class AuthServiceTest {
 		jwtService = new JwtService(new JwtProperties(
 				"rahasia-uji-coba-minimal-32-karakter-untuk-hs256", 15, 7));
 
-		service = new AuthService(userRepository, passwordEncoder, jwtService);
+		service = new AuthService(userRepository, passwordEncoder, jwtService,
+				new PasswordService(userRepository, passwordEncoder));
 
 		user = User.builder()
 				.id(1L).name("Admin Uji").email("admin@kampus.ac.id")

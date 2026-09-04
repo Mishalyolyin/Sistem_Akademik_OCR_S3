@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, UserRound } from "lucide-react";
+import { KeyRound, LogOut } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -13,6 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DialogGantiSandi } from "./dialog-ganti-sandi";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +35,8 @@ function initialsOf(name: string) {
 export function UserMenu() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  // Dipanggil sebelum keluar lebih awal, karena hook tidak boleh dilewati.
+  const [gantiSandiTerbuka, setGantiSandiTerbuka] = useState(false);
 
   if (!user) return null;
 
@@ -42,7 +46,8 @@ export function UserMenu() {
   }
 
   return (
-    <DropdownMenu>
+    <>
+      <DropdownMenu>
       {/*
         Pemicunya sengaja berupa <button> asli, bukan komponen Button kita.
         MenuTrigger memeriksa elemen yang diberikan lewat `render`, dan sebuah
@@ -84,9 +89,9 @@ export function UserMenu() {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <UserRound />
-            Profil saya
+          <DropdownMenuItem onClick={() => setGantiSandiTerbuka(true)}>
+            <KeyRound />
+            Ganti kata sandi
           </DropdownMenuItem>
           <DropdownMenuItem variant="destructive" onClick={handleLogout}>
             <LogOut />
@@ -94,6 +99,12 @@ export function UserMenu() {
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
-    </DropdownMenu>
+      </DropdownMenu>
+
+      <DialogGantiSandi
+        open={gantiSandiTerbuka}
+        onOpenChange={setGantiSandiTerbuka}
+      />
+    </>
   );
 }

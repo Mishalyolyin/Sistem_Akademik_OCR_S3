@@ -3,6 +3,7 @@ package ac.kampus.pembayaran.auth;
 import ac.kampus.pembayaran.auth.dto.AuthDtos.IssuedTokens;
 import ac.kampus.pembayaran.auth.dto.AuthDtos.LoginRequest;
 import ac.kampus.pembayaran.auth.dto.AuthDtos.UserSummary;
+import ac.kampus.pembayaran.user.PasswordService;
 import ac.kampus.pembayaran.user.User;
 import ac.kampus.pembayaran.user.UserRepository;
 import io.jsonwebtoken.JwtException;
@@ -25,6 +26,7 @@ public class AuthService {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtService jwtService;
+	private final PasswordService passwordService;
 
 	@Transactional(readOnly = true)
 	public IssuedTokens login(LoginRequest request) {
@@ -70,6 +72,21 @@ public class AuthService {
 			user.setTokensValidFrom(Instant.now());
 			userRepository.save(user);
 		});
+	}
+
+	/**
+	 * Mengganti kata sandi pengguna yang sedang login, peran apa pun.
+	 *
+	 * <p>Admin tidak punya jalur lain: portal mahasiswa terkunci untuk peran
+	 * MAHASISWA saja, dan sistem ini tidak menyediakan endpoint pembuat atau
+	 * penyetel ulang pengguna.
+	 */
+	@Transactional
+	public void gantiKataSandi(String lama, String baru) {
+		User user = userRepository.findById(currentUserId())
+				.orElseThrow(() -> new BadCredentialsException("Sesi tidak valid."));
+
+		passwordService.ubah(user, lama, baru);
 	}
 
 	@Transactional(readOnly = true)

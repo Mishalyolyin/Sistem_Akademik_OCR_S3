@@ -38,6 +38,10 @@ punya endpoint pembuat pengguna, jadi admin pertama hanya bisa lahir dari sini.
 Ia dibuat sekali, saat akun dengan email itu belum ada; menyalakan ulang tidak
 menimpanya.
 
+Setelah masuk pertama kali, ganti kata sandinya lewat menu pengguna di pojok
+kiri bawah → **Ganti kata sandi**. Mengganti kata sandi mencabut seluruh sesi,
+jadi Anda akan diminta masuk lagi.
+
 ## Menyalakan
 
 ```bash
@@ -112,9 +116,6 @@ jadi kehilangannya tidak tergantikan oleh basis data yang utuh.
 
 ## Yang belum ada
 
-- **Admin belum bisa mengganti kata sandinya dari UI.** Yang punya halaman ganti
-  kata sandi baru mahasiswa. Untuk admin, ganti lewat basis data, atau ubah
-  `APP_ADMIN_PASSWORD` dan buat akun admin baru dengan email berbeda.
 - **Belum ada reverse proxy dan TLS di dalam compose.** Sengaja, supaya bisa
   mengikuti kebiasaan server masing-masing — tapi berarti langkahnya manual.
 - **Belum ada penjadwal cadangan.** Perintah di atas masih dijalankan tangan;

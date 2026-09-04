@@ -163,4 +163,63 @@ class AuthControllerTest extends ControllerTestSupport {
 
 		verify(authService, never()).currentUser();
 	}
+
+	// --- Ganti kata sandi ---
+
+	@Test
+	@DisplayName("admin bisa mengganti kata sandinya lewat jalur ini")
+	void adminBisaGantiSandi() throws Exception {
+		mockMvc.perform(sebagaiAdmin(post("/auth/kata-sandi"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("lama", "sandi-lama", "baru", "sandi-baru-kuat"))))
+				.andExpect(status().isNoContent());
+
+		verify(authService).gantiKataSandi("sandi-lama", "sandi-baru-kuat");
+	}
+
+	@Test
+	@DisplayName("mahasiswa juga boleh, jalur ini tidak dibatasi peran tertentu")
+	void mahasiswaJugaBoleh() throws Exception {
+		mockMvc.perform(sebagaiMahasiswa(post("/auth/kata-sandi"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("lama", "sandi-lama", "baru", "sandi-baru-kuat"))))
+				.andExpect(status().isNoContent());
+	}
+
+	@Test
+	@DisplayName("tanpa token ditolak 401, bukan mengganti kata sandi siapa pun")
+	void gantiSandiButuhToken() throws Exception {
+		mockMvc.perform(post("/auth/kata-sandi")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("lama", "sandi-lama", "baru", "sandi-baru-kuat"))))
+				.andExpect(status().isUnauthorized());
+
+		verify(authService, never()).gantiKataSandi(any(), any());
+	}
+
+	@Test
+	@DisplayName("kata sandi baru yang terlalu pendek tertahan sebelum menyentuh service")
+	void sandiBaruTerlaluPendek() throws Exception {
+		mockMvc.perform(sebagaiAdmin(post("/auth/kata-sandi"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("lama", "sandi-lama", "baru", "pendek7"))))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.detail", containsString("minimal 8 karakter")));
+
+		verify(authService, never()).gantiKataSandi(any(), any());
+	}
+
+	@Test
+	@DisplayName("kata sandi lama yang salah dijawab 409 beserta alasannya")
+	void sandiLamaSalah() throws Exception {
+		org.mockito.Mockito.doThrow(new ac.kampus.pembayaran.common.BusinessRuleException(
+						"Kata sandi lama salah."))
+				.when(authService).gantiKataSandi(any(), any());
+
+		mockMvc.perform(sebagaiAdmin(post("/auth/kata-sandi"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("lama", "tebakan", "baru", "sandi-baru-kuat"))))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.detail").value("Kata sandi lama salah."));
+	}
 }

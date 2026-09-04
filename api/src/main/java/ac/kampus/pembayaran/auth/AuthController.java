@@ -7,8 +7,11 @@ import ac.kampus.pembayaran.auth.dto.AuthDtos.UserSummary;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Duration;
@@ -64,6 +68,27 @@ public class AuthController {
 	@Operation(summary = "Profil pengguna yang sedang login")
 	public UserSummary me() {
 		return authService.currentUser();
+	}
+
+	public record GantiSandiRequest(
+			@NotBlank(message = "Kata sandi lama wajib diisi.")
+			String lama,
+
+			@NotBlank(message = "Kata sandi baru wajib diisi.")
+			@Size(min = 8, message = "Kata sandi baru minimal 8 karakter.")
+			String baru
+	) {
+	}
+
+	/**
+	 * Berlaku untuk semua peran. Portal mahasiswa punya jalurnya sendiri karena
+	 * di sana ada aturan tambahan, tapi admin hanya punya yang ini.
+	 */
+	@PostMapping("/kata-sandi")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	@Operation(summary = "Ganti kata sandi sendiri; seluruh sesi lain ikut dicabut")
+	public void gantiKataSandi(@Valid @RequestBody GantiSandiRequest request) {
+		authService.gantiKataSandi(request.lama(), request.baru());
 	}
 
 	private ResponseEntity<TokenResponse> respondWithTokens(IssuedTokens tokens) {

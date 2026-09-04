@@ -20,6 +20,18 @@ export const ADMIN = {
 };
 
 /**
+ * Admin kedua, dipakai khusus oleh uji ganti kata sandi.
+ *
+ * Uji itu benar-benar mengubah kata sandi di basis data, dan penyemaian hanya
+ * berjalan sekali di awal — bukan sebelum tiap uji. Kalau ia memakai akun admin
+ * utama, seluruh uji sesudahnya gagal masuk.
+ */
+export const ADMIN_SANDI = {
+  email: "admin.sandi@kampus.ac.id",
+  password: ADMIN.password,
+};
+
+/**
  * Mahasiswa yang disemai; dokumennya sengaja sudah lengkap.
  *
  * Kata sandinya sama dengan admin karena hash-nya memang disalin dari baris
@@ -31,6 +43,14 @@ export const MAHASISWA = {
   email: "uji.e2e@kampus.ac.id",
   password: ADMIN.password,
 };
+
+/**
+ * Hash bcrypt dari kata sandi admin di atas, diambil dari baris yang dibuat
+ * seeder. Ditanam sebagai tetapan supaya tiap kali uji berjalan admin kembali
+ * ke kata sandi yang diketahui — uji ganti kata sandi mengubahnya, dan tanpa
+ * pengembalian ini seluruh uji berikutnya gagal masuk.
+ */
+const HASH_ADMIN = "$2a$12$1qmfdlxDhAdE21HNTY.oQeHZX4NClr6uSQfYrlmuPU70OSAgaLDu2";
 
 const CONTAINER = process.env.E2E_PG_CONTAINER ?? "pembayaran-postgres";
 const DATABASE = process.env.E2E_PG_DATABASE ?? "pembayaran_e2e";
@@ -56,6 +76,13 @@ async function apiSehat(): Promise<void> {
 export default async function globalSetup() {
   await apiSehat();
 
+  // Kembalikan admin ke keadaan yang diketahui, termasuk pencabutan sesinya.
+  psql(`
+    UPDATE users
+       SET password_hash = '${HASH_ADMIN}', tokens_valid_from = NULL
+     WHERE email = '${ADMIN.email}';
+  `);
+
   // Bersihkan jejak uji sebelumnya supaya tiap kali jalan berangkat dari
   // keadaan yang sama. Urutannya mengikuti ketergantungan kunci asing.
   psql(`
@@ -66,6 +93,7 @@ export default async function globalSetup() {
     DELETE FROM payment_plans WHERE student_id IN (SELECT id FROM students WHERE nim = '${MAHASISWA.nim}');
     DELETE FROM students WHERE nim = '${MAHASISWA.nim}';
     DELETE FROM users WHERE email = '${MAHASISWA.email}';
+    DELETE FROM users WHERE email = '${ADMIN_SANDI.email}';
     DELETE FROM study_classes WHERE name = 'E2E' AND academic_year = '2026/2027';
   `);
 
@@ -73,13 +101,13 @@ export default async function globalSetup() {
     INSERT INTO study_classes (name, kerjasama, academic_year)
     VALUES ('E2E', FALSE, '2026/2027');
 
-    -- Hash kata sandi disalin dari baris admin yang dibuat seeder, bukan
-    -- ditulis tangan: bcrypt tidak bisa disusun tanpa menjalankan penyandinya,
-    -- dan menambah pustaka bcrypt di sisi uji hanya untuk ini tidak sepadan.
+    -- Memakai hash yang sama dengan admin; lihat catatan pada HASH_ADMIN.
     INSERT INTO users (name, email, password_hash, role, active)
-    VALUES ('${MAHASISWA.nama}', '${MAHASISWA.email}',
-            (SELECT password_hash FROM users WHERE email = '${ADMIN.email}'),
+    VALUES ('${MAHASISWA.nama}', '${MAHASISWA.email}', '${HASH_ADMIN}',
             'MAHASISWA', TRUE);
+
+    INSERT INTO users (name, email, password_hash, role, active)
+    VALUES ('Admin Uji Sandi', '${ADMIN_SANDI.email}', '${HASH_ADMIN}', 'ADMIN', TRUE);
 
     INSERT INTO students (
       user_id, nim, name, study_class_id, discount_tier,

@@ -3,17 +3,17 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 4 September 2026, 01.55
+Terakhir diperbarui: 4 September 2026, 02.40
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 4 September 2026 pukul 01.55 di mesin pengembangan, semuanya lolos:
+Dijalankan 4 September 2026 pukul 02.40 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw clean verify` | ✅ 152 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw clean verify` | ✅ 163 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
 | Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
@@ -121,15 +121,6 @@ Dikerjakan berurutan, dari yang paling mendesak.
 Halaman forensik OCR belum dibuat, dan **belum diputuskan** apakah peran ini
 masih dibutuhkan di sistem S3.
 
-### Admin belum bisa mengganti kata sandinya sendiri
-
-Halaman ganti kata sandi baru ada untuk mahasiswa (`/me/kata-sandi`, khusus peran
-MAHASISWA). Admin tidak punya jalur apa pun — baik di UI maupun di API. Artinya
-kata sandi yang diisi di `APP_ADMIN_PASSWORD` saat deploy akan menetap sampai
-diubah langsung di basis data.
-
-Menu "Profil saya" di menu pengguna juga belum melakukan apa-apa.
-
 ### Hal teknis yang ditandai untuk dikerjakan nanti
 
 | Berkas | Yang perlu dilakukan | Fase |
@@ -140,7 +131,7 @@ Menu "Profil saya" di menu pengguna juga belum melakukan apa-apa.
 
 ### Test otomatis
 
-Sudah ada **152 test** dan semuanya lolos:
+Sudah ada **163 test** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
@@ -155,6 +146,7 @@ Sudah ada **152 test** dan semuanya lolos:
 - `StudentExcelTemplateTest` — 4 test bentuk berkas template import
 - `AdjustmentServiceTest` — 17 test aturan penyesuaian saldo dan cicilan
 - `InitialAdminSeederTest` — 4 test pembuatan admin pertama
+- `PasswordServiceTest` — 6 test aturan penggantian kata sandi
 
 **Lapisan controller**, memakai rantai filter keamanan yang sesungguhnya —
 bukan dimatikan seperti kebiasaan pada uji controller, karena justru di sanalah
@@ -272,6 +264,27 @@ tombol Tambah/Kurangi, bukan dengan mengetik tanda minus — salah tanda di sini
 berarti uang bergerak ke arah sebaliknya. Pratinjau menampilkan nilai sebelum
 dan sesudah, dan penolakan aturan bisnis muncul sebelum tombol simpan aktif.
 
+### Ganti kata sandi untuk semua peran
+
+Sebelumnya hanya mahasiswa yang punya jalur ganti kata sandi. Admin tidak punya
+apa pun, di UI maupun di API — kata sandi yang diisi saat deploy akan menetap
+sampai diubah langsung di basis data.
+
+- `POST /auth/kata-sandi` berlaku untuk peran apa pun
+- Aturan bersamanya pindah ke `PasswordService`: kata sandi lama wajib cocok,
+  yang baru minimal 8 karakter dan tidak boleh sama dengan yang lama. Aturan
+  khusus mahasiswa — tidak boleh sama dengan NIM — tetap diperiksa di jalur
+  mahasiswa sebelum menyerahkan sisanya
+- Menu "Profil saya" yang selama ini tidak melakukan apa-apa diganti jadi
+  "Ganti kata sandi" yang benar-benar bekerja
+
+**Celah yang ikut tertutup:** mengganti kata sandi sebelumnya tidak mencabut
+sesi mana pun, jadi refresh token lama tetap sah tujuh hari penuh. Padahal orang
+mengganti kata sandi justru karena curiga ada yang tahu. Sekarang seluruh sesi
+dicabut, dan karena sesi yang sedang dipakai ikut terkena, penggantinya langsung
+diantar ke halaman masuk alih-alih dibiarkan terlempar sendiri beberapa menit
+kemudian tanpa penjelasan.
+
 ### Persiapan deploy
 
 Petunjuk lengkapnya di [DEPLOY.md](DEPLOY.md). Seluruh stack produksi sudah
@@ -300,7 +313,7 @@ dijangkau lewat reverse proxy.
 
 ### Uji end-to-end
 
-Dua belas uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
+Lima belas uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
 Spring Boot, dan PostgreSQL sungguhan, tanpa satu pun bagian yang ditiru. Port
 dan basis datanya terpisah dari yang dipakai sehari-hari (3100 / 8081 /
 `pembayaran_e2e`), jadi menjalankannya tidak mematikan server pengembangan dan
