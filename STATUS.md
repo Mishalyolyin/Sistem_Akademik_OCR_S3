@@ -3,17 +3,17 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 4 September 2026, 20.55
+Terakhir diperbarui: 4 September 2026, 22.10
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 4 September 2026 pukul 20.55 di mesin pengembangan, semuanya lolos:
+Dijalankan 4 September 2026 pukul 22.10 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 192 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 202 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
@@ -132,7 +132,7 @@ masih dibutuhkan di sistem S3.
 
 ### Test otomatis
 
-Sudah ada **192 test** dan semuanya lolos:
+Sudah ada **202 test** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
@@ -165,6 +165,7 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 - `BillingControllerTest` — 9 test
 - `StudentControllerTest` — 13 test
 - `StudentSelfControllerTest` — 9 test batas wewenang portal
+- `StudentDocumentControllerTest` — 10 test pembukaan dokumen wajib
 - `TuitionControllerTest` — 8 test pengelolaan golongan potongan
 - `SecurityLayerTest` — 8 test
 
@@ -190,6 +191,46 @@ Yang belum:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### Dokumen wajib akhirnya bisa dibuka
+
+Keempat berkas dokumen wajib — foto, KTP, Kartu Keluarga, ijazah — selama ini
+hanya punya jalur unggah. Ada empat `POST`, dan **nol** `GET` di seluruh
+backend. Berkasnya tersimpan rapi di disk lalu tidak pernah bisa dibuka lagi
+oleh siapa pun, termasuk pemiliknya sendiri.
+
+Akibatnya gate dokumen wajib berjalan sebagai formalitas: mahasiswa mengunggah
+KTP, gate-nya terbuka, dan tidak ada seorang pun yang bisa memeriksa apakah yang
+diunggah memang KTP. Bagian keuangan hanya melihat tulisan "Lengkap".
+
+- `GET /students/{id}/dokumen/{jenis}` untuk admin, dan `GET /me/dokumen/{jenis}`
+  untuk mahasiswa. Jalur portal **tidak menerima id sama sekali** — pemiliknya
+  diambil dari token, jadi membuka dokumen orang lain bukan sekadar ditolak,
+  melainkan tidak ada alamatnya
+- Berkasnya tetap di luar folder publik. KTP dan Kartu Keluarga memuat NIK dan
+  alamat; kalau ditaruh di folder statis, siapa pun yang menebak URL bisa
+  membukanya tanpa pernah masuk
+- Penyaji berkas dipindah ke `StoredFileResponse` yang dipakai bersama bukti
+  bayar, supaya aturan cache dan tipe berkasnya tidak berbeda antar tempat
+- **Belum diunggah** dibedakan dari **berkas hilang di disk**: yang pertama 409,
+  yang kedua 404. Bedanya penting — yang satu berarti mahasiswanya belum
+  mengerjakan, yang satu lagi berarti ada yang salah di penyimpanan
+- Alamat ditulis huruf kecil (`/dokumen/ktp`), tapi huruf besar tetap diterima;
+  konversi enum bawaan Spring justru menolak bentuk yang benar
+- NIK dan nomor Kartu Keluarga ikut ditampilkan. Keduanya sudah tersimpan sejak
+  awal tapi tidak pernah muncul di layar mana pun
+
+**Di UI:** kartu Dokumen di halaman detail mahasiswa dengan tombol lihat per
+berkas, dan pratinjau yang sama dipakai portal mahasiswa pada langkah yang sudah
+selesai. Gambar diambil sebagai blob karena `<img src>` tidak bisa membawa
+header `Authorization`; object URL-nya dilepas saat dialognya ditutup.
+
+**Diuji langsung terhadap sistem yang hidup:** admin membuka KTP mahasiswa → PNG
+700×900 sebesar 48 KB benar-benar keluar → jenis `rapor` ditolak 400 beserta
+daftar pilihannya → dokumen yang belum diunggah 409 → mahasiswa membuka miliknya
+sendiri lewat `/me` dapat berkas yang byte-nya identik dengan yang dilihat admin
+→ mahasiswa yang sama menembak jalur admin ditolak 403 → mahasiswa lain lewat
+`/me` hanya mendapat miliknya sendiri → tanpa token 401.
 
 ### Golongan potongan jadi data, bukan enum
 

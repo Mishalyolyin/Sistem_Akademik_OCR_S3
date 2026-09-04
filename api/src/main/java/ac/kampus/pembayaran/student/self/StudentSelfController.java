@@ -14,6 +14,7 @@ import ac.kampus.pembayaran.tuition.DiscountTierRateRepository;
 import ac.kampus.pembayaran.payment.PaymentSpecifications;
 import ac.kampus.pembayaran.payment.PaymentStatus;
 import ac.kampus.pembayaran.student.Student;
+import ac.kampus.pembayaran.student.StudentDocument;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -79,7 +80,11 @@ public class StudentSelfController {
 			String langkahDokumenBerikutnya,
 			String namaLangkahBerikutnya,
 			boolean pendaftaranLunas,
-			BigDecimal saldo
+			BigDecimal saldo,
+			String nik,
+			String nomorKk,
+			/** Kode dokumen yang sudah diunggah, supaya portal bisa menampilkannya kembali. */
+			List<String> dokumenTersedia
 	) {
 	}
 
@@ -306,7 +311,10 @@ public class StudentSelfController {
 				langkah == null ? null : langkah.name(),
 				langkah == null ? null : StudentSelfService.namaLangkah(langkah),
 				pendaftaranLunas,
-				student.getWalletBalance());
+				student.getWalletBalance(),
+				student.getNik(),
+				student.getKkNumber(),
+				StudentDocument.tersediaUntuk(student));
 	}
 
 	private static TagihanResponse toTagihan(PaymentPlan plan) {

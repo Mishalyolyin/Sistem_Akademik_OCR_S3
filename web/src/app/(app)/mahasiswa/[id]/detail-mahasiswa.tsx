@@ -33,6 +33,7 @@ import { DialogBuatTagihan } from "@/features/tagihan/dialog-buat-tagihan";
 import { DialogUbahNominal } from "@/features/tagihan/dialog-ubah-nominal";
 import { DialogPenyesuaian } from "@/features/penyesuaian/dialog-penyesuaian";
 import { DialogResetSandi } from "@/features/mahasiswa/dialog-reset-sandi";
+import { KartuDokumen } from "@/features/mahasiswa/kartu-dokumen";
 import { ApiError } from "@/lib/api";
 import { formatRupiah, formatTanggal } from "@/lib/format";
 
@@ -149,6 +150,10 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
           . Mahasiswa belum bisa mengakses tagihannya sampai ini selesai.
         </p>
       )}
+
+      <Separator />
+
+      <KartuDokumen mahasiswa={mhs} />
 
       <Separator />
 

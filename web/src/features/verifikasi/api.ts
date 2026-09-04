@@ -4,7 +4,8 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { API_BASE_URL, apiFetch, getAccessToken, type Page } from "@/lib/api";
+import { apiFetch, type Page } from "@/lib/api";
+import { useBerkasTerlindungi } from "@/lib/berkas";
 import type { PaymentStatus } from "@/components/status-badge";
 
 export type PaymentRow = {
@@ -119,30 +120,12 @@ export function useRequeueOcr() {
 }
 
 /**
- * Gambar bukti butuh header Authorization, jadi tidak bisa dipasang langsung
- * ke <img src>. Berkasnya diambil sebagai blob lalu dijadikan object URL.
+ * Gambar bukti bayar. Pengambilannya sama dengan dokumen mahasiswa, jadi
+ * mekanismenya ada di {@link useBerkasTerlindungi} — termasuk kewajiban melepas
+ * object URL-nya, yang diurus `BuktiTransfer`.
  */
 export function useProofImage(paymentId: number | null) {
-  return useQuery({
-    queryKey: [KEY, "proof", paymentId],
-    enabled: paymentId !== null,
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const base = API_BASE_URL.endsWith("/") ? API_BASE_URL : `${API_BASE_URL}/`;
-      const response = await fetch(new URL(`payments/${paymentId}/proof`, base), {
-        headers: { Authorization: `Bearer ${getAccessToken()}` },
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Gambar bukti tidak bisa dimuat.");
-      }
-
-      const blob = await response.blob();
-      return {
-        url: URL.createObjectURL(blob),
-        isPdf: blob.type === "application/pdf",
-      };
-    },
-  });
+  return useBerkasTerlindungi(
+    paymentId === null ? null : `payments/${paymentId}/proof`,
+  );
 }

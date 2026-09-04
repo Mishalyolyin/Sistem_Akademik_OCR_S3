@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 @RestController
 @RequestMapping("/students")
@@ -53,6 +54,10 @@ public class StudentController {
 			/** Langkah dokumen pertama yang belum lengkap, null bila sudah lengkap. */
 			Student.DocumentStep nextDocumentStep,
 			boolean documentsComplete,
+			String nik,
+			String kkNumber,
+			/** Kode dokumen yang berkasnya sudah ada dan bisa dibuka admin. */
+			List<String> dokumenTersedia,
 			/** Golongan terkunci karena mahasiswa sudah pernah mengunggah bukti bayar. */
 			boolean discountTierLocked
 	) {
@@ -163,6 +168,9 @@ public class StudentController {
 				student.isActive(),
 				student.nextIncompleteDocumentStep(),
 				student.hasCompletedDocuments(),
+				student.getNik(),
+				student.getKkNumber(),
+				StudentDocument.tersediaUntuk(student),
 				service.tierLocked(student));
 	}
 }

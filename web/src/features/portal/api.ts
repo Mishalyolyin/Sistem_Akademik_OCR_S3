@@ -1,8 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
+import { useBerkasTerlindungi } from "@/lib/berkas";
 import type { PaymentCategory } from "@/features/tarif/konstanta";
 
 export type DocumentStep = "PHOTO" | "KTP" | "KK" | "IJAZAH" | "ADDRESS";
+
+/** Langkah dokumen yang berupa berkas, beserta kode alamatnya di API. */
+export type JenisDokumen = "foto" | "ktp" | "kk" | "ijazah";
+
+export const jenisDokumenPerLangkah: Record<
+  Exclude<DocumentStep, "ADDRESS">,
+  JenisDokumen
+> = {
+  PHOTO: "foto",
+  KTP: "ktp",
+  KK: "kk",
+  IJAZAH: "ijazah",
+};
 
 export type Profil = {
   id: number;
@@ -19,6 +33,10 @@ export type Profil = {
   namaLangkahBerikutnya: string | null;
   pendaftaranLunas: boolean;
   saldo: string;
+  nik: string | null;
+  nomorKk: string | null;
+  /** Dokumen yang sudah diunggah dan bisa dibuka kembali. */
+  dokumenTersedia: JenisDokumen[];
 };
 
 export type CicilanRingkas = {
@@ -172,4 +190,9 @@ export function useUnggahBukti() {
     },
     onSuccess: segarkan,
   });
+}
+
+/** Berkas dokumen milik mahasiswa yang sedang masuk. */
+export function useDokumenSendiri(jenis: JenisDokumen | null) {
+  return useBerkasTerlindungi(jenis === null ? null : `me/dokumen/${jenis}`);
 }

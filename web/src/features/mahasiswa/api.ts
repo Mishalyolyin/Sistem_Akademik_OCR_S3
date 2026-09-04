@@ -5,9 +5,20 @@ import {
   keepPreviousData,
 } from "@tanstack/react-query";
 import { apiFetch, type Page } from "@/lib/api";
+import { useBerkasTerlindungi } from "@/lib/berkas";
 import type { DiscountTier } from "@/features/tarif/konstanta";
 
 export type DocumentStep = "PHOTO" | "KTP" | "KK" | "IJAZAH" | "ADDRESS";
+
+/** Kode dokumen yang berupa berkas. Alamat tidak masuk: itu teks, bukan berkas. */
+export type JenisDokumen = "foto" | "ktp" | "kk" | "ijazah";
+
+export const dokumenLabels: Record<JenisDokumen, string> = {
+  foto: "Foto profil",
+  ktp: "KTP",
+  kk: "Kartu Keluarga",
+  ijazah: "Ijazah",
+};
 export type AcademicTerm = "GASAL" | "GENAP";
 
 export type StudentSummary = {
@@ -25,6 +36,10 @@ export type StudentSummary = {
   active: boolean;
   nextDocumentStep: DocumentStep | null;
   documentsComplete: boolean;
+  nik: string | null;
+  kkNumber: string | null;
+  /** Dokumen yang berkasnya sudah ada, jadi tombol bukanya boleh muncul. */
+  dokumenTersedia: JenisDokumen[];
   discountTierLocked: boolean;
 };
 
@@ -126,3 +141,17 @@ export const documentStepLabels: Record<DocumentStep, string> = {
   IJAZAH: "Ijazah",
   ADDRESS: "Alamat",
 };
+
+/**
+ * Berkas dokumen wajib satu mahasiswa. Berkasnya tidak ada di folder publik,
+ * jadi harus lewat hook yang menyertakan token; yang memakainya wajib melepas
+ * object URL-nya saat selesai.
+ */
+export function useDokumenMahasiswa(
+  studentId: number,
+  jenis: JenisDokumen | null,
+) {
+  return useBerkasTerlindungi(
+    jenis === null ? null : `students/${studentId}/dokumen/${jenis}`,
+  );
+}

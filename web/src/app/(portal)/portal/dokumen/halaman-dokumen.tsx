@@ -3,18 +3,22 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Loader2, Upload } from "lucide-react";
+import { Check, Eye, Loader2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ErrorState, TableSkeleton } from "@/components/page-header";
+import { PratinjauBerkas } from "@/components/pratinjau-berkas";
 import {
+  jenisDokumenPerLangkah,
+  useDokumenSendiri,
   useProfil,
   useSimpanAlamat,
   useUnggahDokumen,
   type DocumentStep,
+  type JenisDokumen,
 } from "@/features/portal/api";
 import { ApiError } from "@/lib/api";
 
@@ -52,6 +56,7 @@ const langkah: {
 export function HalamanDokumen() {
   const { data: profil, isPending, error } = useProfil();
   const router = useRouter();
+  const [dilihat, setDilihat] = useState<JenisDokumen | null>(null);
 
   if (isPending) return <TableSkeleton rows={5} />;
   if (error) {
@@ -138,18 +143,75 @@ export function HalamanDokumen() {
                 </div>
 
                 {selesai && (
-                  <span className="text-xs font-medium text-success">
-                    Selesai
-                  </span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {item.id !== "ADDRESS" &&
+                      profil.dokumenTersedia.includes(
+                        jenisDokumenPerLangkah[
+                          item.id as Exclude<DocumentStep, "ADDRESS">
+                        ],
+                      ) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setDilihat(
+                              jenisDokumenPerLangkah[
+                                item.id as Exclude<DocumentStep, "ADDRESS">
+                              ],
+                            )
+                          }
+                        >
+                          <Eye />
+                          Lihat
+                        </Button>
+                      )}
+                    <span className="text-xs font-medium text-success">
+                      Selesai
+                    </span>
+                  </div>
                 )}
               </div>
             </li>
           );
         })}
       </ol>
+
+      {/* key: berkasnya terpasang ulang saat berpindah dokumen. */}
+      {dilihat && (
+        <PratinjauDokumenSendiri
+          key={dilihat}
+          jenis={dilihat}
+          onClose={() => setDilihat(null)}
+        />
+      )}
     </div>
   );
 }
+
+function PratinjauDokumenSendiri({
+  jenis,
+  onClose,
+}: {
+  jenis: JenisDokumen;
+  onClose: () => void;
+}) {
+  const berkas = useDokumenSendiri(jenis);
+
+  return (
+    <PratinjauBerkas
+      judul={labelDokumen[jenis]}
+      berkas={berkas}
+      onClose={onClose}
+    />
+  );
+}
+
+const labelDokumen: Record<JenisDokumen, string> = {
+  foto: "Foto profil",
+  ktp: "KTP",
+  kk: "Kartu Keluarga",
+  ijazah: "Ijazah",
+};
 
 function FormUnggah({
   langkah,
