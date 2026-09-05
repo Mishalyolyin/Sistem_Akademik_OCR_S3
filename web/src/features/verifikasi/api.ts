@@ -109,6 +109,31 @@ export function useDecidePayment() {
   });
 }
 
+/**
+ * Membatalkan keputusan yang sudah diambil, beserta uang yang telanjur
+ * dibagikan ke cicilan dan saldo.
+ *
+ * Alasannya wajib: yang dibatalkan adalah pernyataan bahwa kampus menerima
+ * sejumlah uang.
+ */
+export function useBatalkanKeputusan() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, alasan }: { id: number; alasan: string }) =>
+      apiFetch<PaymentRow>(`/payments/${id}/batalkan`, {
+        method: "POST",
+        body: { alasan },
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [KEY] });
+      // Saldo dan cicilan ikut berubah, jadi halaman mahasiswa harus disegarkan.
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+      queryClient.invalidateQueries({ queryKey: ["plans"] });
+    },
+  });
+}
+
 export function useRequeueOcr() {
   const queryClient = useQueryClient();
 

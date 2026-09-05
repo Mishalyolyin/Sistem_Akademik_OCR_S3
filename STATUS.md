@@ -3,17 +3,17 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 5 September 2026, 22.40
+Terakhir diperbarui: 5 September 2026, 23.05
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 5 September 2026 pukul 22.40 di mesin pengembangan, semuanya lolos:
+Dijalankan 5 September 2026 pukul 23.05 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 286 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 303 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Test unit frontend | `npm test` | ✅ 33 test lolos di 4 berkas |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
@@ -128,13 +128,15 @@ Dikerjakan berurutan, dari yang paling mendesak.
 
 ### Test otomatis
 
-Sudah ada **286 test backend** dan semuanya lolos:
+Sudah ada **303 test backend** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
-- `PaymentAllocationServiceTest` — 11 test aturan pembagian uang ke cicilan
+- `PaymentAllocationServiceTest` — 17 test aturan pembagian uang ke cicilan dan
+  penarikannya kembali
+- `PaymentServiceBatalTest` — 7 test pembatalan keputusan verifikasi
 - `ApiApplicationTests` — 1 test yang menyalakan PostgreSQL asli lewat
-  Testcontainers, sekaligus memverifikasi kesembilan migrasi Flyway
+  Testcontainers, sekaligus memverifikasi kesepuluh migrasi Flyway
 - `OcrJobConsumerTest` — 10 test keputusan otomatis atas hasil pembacaan bukti,
   termasuk kapan nominal boleh ditulis ulang
 - `SecurityLayerTest` — 8 test lapisan HTTP: peran mana yang diterima di
@@ -193,6 +195,56 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### Verifikasi yang keliru akhirnya bisa dibatalkan
+
+Ditemukan saat membandingkan ulang dengan sistem Laravel: di sana ada
+`resetStatus` yang mengembalikan pembayaran ke antrean **sekaligus membongkar
+alokasinya**. Di sini tidak ada padanannya sama sekali — `requeue` justru
+menolak menyentuh yang sudah diverifikasi.
+
+Artinya bukti palsu yang telanjur diverifikasi, atau tombol yang salah pencet,
+hanya bisa dibetulkan lewat basis data langsung. Penyesuaian saldo tidak
+setara: uangnya bisa ditarik, tapi barisnya tetap berbunyi `VERIFIED`,
+kuitansinya tetap bisa dicetak, dan jejak auditnya tetap menyatakan uang itu
+masuk.
+
+**Yang menghalangi selama ini: tidak ada catatan ke mana uangnya pergi.**
+Alokasi hanya meninggalkan `allocated_at` dan perubahan `amount_paid`. Begitu
+dua pembayaran masuk ke tagihan yang sama, angkanya bercampur dan tidak bisa
+diurai lagi. Migrasi V10 menambah `payment_allocations`: satu baris per aliran
+uang, termasuk sisa yang dibuang karena toleransi, sehingga jumlah seluruh
+barisnya selalu sama persis dengan nominal pembayarannya.
+
+- Pembatalan membaca rincian itu dan membalikkannya **persis**, bukan
+  menghitung ulang seisi tagihan
+- Sistem lama menarik saldo dengan menerka: `max(0, totalDialokasikan −
+  totalTagihan)`. Terkaan itu meleset begitu saldo juga pernah diisi lewat
+  Penyesuaian — uang yang tidak ada hubungannya ikut lenyap. Di sini yang
+  ditarik hanya baris `WALLET` milik pembayaran itu sendiri
+- Kelebihan yang **sudah telanjur terpakai** menahan pembatalan, bukan
+  dipangkas jadi nol. Sistem lama memangkasnya dengan `max(0, ...)`, dan
+  selisihnya hilang tanpa ada yang tahu
+- Yang **ditolak** juga bisa dibatalkan; penolakan pun bisa keliru — bukti sah
+  bisa terlanjur ditolak karena gambarnya kurang jelas
+- Uang ditarik **lebih dulu**, baru statusnya diubah. Kalau urutannya terbalik
+  dan penarikannya gagal, pembayaran berakhir di antrean sementara uangnya
+  tetap tercatat masuk
+- Alokasi lama yang dibuat sebelum rinciannya dicatat **ditolak dengan
+  penjelasan**, bukan ditebak — dan diarahkan ke Penyesuaian
+
+**Di UI:** tombol "Batalkan keputusan" di panel tinjau, muncul hanya untuk yang
+sudah diputuskan, dengan dialog konfirmasi yang menyebutkan bahwa uangnya ikut
+ditarik dan kuitansinya tidak bisa dicetak lagi. Alasan wajib, minimal 5
+karakter, sama seperti penolakan dan perubahan nominal.
+
+**Diuji langsung terhadap sistem yang hidup:** bayar 3.000.000 ke cicilan yang
+sisanya 900.000 → rinciannya tercatat 900.000 + 1.200.000 + 900.000, berjumlah
+tepat 3.000.000 → dibatalkan, ketiga cicilan kembali persis ke angka semula →
+bayar 20.000.000 sehingga 15.500.000 masuk saldo, lalu admin menambah 2.000.000
+lewat Penyesuaian → dibatalkan, saldo tersisa **2.000.000**, bukan nol → bayar
+30.000.000 lalu saldonya dipakai 25.000.000 → pembatalan **ditolak 409** dengan
+menyebut berapa yang kurang. Seluruh data uji dikembalikan seperti semula.
 
 ### Pengingat jatuh tempo lewat WhatsApp
 

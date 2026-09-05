@@ -6,6 +6,7 @@ import ac.kampus.pembayaran.billing.InstallmentStatus;
 import ac.kampus.pembayaran.billing.PaymentPlan;
 import ac.kampus.pembayaran.billing.PaymentPlanRepository;
 import ac.kampus.pembayaran.billing.PlanStatus;
+import ac.kampus.pembayaran.common.BusinessRuleException;
 import ac.kampus.pembayaran.settings.SystemSettingService;
 import ac.kampus.pembayaran.student.Student;
 import ac.kampus.pembayaran.student.StudentRepository;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -41,10 +43,12 @@ class PaymentAllocationServiceTest {
 	private PaymentPlanRepository planRepository;
 	private StudentRepository studentRepository;
 	private VerificationLogRepository logRepository;
+	private PaymentAllocationRepository allocationRepository;
 	private SystemSettingService settings;
 	private PaymentAllocationService service;
 
 	private Student student;
+	private List<PaymentAllocation> rincianTersimpan;
 
 	@BeforeEach
 	void setUp() {
@@ -53,11 +57,25 @@ class PaymentAllocationServiceTest {
 		planRepository = mock(PaymentPlanRepository.class);
 		studentRepository = mock(StudentRepository.class);
 		logRepository = mock(VerificationLogRepository.class);
+		allocationRepository = mock(PaymentAllocationRepository.class);
 		settings = mock(SystemSettingService.class);
 
 		service = new PaymentAllocationService(
 				paymentRepository, installmentRepository, planRepository,
-				studentRepository, logRepository, settings);
+				studentRepository, logRepository, allocationRepository, settings);
+
+		// Rincian yang tersimpan ikut dikembalikan saat dibaca lagi, supaya
+		// pembatalan bisa diuji terhadap alokasi yang benar-benar terjadi.
+		rincianTersimpan = new ArrayList<>();
+		when(allocationRepository.save(any(PaymentAllocation.class))).thenAnswer(inv -> {
+			PaymentAllocation baris = inv.getArgument(0);
+			if (!rincianTersimpan.contains(baris)) rincianTersimpan.add(baris);
+			return baris;
+		});
+		when(allocationRepository.findByPaymentIdAndReversedAtIsNullOrderByIdAsc(anyLong()))
+				.thenAnswer(inv -> rincianTersimpan.stream()
+						.filter(b -> b.getReversedAt() == null)
+						.toList());
 
 		student = Student.builder()
 				.id(1L).nim("2612600001").name("Uji Coba")
@@ -267,5 +285,108 @@ class PaymentAllocationServiceTest {
 
 		verify(installmentRepository).findByIdForUpdate(1L);
 		verify(installmentRepository, never()).findById(anyLong());
+	}
+
+	// --- Rincian alokasi dan pembatalannya ---
+
+	@Test
+	@DisplayName("tiap rupiah dicatat ke mana perginya, dan jumlahnya sama dengan nominalnya")
+	void rincianLengkap() {
+		Installment c1 = cicilan(1, 1, "1200000", "0", LocalDate.of(2026, 9, 10));
+		Installment c2 = cicilan(2, 2, "1200000", "0", LocalDate.of(2026, 10, 10));
+        payment("3000000", c1, plan(c1, c2));
+
+		service.allocate(100L);
+
+		assertThat(rincianTersimpan).hasSize(3);
+		assertThat(rincianTersimpan.stream()
+				.map(PaymentAllocation::getAmount)
+				.reduce(BigDecimal.ZERO, BigDecimal::add))
+				.isEqualByComparingTo("3000000");
+
+		assertThat(rincianTersimpan.get(0).getKind()).isEqualTo(AllocationKind.INSTALLMENT);
+		assertThat(rincianTersimpan.get(0).getInstallmentId()).isEqualTo(1L);
+		assertThat(rincianTersimpan.get(2).getKind()).isEqualTo(AllocationKind.WALLET);
+		assertThat(rincianTersimpan.get(2).getAmount()).isEqualByComparingTo("600000");
+	}
+
+	@Test
+	@DisplayName("pembatalan mengembalikan cicilan dan saldo persis seperti semula")
+	void pembatalanMengembalikanSemula() {
+		Installment c1 = cicilan(1, 1, "1200000", "0", LocalDate.of(2026, 9, 10));
+		Installment c2 = cicilan(2, 2, "1200000", "0", LocalDate.of(2026, 10, 10));
+		Payment p = payment("3000000", c1, plan(c1, c2));
+
+		service.allocate(100L);
+		assertThat(student.getWalletBalance()).isEqualByComparingTo("600000");
+
+		service.reverse(100L);
+
+		assertThat(c1.getAmountPaid()).isEqualByComparingTo("0");
+		assertThat(c1.getStatus()).isEqualTo(InstallmentStatus.UNPAID);
+		assertThat(c2.getAmountPaid()).isEqualByComparingTo("0");
+		assertThat(student.getWalletBalance()).isEqualByComparingTo("0");
+		assertThat(p.getAllocatedAt()).isNull();
+		assertThat(rincianTersimpan).allMatch(b -> b.getReversedAt() != null);
+	}
+
+	@Test
+	@DisplayName("saldo dari Penyesuaian tidak ikut tertarik saat pembatalan")
+	void saldoLainTidakIkutTertarik() {
+		Installment c1 = cicilan(1, 1, "1200000", "0", LocalDate.of(2026, 9, 10));
+		payment("1500000", c1, plan(c1));
+
+		service.allocate(100L);
+		// 300.000 dari kelebihan bayar, lalu admin menambah 500.000 lewat Penyesuaian.
+		assertThat(student.getWalletBalance()).isEqualByComparingTo("300000");
+		student.setWalletBalance(student.getWalletBalance().add(new BigDecimal("500000")));
+
+		service.reverse(100L);
+
+		// Yang ditarik hanya 300.000 miliknya sendiri; 500.000 itu tetap utuh.
+		assertThat(student.getWalletBalance()).isEqualByComparingTo("500000");
+	}
+
+	@Test
+	@DisplayName("kelebihan yang sudah terpakai menahan pembatalan, bukan dipangkas jadi nol")
+	void saldoSudahTerpakai() {
+		Installment c1 = cicilan(1, 1, "1200000", "0", LocalDate.of(2026, 9, 10));
+		payment("1500000", c1, plan(c1));
+
+		service.allocate(100L);
+		// Kelebihannya sudah dipakai untuk hal lain.
+		student.setWalletBalance(new BigDecimal("50000"));
+
+		assertThatThrownBy(() -> service.reverse(100L))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessageContaining("sudah terpakai");
+
+		// Cicilannya tidak boleh ikut terbongkar sebagian.
+		assertThat(c1.getAmountPaid()).isEqualByComparingTo("1200000");
+	}
+
+	@Test
+	@DisplayName("alokasi lama tanpa rincian ditolak, bukan ditebak")
+	void tanpaRincianDitolak() {
+		Installment c1 = cicilan(1, 1, "1200000", "0", LocalDate.of(2026, 9, 10));
+		Payment p = payment("1200000", c1, plan(c1));
+		p.setAllocatedAt(Instant.now());
+		rincianTersimpan.clear();
+
+		assertThatThrownBy(() -> service.reverse(100L))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessageContaining("sebelum rinciannya dicatat");
+	}
+
+	@Test
+	@DisplayName("pembayaran yang belum dialokasikan tidak melakukan apa-apa")
+	void belumDialokasikan() {
+		Installment c1 = cicilan(1, 1, "1200000", "0", LocalDate.of(2026, 9, 10));
+		payment("1200000", c1, plan(c1));
+
+		service.reverse(100L);
+
+		assertThat(c1.getAmountPaid()).isEqualByComparingTo("0");
+		verify(allocationRepository, never()).save(any());
 	}
 }

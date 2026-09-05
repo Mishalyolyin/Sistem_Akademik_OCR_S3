@@ -17,6 +17,7 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -176,5 +177,60 @@ class PaymentControllerTest extends ControllerTestSupport {
 	void mahasiswaTidakBolehMelihatSemua() throws Exception {
 		mockMvc.perform(sebagaiMahasiswa(get("/payments")))
 				.andExpect(status().isForbidden());
+	}
+
+	// --- Pembatalan keputusan ---
+
+	@Test
+	@DisplayName("pembatalan meneruskan alasan dan id admin dari token")
+	void batalkanMeneruskanAlasan() throws Exception {
+		when(service.batalkanKeputusan(anyLong(), anyString(), anyLong()))
+				.thenReturn(contoh());
+
+		mockMvc.perform(sebagaiAdmin(post("/payments/7/batalkan"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("alasan", "Bukti ternyata milik orang lain"))))
+				.andExpect(status().isOk());
+
+		verify(service).batalkanKeputusan(
+				7L, "Bukti ternyata milik orang lain", ID_ADMIN);
+	}
+
+	@Test
+	@DisplayName("alasan yang terlalu pendek ditolak 400 sebelum menyentuh service")
+	void batalkanTanpaAlasan() throws Exception {
+		for (String alasan : new String[] { "", "oops" }) {
+			mockMvc.perform(sebagaiAdmin(post("/payments/7/batalkan"))
+							.contentType(MediaType.APPLICATION_JSON)
+							.content(json(Map.of("alasan", alasan))))
+					.andExpect(status().isBadRequest());
+		}
+
+		verify(service, never()).batalkanKeputusan(anyLong(), anyString(), anyLong());
+	}
+
+	@Test
+	@DisplayName("penolakan aturan bisnis sampai sebagai 409, bukan 500")
+	void batalkanDitolakAturan() throws Exception {
+		when(service.batalkanKeputusan(anyLong(), anyString(), anyLong()))
+				.thenThrow(new BusinessRuleException("Kelebihan sudah terpakai."));
+
+		mockMvc.perform(sebagaiAdmin(post("/payments/7/batalkan"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("alasan", "Alasan yang cukup panjang"))))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.detail",
+						org.hamcrest.Matchers.containsString("sudah terpakai")));
+	}
+
+	@Test
+	@DisplayName("mahasiswa tidak boleh membatalkan keputusan apa pun")
+	void batalkanDitolakUntukMahasiswa() throws Exception {
+		mockMvc.perform(sebagaiMahasiswa(post("/payments/7/batalkan"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(Map.of("alasan", "Alasan yang cukup panjang"))))
+				.andExpect(status().isForbidden());
+
+		verify(service, never()).batalkanKeputusan(anyLong(), anyString(), anyLong());
 	}
 }

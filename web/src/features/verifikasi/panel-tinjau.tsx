@@ -4,12 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
+  AlertTriangle,
   Check,
   Download,
   History,
   Loader2,
   RefreshCw,
   TriangleAlert,
+  Undo2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,11 +32,20 @@ import { formatRupiah, formatTanggal, formatTanggalJam } from "@/lib/format";
 import { BuktiTransfer } from "./bukti-transfer";
 import { KeyakinanOcr } from "./keyakinan-ocr";
 import {
+  useBatalkanKeputusan,
   useDecidePayment,
   usePaymentLogs,
   useRequeueOcr,
   type PaymentRow,
 } from "./api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function PanelTinjau({
   payment,
@@ -46,6 +57,7 @@ export function PanelTinjau({
   const [alasan, setAlasan] = useState("");
   const putuskan = useDecidePayment();
   const bacaUlang = useRequeueOcr();
+  const [batalTerbuka, setBatalTerbuka] = useState(false);
   const riwayat = usePaymentLogs(payment?.id ?? null);
 
   if (!payment) return null;
@@ -283,6 +295,17 @@ export function PanelTinjau({
                     Unduh kuitansi PDF
                   </Button>
                 )}
+
+                {/* Satu-satunya jalan keluar dari keputusan yang keliru. Tanpa
+                    ini, bukti palsu yang telanjur diverifikasi hanya bisa
+                    dibetulkan lewat basis data langsung. */}
+                <Button
+                  variant="destructive"
+                  onClick={() => setBatalTerbuka(true)}
+                >
+                  <Undo2 />
+                  Batalkan keputusan
+                </Button>
               </>
             ) : (
               <>
@@ -332,6 +355,13 @@ export function PanelTinjau({
           </div>
         </div>
       </SheetContent>
+
+      {batalTerbuka && (
+        <DialogBatalkan
+          payment={payment}
+          onClose={() => setBatalTerbuka(false)}
+        />
+      )}
     </Sheet>
   );
 }
@@ -358,5 +388,90 @@ function BarisData({
         {children}
       </dd>
     </div>
+  );
+}
+
+/**
+ * Membatalkan keputusan yang sudah diambil.
+ *
+ * <p>Alasannya wajib dan tidak ada tombol pintas: yang dibatalkan adalah
+ * pernyataan bahwa kampus menerima sejumlah uang, dan uang yang telanjur masuk
+ * cicilan maupun saldo ikut ditarik.
+ */
+function DialogBatalkan({
+  payment,
+  onClose,
+}: {
+  payment: PaymentRow;
+  onClose: () => void;
+}) {
+  const batalkan = useBatalkanKeputusan();
+  const [alasan, setAlasan] = useState("");
+  const bolehSimpan = alasan.trim().length >= 5 && !batalkan.isPending;
+
+  return (
+    <Dialog open onOpenChange={(next) => (next ? undefined : onClose())}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Batalkan keputusan?</DialogTitle>
+          <DialogDescription>
+            {payment.studentName} · {formatRupiah(payment.amount)}
+          </DialogDescription>
+        </DialogHeader>
+
+        <p className="flex gap-2 rounded-lg border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          <span>
+            Uang yang sudah masuk cicilan dan saldo akan ditarik kembali persis
+            sebesar yang dulu dibagikan. Pembayaran ini kembali ke antrean
+            tinjauan, dan kuitansinya tidak bisa dicetak lagi.
+          </span>
+        </p>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="alasan-batal" className="text-sm font-medium">
+            Alasan
+          </label>
+          <Textarea
+            id="alasan-batal"
+            value={alasan}
+            onChange={(event) => setAlasan(event.target.value)}
+            placeholder="Contoh: bukti ternyata milik mahasiswa lain."
+            rows={2}
+          />
+        </div>
+
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Batal
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            disabled={!bolehSimpan}
+            onClick={() =>
+              batalkan.mutate(
+                { id: payment.id, alasan: alasan.trim() },
+                {
+                  onSuccess: () => {
+                    toast.success("Keputusan dibatalkan, uangnya ditarik kembali.");
+                    onClose();
+                  },
+                  onError: (e) =>
+                    toast.error(
+                      e instanceof ApiError
+                        ? e.message
+                        : "Gagal membatalkan keputusan.",
+                    ),
+                },
+              )
+            }
+          >
+            {batalkan.isPending && <Loader2 className="animate-spin" />}
+            Batalkan keputusan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

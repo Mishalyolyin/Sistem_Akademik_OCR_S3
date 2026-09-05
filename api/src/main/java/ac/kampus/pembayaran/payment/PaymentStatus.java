@@ -21,4 +21,15 @@ public enum PaymentStatus {
 	public boolean sudahDiverifikasi() {
 		return this == AUTO_VERIFIED || this == VERIFIED;
 	}
+
+	/**
+	 * Sudah ada keputusan atasnya, diterima maupun ditolak.
+	 *
+	 * <p>Dibedakan dari {@link #sudahDiverifikasi()}: yang ditolak juga sudah
+	 * diputuskan, dan keputusan itu pun bisa keliru — bukti yang sah bisa
+	 * terlanjur ditolak karena gambarnya kurang jelas.
+	 */
+	public boolean sudahDiputuskan() {
+		return sudahDiverifikasi() || this == REJECTED;
+	}
 }

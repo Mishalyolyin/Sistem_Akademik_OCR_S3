@@ -122,6 +122,60 @@ public class PaymentService {
 		return payment;
 	}
 
+	/**
+	 * Membatalkan keputusan yang sudah diambil, beserta uang yang telanjur
+	 * dibagikan.
+	 *
+	 * <p>Ini satu-satunya jalan keluar dari kekeliruan yang paling mahal di
+	 * sistem ini: bukti palsu yang telanjur diverifikasi, atau tombol yang salah
+	 * pencet. Tanpa jalur ini, satu-satunya cara membetulkannya adalah menyentuh
+	 * database langsung — sementara barisnya tetap berbunyi VERIFIED, kuitansinya
+	 * tetap bisa dicetak, dan jejak auditnya tetap menyatakan uang itu masuk.
+	 *
+	 * <p>Alasannya wajib, sama seperti penolakan dan perubahan nominal: yang
+	 * dibatalkan di sini adalah pernyataan bahwa kampus menerima sejumlah uang.
+	 */
+	@Transactional
+	public Payment batalkanKeputusan(Long paymentId, String alasan, Long adminId) {
+		if (alasan == null || alasan.trim().length() < 5) {
+			throw new BusinessRuleException(
+					"Alasan pembatalan wajib diisi, minimal 5 karakter.");
+		}
+
+		Payment payment = paymentRepository.findWithDetailsById(paymentId)
+				.orElseThrow(() -> NotFoundException.of("Pembayaran", paymentId));
+
+		PaymentStatus statusLama = payment.getStatus();
+		if (!statusLama.sudahDiputuskan()) {
+			throw new BusinessRuleException(
+					("Pembayaran ini berstatus %s, belum ada keputusan yang bisa dibatalkan. "
+							+ "Untuk mengulang pembacaan OCR-nya, pakai Baca ulang.")
+							.formatted(statusLama));
+		}
+
+		// Uangnya ditarik lebih dulu: kalau penarikannya ditolak — misalnya
+		// saldonya sudah terpakai — statusnya tidak boleh terlanjur berubah.
+		allocationService.reverse(paymentId);
+
+		payment.setStatus(PaymentStatus.NEEDS_REVIEW);
+		payment.setVerifiedAt(null);
+		payment.setVerifiedBy(null);
+		payment.setRejectReason(null);
+		paymentRepository.save(payment);
+
+		logRepository.save(VerificationLog.builder()
+				.paymentId(payment.getId())
+				.fromStatus(statusLama)
+				.toStatus(PaymentStatus.NEEDS_REVIEW)
+				.adminId(adminId)
+				.note("Keputusan dibatalkan: " + alasan.trim())
+				.build());
+
+		log.warn("Pembayaran {} dibatalkan dari {} oleh admin {}: {}",
+				paymentId, statusLama, adminId, alasan.trim());
+		return payment;
+	}
+
 	/** Mengantrekan ulang pembacaan, misalnya setelah service OCR sempat mati. */
 	@Transactional
 	public void requeue(Long paymentId) {

@@ -6,6 +6,7 @@ import ac.kampus.pembayaran.billing.InstallmentStatus;
 import ac.kampus.pembayaran.billing.PaymentPlan;
 import ac.kampus.pembayaran.billing.PaymentPlanRepository;
 import ac.kampus.pembayaran.billing.PlanStatus;
+import ac.kampus.pembayaran.common.BusinessRuleException;
 import ac.kampus.pembayaran.common.NotFoundException;
 import ac.kampus.pembayaran.settings.SystemSettingService;
 import ac.kampus.pembayaran.student.Student;
@@ -44,6 +45,7 @@ public class PaymentAllocationService {
 	private final PaymentPlanRepository planRepository;
 	private final StudentRepository studentRepository;
 	private final VerificationLogRepository logRepository;
+	private final PaymentAllocationRepository allocationRepository;
 	private final SystemSettingService settings;
 
 	@Transactional
@@ -81,7 +83,7 @@ public class PaymentAllocationService {
 				return;
 			}
 
-			sisa = bayarkan(target, sisa, toleransi);
+			sisa = bayarkan(payment, target, sisa, toleransi);
 		}
 
 		// 2. Cicilan terlama yang belum lunas pada tagihan yang sama.
@@ -104,7 +106,7 @@ public class PaymentAllocationService {
 							.findByIdForUpdate(cicilan.getId())
 							.orElse(null);
 					if (terkunci != null) {
-						sisa = bayarkan(terkunci, sisa, BigDecimal.ZERO);
+						sisa = bayarkan(payment, terkunci, sisa, BigDecimal.ZERO);
 					}
 				}
 
@@ -121,6 +123,7 @@ public class PaymentAllocationService {
 
 			student.setWalletBalance(student.getWalletBalance().add(sisa));
 			studentRepository.save(student);
+			catatRincian(payment, AllocationKind.WALLET, null, sisa);
 
 			log.info("Pembayaran {}: kelebihan {} masuk saldo {}", paymentId, sisa, student.getNim());
 		}
@@ -131,6 +134,96 @@ public class PaymentAllocationService {
 	}
 
 	/**
+	 * Menarik kembali seluruh alokasi satu pembayaran, persis sebaliknya dari
+	 * rincian yang tercatat saat dibagikan.
+	 *
+	 * <p>Bukan menghitung ulang seisi tagihan: menghitung ulang berarti menebak,
+	 * dan tebakan itu meleset begitu saldo mahasiswa juga pernah diisi lewat
+	 * Penyesuaian — uang yang tidak ada hubungannya dengan tagihan ini akan ikut
+	 * tertarik.
+	 *
+	 * @throws BusinessRuleException bila saldo yang harus ditarik sudah telanjur
+	 *                               dipakai. Menguranginya sampai nol seperti
+	 *                               sistem lama membuat selisihnya lenyap tanpa
+	 *                               ada yang tahu; lebih baik ditolak dan
+	 *                               diputuskan manusia.
+	 */
+	@Transactional
+	public void reverse(Long paymentId) {
+		Payment payment = paymentRepository.findWithDetailsById(paymentId)
+				.orElseThrow(() -> NotFoundException.of("Pembayaran", paymentId));
+
+		if (payment.getAllocatedAt() == null) {
+			return;
+		}
+
+		List<PaymentAllocation> rincian =
+				allocationRepository.findByPaymentIdAndReversedAtIsNullOrderByIdAsc(paymentId);
+
+		if (rincian.isEmpty()) {
+			// Dialokasikan sebelum rinciannya mulai dicatat. Menariknya kembali
+			// hanya bisa dengan menerka, dan menerka soal uang lebih buruk
+			// daripada menolak.
+			throw new BusinessRuleException(
+					"Alokasi pembayaran ini dibuat sebelum rinciannya dicatat, jadi tidak bisa "
+							+ "ditarik otomatis. Betulkan lewat Penyesuaian saldo atau ubah "
+							+ "nominal cicilannya.");
+		}
+
+		BigDecimal keSaldo = rincian.stream()
+				.filter(baris -> baris.getKind() == AllocationKind.WALLET)
+				.map(PaymentAllocation::getAmount)
+				.reduce(BigDecimal.ZERO, BigDecimal::add);
+
+		if (keSaldo.signum() > 0) {
+			Student student = studentRepository.findByIdForUpdate(payment.getStudent().getId())
+					.orElseThrow(() -> NotFoundException.of(
+							"Mahasiswa", payment.getStudent().getId()));
+
+			if (student.getWalletBalance().compareTo(keSaldo) < 0) {
+				throw new BusinessRuleException(
+						("Kelebihan %s dari pembayaran ini sudah terpakai — saldo %s tinggal %s. "
+								+ "Bereskan dulu lewat Penyesuaian, baru batalkan verifikasinya.")
+								.formatted(keSaldo.toPlainString(), student.getNim(),
+										student.getWalletBalance().toPlainString()));
+			}
+
+			student.setWalletBalance(student.getWalletBalance().subtract(keSaldo));
+			studentRepository.save(student);
+		}
+
+		Instant sekarang = Instant.now();
+		for (PaymentAllocation baris : rincian) {
+			if (baris.getKind() == AllocationKind.INSTALLMENT) {
+				Installment cicilan = installmentRepository
+						.findByIdForUpdate(baris.getInstallmentId())
+						.orElseThrow(() -> NotFoundException.of(
+								"Cicilan", baris.getInstallmentId()));
+
+				// Tidak boleh minus walau datanya sempat disentuh dari luar.
+				BigDecimal dibayarBaru = cicilan.getAmountPaid().subtract(baris.getAmount());
+				cicilan.setAmountPaid(dibayarBaru.max(BigDecimal.ZERO));
+				cicilan.refreshStatus();
+				installmentRepository.save(cicilan);
+			}
+
+			baris.setReversedAt(sekarang);
+			allocationRepository.save(baris);
+		}
+
+		if (payment.getPaymentPlan() != null) {
+			planRepository.findWithInstallmentsById(payment.getPaymentPlan().getId())
+					.ifPresent(this::perbaruiStatusPlan);
+		}
+
+		payment.setAllocatedAt(null);
+		paymentRepository.save(payment);
+
+		log.info("Alokasi pembayaran {} ditarik kembali: {} baris, {} ke saldo.",
+				paymentId, rincian.size(), keSaldo);
+	}
+
+	/**
 	 * Membayarkan sebagian uang ke satu cicilan.
 	 *
 	 * @param toleransiBuang sisa sekecil ini dianggap biaya bank atau kode unik
@@ -138,7 +231,9 @@ public class PaymentAllocationService {
 	 *                       dihapus alih-alih dibawa ke cicilan berikutnya.
 	 * @return sisa uang yang belum terpakai
 	 */
-	private BigDecimal bayarkan(Installment cicilan, BigDecimal uang, BigDecimal toleransiBuang) {
+	private BigDecimal bayarkan(Payment payment, Installment cicilan, BigDecimal uang,
+			BigDecimal toleransiBuang) {
+
 		BigDecimal kurang = cicilan.outstanding();
 		if (kurang.signum() <= 0) {
 			return uang;
@@ -148,16 +243,42 @@ public class PaymentAllocationService {
 		cicilan.setAmountPaid(cicilan.getAmountPaid().add(dibayar));
 		cicilan.refreshStatus();
 		installmentRepository.save(cicilan);
+		catatRincian(payment, AllocationKind.INSTALLMENT, cicilan.getId(), dibayar);
 
 		BigDecimal sisa = uang.subtract(dibayar);
 
 		if (sisa.signum() > 0 && sisa.compareTo(toleransiBuang) <= 0) {
 			log.info("Cicilan {}: sisa {} dibuang karena masih dalam toleransi (kode unik bank).",
 					cicilan.getId(), sisa);
+			catatRincian(payment, AllocationKind.DISCARDED, null, sisa);
 			return BigDecimal.ZERO;
 		}
 
 		return sisa;
+	}
+
+	/**
+	 * Mencatat ke mana satu bagian uang mengalir.
+	 *
+	 * <p>Tanpa rincian ini, dua pembayaran yang masuk ke tagihan yang sama
+	 * membuat angkanya bercampur di {@code amount_paid} dan tidak bisa diurai
+	 * lagi — sehingga verifikasi yang keliru tidak mungkin dibatalkan dengan
+	 * tepat, dan pertanyaan "cicilan mana yang dibayar bukti ini" tidak ada
+	 * jawabannya.
+	 */
+	private void catatRincian(Payment payment, AllocationKind jenis, Long installmentId,
+			BigDecimal nominal) {
+
+		if (nominal.signum() <= 0) {
+			return;
+		}
+
+		allocationRepository.save(PaymentAllocation.builder()
+				.paymentId(payment.getId())
+				.installmentId(installmentId)
+				.kind(jenis)
+				.amount(nominal)
+				.build());
 	}
 
 	private void perbaruiStatusPlan(PaymentPlan plan) {

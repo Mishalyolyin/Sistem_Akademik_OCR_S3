@@ -169,6 +169,22 @@ public class PaymentController {
 				id, request.approve(), request.note(), AuthService.currentUserId()));
 	}
 
+	public record BatalkanRequest(
+			@NotNull(message = "Alasan pembatalan wajib diisi.")
+			@Size(min = 5, max = 500, message = "Alasan pembatalan minimal 5 karakter.")
+			String alasan
+	) {
+	}
+
+	@PostMapping("/{id}/batalkan")
+	@Operation(summary = "Batalkan keputusan verifikasi atau penolakan, beserta uang yang telanjur dibagikan")
+	public PaymentResponse batalkan(
+			@PathVariable Long id, @Valid @RequestBody BatalkanRequest request) {
+
+		return PaymentResponse.from(
+				service.batalkanKeputusan(id, request.alasan(), AuthService.currentUserId()));
+	}
+
 	@PostMapping("/{id}/requeue")
 	@ResponseStatus(HttpStatus.ACCEPTED)
 	@Operation(summary = "Baca ulang bukti bayar dengan OCR")
