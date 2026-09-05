@@ -32,6 +32,18 @@ export const ADMIN_SANDI = {
 };
 
 /**
+ * Akun forensik OCR.
+ *
+ * Peran ini pernah membuat login berakhir di spinner selamanya: ia diarahkan ke
+ * /dashboard yang justru menolaknya, lalu dilempar ke sana lagi. Bug seperti itu
+ * hanya kelihatan di peramban sungguhan, jadi akunnya ikut disemai di sini.
+ */
+export const DEVELOPER = {
+  email: "dev.e2e@kampus.ac.id",
+  password: ADMIN.password,
+};
+
+/**
  * Mahasiswa yang disemai; dokumennya sengaja sudah lengkap.
  *
  * Kata sandinya sama dengan admin karena hash-nya memang disalin dari baris
@@ -107,6 +119,7 @@ export default async function globalSetup() {
     DELETE FROM students WHERE nim = '${MAHASISWA.nim}';
     DELETE FROM users WHERE email = '${MAHASISWA.email}';
     DELETE FROM users WHERE email = '${ADMIN_SANDI.email}';
+    DELETE FROM users WHERE email = '${DEVELOPER.email}';
     DELETE FROM students WHERE nim = '${MAHASISWA_RESET.nim}';
     DELETE FROM users WHERE email = '${MAHASISWA_RESET.email}';
     DELETE FROM study_classes WHERE name = 'E2E' AND academic_year = '2026/2027';
@@ -123,6 +136,9 @@ export default async function globalSetup() {
 
     INSERT INTO users (name, email, password_hash, role, active)
     VALUES ('Admin Uji Sandi', '${ADMIN_SANDI.email}', '${HASH_ADMIN}', 'ADMIN', TRUE);
+
+    INSERT INTO users (name, email, password_hash, role, active)
+    VALUES ('Uji Developer', '${DEVELOPER.email}', '${HASH_ADMIN}', 'DEVELOPER', TRUE);
 
     INSERT INTO students (
       user_id, nim, name, study_class_id, discount_tier,

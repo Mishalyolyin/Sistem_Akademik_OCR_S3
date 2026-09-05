@@ -16,9 +16,11 @@ import { UserMenu } from "@/components/shell/user-menu";
 import {
   findActiveSection,
   findPageTitle,
-  navSections,
+  navUntukPeran,
   type NavSection,
 } from "@/components/shell/nav-config";
+import { berandaUntuk } from "@/components/shell/auth-guard";
+import { useAuth } from "@/lib/auth";
 
 function sectionHref(section: NavSection) {
   return section.href ?? section.children?.[0]?.href ?? "/dashboard";
@@ -26,8 +28,15 @@ function sectionHref(section: NavSection) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const activeSection = findActiveSection(pathname);
   const subNav = activeSection?.children;
+
+  // Menu disaring per peran: DEVELOPER hanya punya forensik, dan menu admin
+  // yang tetap terlihat olehnya hanya akan mengantar ke halaman yang menolaknya.
+  const menu = navUntukPeran(user?.role);
+  // Logo mengantar ke beranda perannya sendiri; /dashboard menolak DEVELOPER.
+  const beranda = user ? berandaUntuk(user.role) : "/dashboard";
 
   return (
     <div className="flex h-dvh overflow-hidden">
@@ -37,14 +46,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className="flex w-14 shrink-0 flex-col items-center gap-1 border-r border-sidebar-border bg-sidebar py-3"
       >
         <Link
-          href="/dashboard"
+          href={beranda}
           className="mb-2 flex size-9 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
           aria-label="Beranda"
         >
           SP
         </Link>
 
-        {navSections.map((section) => {
+        {menu.map((section) => {
           const Icon = section.icon;
           const isActive = activeSection?.id === section.id;
           return (
@@ -53,6 +62,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 render={
                   <Link
                     href={sectionHref(section)}
+                    // Isinya cuma ikon, jadi tanpa label ini seluruh menu utama
+                    // terbaca sebagai "link" tanpa nama oleh pembaca layar.
+                    // Tooltip tidak menggantikannya: ia hanya muncul saat
+                    // disorot tetikus.
+                    aria-label={section.title}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
                       "relative flex size-9 items-center justify-center rounded-lg transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",

@@ -68,6 +68,15 @@ app:
     # WAJIB diganti lewat environment variable di produksi.
     password: ${APP_ADMIN_PASSWORD:admin123}
 
+  # Akun forensik OCR. Mati secara bawaan: hanya dibutuhkan saat ada yang
+  # ditelusuri, dan tidak punya kata sandi bawaan karena ia bisa membaca hasil
+  # pembacaan bukti bayar seluruh mahasiswa.
+  seed-developer: ${APP_SEED_DEVELOPER:false}
+  developer:
+    name: ${APP_DEVELOPER_NAME:Developer}
+    email: ${APP_DEVELOPER_EMAIL:developer@kampus.ac.id}
+    password: ${APP_DEVELOPER_PASSWORD:}
+
   cookie:
     # WAJIB true saat sudah memakai HTTPS.
     secure: ${COOKIE_SECURE:false}

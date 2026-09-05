@@ -7,7 +7,18 @@ import { useAuth, type UserRole } from "@/lib/auth";
 
 /** Halaman awal masing-masing peran setelah masuk. */
 export function berandaUntuk(role: UserRole): string {
-  return role === "MAHASISWA" ? "/portal" : "/dashboard";
+  switch (role) {
+    case "MAHASISWA":
+      return "/portal";
+    // DEVELOPER tidak punya dashboard: seluruh endpoint admin menolaknya.
+    // Sebelum ini ia diarahkan ke /dashboard yang justru menolaknya, lalu
+    // dilempar ke sana lagi — berputar di tempat, dan yang terlihat di layar
+    // hanya "Memeriksa sesi…" selamanya.
+    case "DEVELOPER":
+      return "/forensik";
+    default:
+      return "/dashboard";
+  }
 }
 
 /**
@@ -21,14 +32,19 @@ export function berandaUntuk(role: UserRole): string {
 export function AuthGuard({
   children,
   role,
+  roles,
 }: {
   children: React.ReactNode;
+  /** Satu peran yang diizinkan. */
   role?: UserRole;
+  /** Beberapa peran sekaligus, untuk halaman yang dipakai lebih dari satu peran. */
+  roles?: UserRole[];
 }) {
   const { status, user } = useAuth();
   const router = useRouter();
 
-  const salahPeran = Boolean(role && user && user.role !== role);
+  const diizinkan = roles ?? (role ? [role] : null);
+  const salahPeran = Boolean(diizinkan && user && !diizinkan.includes(user.role));
 
   useEffect(() => {
     if (status === "unauthenticated") {

@@ -3,17 +3,17 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 5 September 2026, 00.20
+Terakhir diperbarui: 5 September 2026, 21.55
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 5 September 2026 pukul 00.20 di mesin pengembangan, semuanya lolos:
+Dijalankan 5 September 2026 pukul 21.55 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 244 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 258 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Test unit frontend | `npm test` | ✅ 33 test lolos di 4 berkas |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
@@ -96,10 +96,10 @@ pembacaan sulit direproduksi.
 
 ### Ditemukan, belum diputuskan
 
-**Peran DEVELOPER adalah peran yatim.** Dikecualikan dari seluruh endpoint admin;
-satu-satunya kemampuannya membuka gambar bukti. Login sebagai DEVELOPER berarti
-mendapat dashboard yang gagal memuat. Ini menyambung ke keputusan menggantung
-nomor 2 di bawah — sengaja tidak disentuh sampai ada keputusannya.
+~~**Peran DEVELOPER adalah peran yatim.**~~ Sudah dibereskan — lihat bagian
+"Peran DEVELOPER akhirnya punya halaman" di bawah. Catatan lama ini juga keliru
+menyebut akibatnya "dashboard yang gagal memuat"; kenyataannya login berakhir di
+spinner selamanya.
 
 ---
 
@@ -118,11 +118,6 @@ Dikerjakan berurutan, dari yang paling mendesak.
 
 ## Yang BELUM dikerjakan
 
-### Peran DEVELOPER
-
-Halaman forensik OCR belum dibuat, dan **belum diputuskan** apakah peran ini
-masih dibutuhkan di sistem S3.
-
 ### Hal teknis yang ditandai untuk dikerjakan nanti
 
 | Berkas | Yang perlu dilakukan | Fase |
@@ -133,7 +128,7 @@ masih dibutuhkan di sistem S3.
 
 ### Test otomatis
 
-Sudah ada **244 test backend** dan semuanya lolos:
+Sudah ada **258 test backend** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
@@ -172,6 +167,8 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 - `StudentImportControllerTest` — 7 test unggahan Excel
 - `ReportControllerTest` — 7 test laporan dan kuitansi
 - `DashboardControllerTest` — 5 test bentuk angka ringkasan
+- `ForensicControllerTest` — 10 test forensik OCR dan batas perannya
+- `DeveloperSeederTest` — 4 test pembuatan akun forensik
 - `TuitionControllerTest` — 8 test pengelolaan golongan potongan
 - `SecurityLayerTest` — 8 test
 
@@ -181,7 +178,8 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 
 1. **Hosting.** Spring Boot butuh JVM, shared hosting cPanel tidak mungkin.
    Perlu VPS. Belum dipastikan paket Rumahweb yang dipakai.
-2. **Peran DEVELOPER** masih dibutuhkan atau tidak.
+2. ~~**Peran DEVELOPER** masih dibutuhkan atau tidak.~~ Terjawab: dipertahankan
+   dan dilengkapi halaman forensik OCR beserta jalan membuat akunnya.
 3. ~~**Python 3.14** dan wheel `opencv-python`.~~ Terjawab: OpenCV 5.0.0 dan
    `pytesseract` terpasang normal di Python 3.14.7, `ocr/main.py` bisa diimpor
    tanpa galat. Tidak perlu Python 3.12 khusus untuk service OCR.
@@ -192,6 +190,65 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### Peran DEVELOPER akhirnya punya halaman, dan bisa masuk
+
+Peran ini yatim sejak awal: dikecualikan dari seluruh endpoint admin, satu-satunya
+kemampuannya membuka gambar bukti, dan **tidak ada cara membuat akunnya** selain
+INSERT langsung ke database.
+
+**Bug yang lebih parah dari yang tercatat.** Catatan lama menyebut login sebagai
+DEVELOPER berujung "dashboard yang gagal memuat". Kenyataannya lebih buruk:
+`berandaUntuk()` mengarahkan setiap non-mahasiswa ke `/dashboard`, sementara
+seluruh grup `(app)` dijaga `role="ADMIN"` — jadi ia dilempar ke halaman yang
+justru menolaknya, berulang tanpa henti. Yang terlihat hanya **"Memeriksa
+sesi…" selamanya**. Tidak ada satu pun request yang gagal, jadi tidak ada yang
+bisa ditangkap kecuali dengan membuka peramban.
+
+- `AuthGuard` kini menerima daftar peran, dan `berandaUntuk()` mengembalikan
+  `/forensik` untuk DEVELOPER
+- `GerbangForensik` menahannya di halaman itu: tanpa penjagaan ini ia bisa
+  membuka `/mahasiswa` dan mendapat halaman gagal memuat tanpa penjelasan
+- Navigasi jadi sadar peran. Bawaannya **hanya ADMIN**, jadi menu baru tidak
+  diam-diam muncul untuk peran yang endpointnya justru menolaknya
+- `DeveloperSeeder`: akun forensik lewat `APP_SEED_DEVELOPER`. Mati secara
+  bawaan, dan **tidak punya kata sandi bawaan** — akun ini bisa membaca hasil
+  pembacaan bukti bayar seluruh mahasiswa, jadi kata sandi yang tertulis di kode
+  sama saja membukanya untuk umum
+
+**Halaman forensiknya** menyajikan hasil OCR **mentah apa adanya** sebagai JSON,
+bukan dirapikan jadi beberapa field yang dikenal — bentuk jawaban service OCR
+bisa berubah, dan yang dicari saat menelusuri justru field yang tidak diduga ada.
+Ditambah catatan mesin, dan riwayat keputusan yang **membedakan keputusan mesin
+dari keputusan admin**. Ada saringan "pembacaan meragukan" yang juga memuat bukti
+yang belum pernah terbaca sama sekali — justru itu kasus yang paling perlu
+ditelusuri.
+
+**Dua hal yang ketahuan justru karena mengujinya sungguhan:**
+
+**1. Keyakinan OCR tersimpan sebagai pecahan 0–1, bukan persen.** Halaman
+forensik semula memperlakukannya sebagai persen: `1.0` tampil sebagai "1%", dan
+saringan "di bawah 80" akan mencocokkan **seluruh** baris karena tidak ada nilai
+yang lebih besar dari 1. Sekarang memakai komponen `KeyakinanOcr` yang sudah ada,
+dan satuannya ditulis jelas di DTO maupun di tipe TypeScript-nya.
+
+**2. Seluruh menu utama tidak punya nama aksesibel.** Rail navigasi hanya berisi
+ikon; tooltipnya cuma muncul saat disorot tetikus. Bagi pembaca layar, tiap menu
+terbaca sebagai "link" tanpa nama — sejak awal, bukan akibat perubahan ini.
+Sudah diberi `aria-label`.
+
+**Diuji langsung terhadap sistem yang hidup:** seeder menyalakan akun developer
+(tercatat di log) → login berhasil → forensik terbuka berisi 6 bukti → kelima
+endpoint admin (`/students`, `/classes`, `/dashboard/summary`, `/reports`,
+`/settings`) menjawab 403 → saringan pecahan 0.8 mengembalikan 0 dari 6, sesuai
+karena semua pembacaannya yakin → detail memuat `raw_text` dan `extracted_amount`
+yang tidak ada di DTO mana pun → riwayat menunjukkan dua keputusan otomatis
+disusul satu keputusan admin. Akun ujinya dihapus lagi setelahnya.
+
+**Empat uji Playwright baru** mengunci bug loop-nya di peramban: developer
+mendarat di forensik dan bukan di spinner, dikembalikan ke forensik saat membuka
+halaman admin, menunya hanya berisi forensik, dan admin tetap bisa membukanya
+lewat menu.
 
 ### CI, test unit frontend, dan lima controller terakhir
 
@@ -548,7 +605,7 @@ dijangkau lewat reverse proxy.
 
 ### Uji end-to-end
 
-Dua puluh dua uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
+Dua puluh enam uji Playwright berjalan terhadap sistem yang benar-benar hidup: Next.js,
 Spring Boot, dan PostgreSQL sungguhan, tanpa satu pun bagian yang ditiru. Port
 dan basis datanya terpisah dari yang dipakai sehari-hari (3100 / 8081 /
 `pembayaran_e2e`), jadi menjalankannya tidak mematikan server pengembangan dan

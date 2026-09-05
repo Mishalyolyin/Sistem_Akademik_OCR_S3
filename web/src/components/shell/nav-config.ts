@@ -3,11 +3,13 @@ import {
   FileBarChart,
   LayoutDashboard,
   School,
+  Search,
   Settings,
   Users,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
+import type { UserRole } from "@/lib/auth";
 
 export type NavChild = {
   title: string;
@@ -23,6 +25,12 @@ export type NavSection = {
   /** Section tanpa anak langsung menuju href ini. */
   href?: string;
   children?: NavChild[];
+  /**
+   * Peran yang boleh melihat menu ini. Kosong berarti hanya ADMIN — nilai
+   * bawaan yang aman: menu baru tidak diam-diam muncul untuk peran yang
+   * endpointnya justru menolaknya.
+   */
+  roles?: UserRole[];
 };
 
 export const navSections: NavSection[] = [
@@ -101,7 +109,20 @@ export const navSections: NavSection[] = [
       { title: "Rekening & Notifikasi", href: "/pengaturan/sistem" },
     ],
   },
+  {
+    id: "forensik",
+    title: "Forensik OCR",
+    icon: Search,
+    href: "/forensik",
+    roles: ["ADMIN", "DEVELOPER"],
+  },
 ];
+
+/** Menu yang boleh dilihat satu peran. */
+export function navUntukPeran(role: UserRole | undefined): NavSection[] {
+  if (!role) return [];
+  return navSections.filter((section) => (section.roles ?? ["ADMIN"]).includes(role));
+}
 
 /** Section yang cocok dengan pathname saat ini. */
 export function findActiveSection(pathname: string): NavSection | undefined {
