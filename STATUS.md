@@ -3,17 +3,17 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 5 September 2026, 21.55
+Terakhir diperbarui: 5 September 2026, 22.40
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 5 September 2026 pukul 21.55 di mesin pengembangan, semuanya lolos:
+Dijalankan 5 September 2026 pukul 22.40 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 258 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 286 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Test unit frontend | `npm test` | ✅ 33 test lolos di 4 berkas |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
@@ -128,13 +128,13 @@ Dikerjakan berurutan, dari yang paling mendesak.
 
 ### Test otomatis
 
-Sudah ada **258 test backend** dan semuanya lolos:
+Sudah ada **286 test backend** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
 - `PaymentAllocationServiceTest` — 11 test aturan pembagian uang ke cicilan
 - `ApiApplicationTests` — 1 test yang menyalakan PostgreSQL asli lewat
-  Testcontainers, sekaligus memverifikasi kedelapan migrasi Flyway
+  Testcontainers, sekaligus memverifikasi kesembilan migrasi Flyway
 - `OcrJobConsumerTest` — 10 test keputusan otomatis atas hasil pembacaan bukti,
   termasuk kapan nominal boleh ditulis ulang
 - `SecurityLayerTest` — 8 test lapisan HTTP: peran mana yang diterima di
@@ -168,6 +168,9 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 - `ReportControllerTest` — 7 test laporan dan kuitansi
 - `DashboardControllerTest` — 5 test bentuk angka ringkasan
 - `ForensicControllerTest` — 10 test forensik OCR dan batas perannya
+- `ReminderServiceTest` — 16 test aturan pengingat jatuh tempo
+- `GatewayWhatsAppSenderTest` — 8 test pengiriman ke gateway
+- `ReminderControllerTest` — 5 test halaman pengingat
 - `DeveloperSeederTest` — 4 test pembuatan akun forensik
 - `TuitionControllerTest` — 8 test pengelolaan golongan potongan
 - `SecurityLayerTest` — 8 test
@@ -190,6 +193,58 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### Pengingat jatuh tempo lewat WhatsApp
+
+Disebut di rencana sejak awal, nol implementasi sampai sekarang: tidak ada satu
+pun `@Scheduled` di seluruh backend, dan `@EnableScheduling` belum pernah
+dinyalakan — jadi anotasi jadwal apa pun akan diabaikan tanpa peringatan.
+
+Gateway-nya Fonnte/Wablas: POST form biasa dengan token di header. Alamat dan
+tokennya disimpan di pengaturan sistem, bukan di berkas konfigurasi, supaya bisa
+diganti tanpa deploy ulang — termasuk saat nomor pengirim perlu dipindah karena
+diblokir.
+
+**Aturannya berpihak pada tidak mengganggu.** Satu pengingat per cicilan per
+jenis, selamanya — mahasiswa yang menunggak dua bulan tidak menerima enam puluh
+pesan. Pengingat "menjelang" hanya dikirim pada hari yang tepat, bukan tiap hari
+sepanjang rentangnya. Penjagaannya ada di database juga, bukan cuma di kode:
+indeks unik parsial pada `(installment_id, kind) WHERE status = 'SENT'`, karena
+pemeriksaan di aplikasi tidak menahan dua proses yang berjalan bersamaan.
+
+Yang gagal terkirim **tidak** dianggap sudah dikirim, jadi dicoba lagi keesokan
+harinya — tapi jejaknya tetap dicatat supaya kegagalan berulang kelihatan.
+
+**Dua cacat yang ketahuan justru karena mengujinya sungguhan:**
+
+**1. Uji coba tanpa gateway menghabiskan jatah pengingat.** Dengan token kosong,
+pesan hanya dicatat di log — dan semula tetap tercatat `SENT`. Karena satu
+cicilan hanya diingatkan sekali, satu putaran percobaan berarti mahasiswa itu
+tidak akan pernah diingatkan lagi begitu gateway benar-benar dipasang. Sekarang
+dicatat `SKIPPED` beserta alasannya. Terbukti: setelah token diisi, kedua
+pengingat yang tadinya dilewati benar-benar dikirim ulang.
+
+**2. Gateway menolak sambil menjawab HTTP 200.** Dicoba dengan token yang salah,
+Fonnte membalas **200** berisi `{"status":false}`. Tanpa membaca badan
+jawabannya, token yang keliru membuat seluruh pengingat tercatat terkirim
+padahal tidak satu pun sampai — dan kekeliruannya permanen karena jatahnya
+telanjur habis. Sekarang badan jawaban ikut diperiksa.
+
+**Di UI:** halaman Pengaturan → Pengingat WhatsApp, berisi keenam pengaturannya,
+peringatan bila token belum diisi, riwayat 50 kiriman terakhir beserta alasan
+gagalnya, dan tombol **jalankan sekarang** dengan konfirmasi. Tombolnya ada
+karena penjadwal cuma berjalan sekali sehari: tanpa itu admin baru tahu
+pengaturannya salah keesokan harinya — atau tidak tahu sama sekali.
+
+**Diuji langsung terhadap sistem yang hidup:** migrasi V9 terpasang → putaran
+pertama menemukan 0 cicilan (memang belum ada yang jatuh tempo dalam tiga hari)
+→ ambangnya digeser ke H-5, 2 cicilan ketemu → nomor `081234567892` dirapikan
+jadi `6281234567892` → keduanya `SKIPPED` karena gateway belum diatur, dengan
+isi pesan lengkap terlihat di log → token diisi, keduanya benar-benar terkirim.
+Data uji dan pengaturannya dikembalikan seperti semula.
+
+**Sekalian dibersihkan:** `admin_phone_notification` dihapus. Ia disemai sejak
+V5, tampil di halaman Pengaturan, dan tidak pernah dibaca satu baris kode pun.
 
 ### Peran DEVELOPER akhirnya punya halaman, dan bisa masuk
 

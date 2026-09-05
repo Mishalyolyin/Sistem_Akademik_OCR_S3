@@ -81,6 +81,12 @@ app:
     # WAJIB true saat sudah memakai HTTPS.
     secure: ${COOKIE_SECURE:false}
 
+  # Pengingat jatuh tempo. Menyala atau tidaknya diatur admin lewat pengaturan
+  # sistem; yang di sini hanya kapan penjadwalnya berjalan.
+  reminder:
+    cron: ${REMINDER_CRON:0 0 8 * * *}
+    zone: ${REMINDER_ZONE:Asia/Jakarta}
+
   storage:
     root: ${STORAGE_ROOT:./storage}
 

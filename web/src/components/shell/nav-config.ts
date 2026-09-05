@@ -106,7 +106,12 @@ export const navSections: NavSection[] = [
     icon: Settings,
     children: [
       { title: "OCR & Verifikasi", href: "/pengaturan/ocr" },
-      { title: "Rekening & Notifikasi", href: "/pengaturan/sistem" },
+      { title: "Rekening", href: "/pengaturan/sistem" },
+      {
+        title: "Pengingat WhatsApp",
+        href: "/pengaturan/pengingat",
+        hint: "Jatuh tempo cicilan",
+      },
     ],
   },
   {

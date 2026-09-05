@@ -25,7 +25,12 @@ const label: Record<string, string> = {
   ocr_blacklist_keywords: "Kata kunci terlarang",
   ocr_date_validation_days: "Batas umur tanggal bukti (hari)",
   bank_account_number: "Rekening tujuan",
-  admin_phone_notification: "WhatsApp admin",
+  reminder_enabled: "Pengingat menyala",
+  reminder_days_before: "Kirim berapa hari sebelum jatuh tempo",
+  reminder_overdue_enabled: "Ikut mengingatkan yang lewat tempo",
+  whatsapp_gateway_url: "Alamat gateway WhatsApp",
+  whatsapp_gateway_token: "Token gateway WhatsApp",
+  reminder_message_template: "Isi pesan pengingat",
 };
 
 const kelompok: Record<string, string[]> = {
@@ -36,17 +41,28 @@ const kelompok: Record<string, string[]> = {
     "ocr_blacklist_keywords",
     "ocr_date_validation_days",
   ],
-  sistem: ["bank_account_number", "admin_phone_notification"],
+  sistem: ["bank_account_number"],
+  pengingat: [
+    "reminder_enabled",
+    "reminder_days_before",
+    "reminder_overdue_enabled",
+    "whatsapp_gateway_url",
+    "whatsapp_gateway_token",
+    "reminder_message_template",
+  ],
 };
 
 export function HalamanPengaturan({
   bagian,
   judul,
   keterangan,
+  children,
 }: {
-  bagian: "ocr" | "sistem";
+  bagian: "ocr" | "sistem" | "pengingat";
   judul: string;
   keterangan: string;
+  /** Isi tambahan di bawah daftar pengaturan, misalnya riwayat kiriman. */
+  children?: React.ReactNode;
 }) {
   const { data, isPending, error } = useSettings();
 
@@ -73,6 +89,8 @@ export function HalamanPengaturan({
           ))}
         </ul>
       )}
+
+      {children}
 
       {bagian === "ocr" && (
         <p className="rounded-lg border border-info/25 bg-info-soft px-4 py-3 text-sm text-info">
