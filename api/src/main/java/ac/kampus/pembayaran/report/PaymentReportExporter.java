@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Laporan Excel. Padanan kelas-kelas Export di Laravel, tapi datanya diambil
@@ -31,15 +32,63 @@ public class PaymentReportExporter {
 
 	private final JdbcClient jdbc;
 
+	/**
+	 * Penyaring laporan. Nilai kosong berarti "semua" — sengaja begitu supaya
+	 * laporan tanpa penyaring apa pun tetap satu jalur kode yang sama, bukan
+	 * cabang tersendiri yang bisa menyimpang diam-diam dari yang tersaring.
+	 *
+	 * @param classId  batasi ke satu kelas
+	 * @param status   batasi riwayat pembayaran ke satu status
+	 * @param format   bentuk laporannya
+	 */
+	public record Filter(Long classId, String status, Format format) {
+
+		public static final Filter SEMUA = new Filter(null, null, Format.TRANSAKSI);
+
+		public Filter {
+			format = format == null ? Format.TRANSAKSI : format;
+			status = (status == null || status.isBlank()) ? null : status.trim().toUpperCase();
+		}
+
+		/** Potongan judul berkas yang menerangkan penyaringnya. */
+		public String keterangan() {
+			StringBuilder sb = new StringBuilder(format.name().toLowerCase());
+			if (classId != null) sb.append("-kelas").append(classId);
+			if (status != null) sb.append('-').append(status.toLowerCase());
+			return sb.toString();
+		}
+	}
+
+	public enum Format {
+		/** Tiga lembar: ringkasan kelas, tagihan per kategori, riwayat pembayaran. */
+		TRANSAKSI,
+		/**
+		 * Ledger termin: satu lembar per semester UKT, satu baris per mahasiswa,
+		 * dengan sepasang kolom tanggal dan jumlah untuk tiap termin. Bentuk ini
+		 * mengikuti ledger sistem S2 yang sudah dipakai bagian keuangan — di
+		 * sana enam termin, di sini lima, sesuai angsuran UKT Program Doktor.
+		 */
+		TERMIN
+	}
+
 	/** Rekap tagihan seluruh mahasiswa: satu baris per mahasiswa per kategori. */
 	@Transactional(readOnly = true)
 	public byte[] ledgerMahasiswa() {
+		return ledgerMahasiswa(Filter.SEMUA);
+	}
+
+	@Transactional(readOnly = true)
+	public byte[] ledgerMahasiswa(Filter filter) {
 		try (Workbook workbook = new XSSFWorkbook();
 			 ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 
-			tulisRingkasan(workbook);
-			tulisTagihan(workbook);
-			tulisPembayaran(workbook);
+			if (filter.format() == Format.TERMIN) {
+				tulisLedgerTermin(workbook, filter);
+			} else {
+				tulisRingkasan(workbook, filter);
+				tulisTagihan(workbook, filter);
+				tulisPembayaran(workbook, filter);
+			}
 
 			workbook.write(out);
 			return out.toByteArray();
@@ -48,7 +97,7 @@ public class PaymentReportExporter {
 		}
 	}
 
-	private void tulisRingkasan(Workbook workbook) {
+	private void tulisRingkasan(Workbook workbook, Filter filter) {
 		Sheet sheet = workbook.createSheet("Ringkasan per Kelas");
 		CellStyle header = headerStyle(workbook);
 		CellStyle uang = uangStyle(workbook);
@@ -66,9 +115,11 @@ public class PaymentReportExporter {
 						LEFT JOIN payment_plans p ON p.student_id = s.id AND p.status <> 'CANCELLED'
 						LEFT JOIN installments i ON i.payment_plan_id = p.id
 						WHERE s.active
+						  AND (CAST(? AS BIGINT) IS NULL OR s.study_class_id = CAST(? AS BIGINT))
 						GROUP BY c.name
 						ORDER BY kelas
 						""")
+				.params(filter.classId(), filter.classId())
 				.query((rs, n) -> new Object[] {
 						rs.getString("kelas"), rs.getLong("mahasiswa"),
 						rs.getBigDecimal("tertagih"), rs.getBigDecimal("terkumpul") })
@@ -91,7 +142,7 @@ public class PaymentReportExporter {
 		autoSize(sheet, 6);
 	}
 
-	private void tulisTagihan(Workbook workbook) {
+	private void tulisTagihan(Workbook workbook, Filter filter) {
 		Sheet sheet = workbook.createSheet("Tagihan per Mahasiswa");
 		CellStyle header = headerStyle(workbook);
 		CellStyle uang = uangStyle(workbook);
@@ -118,9 +169,11 @@ public class PaymentReportExporter {
 						LEFT JOIN study_classes c ON c.id = s.study_class_id
 						LEFT JOIN installments i ON i.payment_plan_id = p.id
 						WHERE p.status <> 'CANCELLED'
+						  AND (CAST(? AS BIGINT) IS NULL OR s.study_class_id = CAST(? AS BIGINT))
 						GROUP BY s.nim, s.name, c.name, s.discount_tier, p.id
 						ORDER BY s.nim, p.category, p.semester_number
 						""")
+				.params(filter.classId(), filter.classId())
 				.query((rs, n) -> new Object[] {
 						rs.getString("nim"), rs.getString("name"), rs.getString("kelas"),
 						rs.getString("golongan"), rs.getString("kategori"),
@@ -154,7 +207,7 @@ public class PaymentReportExporter {
 		autoSize(sheet, 13);
 	}
 
-	private void tulisPembayaran(Workbook workbook) {
+	private void tulisPembayaran(Workbook workbook, Filter filter) {
 		Sheet sheet = workbook.createSheet("Riwayat Pembayaran");
 		CellStyle header = headerStyle(workbook);
 		CellStyle uang = uangStyle(workbook);
@@ -177,8 +230,11 @@ public class PaymentReportExporter {
 						JOIN students s ON s.id = pay.student_id
 						LEFT JOIN payment_plans pl ON pl.id = pay.payment_plan_id
 						LEFT JOIN installments i ON i.id = pay.installment_id
+						WHERE (CAST(? AS BIGINT) IS NULL OR s.study_class_id = CAST(? AS BIGINT))
+						  AND (CAST(? AS TEXT) IS NULL OR pay.status::text = CAST(? AS TEXT))
 						ORDER BY pay.created_at DESC
 						""")
+				.params(filter.classId(), filter.classId(), filter.status(), filter.status())
 				.query((rs, n) -> new Object[] {
 						rs.getLong("id"), rs.getString("nim"), rs.getString("name"),
 						rs.getString("kategori"), rs.getObject("installment_no"),
@@ -206,6 +262,171 @@ public class PaymentReportExporter {
 		}
 
 		autoSize(sheet, 11);
+	}
+
+	// --- Ledger termin ---
+
+	/**
+	 * Jumlah angsuran UKT per semester di Program Doktor. Ledger S2 memakai
+	 * enam kolom termin karena di sana angsurannya empat kali per tahun; di
+	 * sini lima, sesuai jadwal bulanan September–Januari dan Februari–Juni.
+	 */
+	private static final int TERMIN_PER_SEMESTER = 5;
+
+	/** Batas semester UKT, sama dengan PaymentGenerationService.MAX_SEMESTER_UKT. */
+	private static final int MAKS_SEMESTER = 6;
+
+	/**
+	 * Satu lembar per semester UKT: satu baris per mahasiswa, sepasang kolom
+	 * tanggal dan jumlah untuk tiap termin.
+	 *
+	 * <p>Yang dihitung sebagai "dibayar" hanya pembayaran yang sudah
+	 * diverifikasi. Bukti yang masih menunggu tidak boleh muncul sebagai uang
+	 * masuk di ledger — ini lembar yang dipakai bagian keuangan untuk
+	 * mencocokkan dengan rekening koran.
+	 */
+	private void tulisLedgerTermin(Workbook workbook, Filter filter) {
+		CellStyle header = headerStyle(workbook);
+		CellStyle uang = uangStyle(workbook);
+		boolean adaIsi = false;
+
+		for (int semester = 1; semester <= MAKS_SEMESTER; semester++) {
+			List<Object[]> rows = barisLedger(filter, semester);
+			if (rows.isEmpty()) {
+				continue;
+			}
+			adaIsi = true;
+			tulisLembarSemester(workbook, header, uang, semester, rows);
+		}
+
+		// Workbook tanpa satu lembar pun tidak bisa ditulis POI, dan berkas
+		// rusak lebih membingungkan daripada berkas kosong yang menjelaskan diri.
+		if (!adaIsi) {
+			Sheet sheet = workbook.createSheet("Kosong");
+			sheet.createRow(0).createCell(0).setCellValue(
+					"Belum ada tagihan UKT yang cocok dengan penyaring ini.");
+			sheet.autoSizeColumn(0);
+		}
+	}
+
+	private void tulisLembarSemester(
+			Workbook workbook, CellStyle header, CellStyle uang,
+			int semester, List<Object[]> rows) {
+
+		Sheet sheet = workbook.createSheet("UKT Semester " + semester);
+
+		List<String> judul = new java.util.ArrayList<>(List.of(
+				"No.", "NIM", "Nama", "Kelas", "Golongan", "Total UKT"));
+		for (int t = 1; t <= TERMIN_PER_SEMESTER; t++) {
+			judul.add("Tgl Termin " + t);
+			judul.add("Jumlah Termin " + t);
+		}
+		judul.addAll(List.of("Dibayar", "Sisa", "Status"));
+		tulisHeader(sheet, header, judul.toArray(String[]::new));
+
+		int r = 1;
+		for (Object[] row : rows) {
+			Row baris = sheet.createRow(r);
+			baris.createCell(0).setCellValue(r);
+			baris.createCell(1).setCellValue((String) row[0]);
+			baris.createCell(2).setCellValue((String) row[1]);
+			baris.createCell(3).setCellValue((String) row[2]);
+			baris.createCell(4).setCellValue((String) row[3]);
+
+			BigDecimal total = (BigDecimal) row[4];
+			isiUang(baris, 5, total, uang);
+
+			@SuppressWarnings("unchecked")
+			Map<Integer, Object[]> termin = (Map<Integer, Object[]>) row[5];
+
+			BigDecimal dibayar = BigDecimal.ZERO;
+			for (int t = 1; t <= TERMIN_PER_SEMESTER; t++) {
+				int kolom = 6 + (t - 1) * 2;
+				Object[] isi = termin.get(t);
+
+				// Termin yang belum dibayar dibiarkan kosong, bukan diisi nol —
+				// nol di kolom uang terbaca sebagai "sudah dicatat, nihil".
+				if (isi == null || isi[1] == null) {
+					baris.createCell(kolom).setCellValue("");
+					baris.createCell(kolom + 1).setCellValue("");
+					continue;
+				}
+
+				baris.createCell(kolom).setCellValue(isi[0] == null ? "-" : isi[0].toString());
+				BigDecimal nominal = (BigDecimal) isi[1];
+				isiUang(baris, kolom + 1, nominal, uang);
+				dibayar = dibayar.add(nominal);
+			}
+
+			int kolomAkhir = 6 + TERMIN_PER_SEMESTER * 2;
+			isiUang(baris, kolomAkhir, dibayar, uang);
+			isiUang(baris, kolomAkhir + 1, total.subtract(dibayar), uang);
+			baris.createCell(kolomAkhir + 2).setCellValue(
+					dibayar.compareTo(total) >= 0 ? "LUNAS" : "BELUM LUNAS");
+			r++;
+		}
+
+		autoSize(sheet, 6 + TERMIN_PER_SEMESTER * 2 + 3);
+	}
+
+	/**
+	 * Satu baris per mahasiswa yang punya tagihan UKT di semester itu, beserta
+	 * peta termin ke pasangan (tanggal bayar terakhir, jumlah terverifikasi).
+	 */
+	private List<Object[]> barisLedger(Filter filter, int semester) {
+		Map<String, Object[]> perMahasiswa = new java.util.LinkedHashMap<>();
+
+		jdbc.sql("""
+						SELECT s.nim, s.name,
+						       COALESCE(c.name, '-')          AS kelas,
+						       s.discount_tier::text          AS golongan,
+						       pl.total_amount,
+						       i.installment_no,
+						       COALESCE(SUM(pay.amount), 0)   AS dibayar,
+						       MAX(pay.verified_at)           AS terakhir
+						FROM payment_plans pl
+						JOIN students s ON s.id = pl.student_id
+						LEFT JOIN study_classes c ON c.id = s.study_class_id
+						JOIN installments i ON i.payment_plan_id = pl.id
+						LEFT JOIN payments pay
+						       ON pay.installment_id = i.id
+						      AND pay.status IN ('VERIFIED', 'AUTO_VERIFIED')
+						WHERE pl.category = 'UKT'
+						  AND pl.status <> 'CANCELLED'
+						  AND pl.semester_number = CAST(? AS INTEGER)
+						  AND (CAST(? AS BIGINT) IS NULL OR s.study_class_id = CAST(? AS BIGINT))
+						GROUP BY s.nim, s.name, c.name, s.discount_tier,
+						         pl.total_amount, i.installment_no
+						ORDER BY s.name, i.installment_no
+						""")
+				.params(semester, filter.classId(), filter.classId())
+				.query((rs, n) -> {
+					String nim = rs.getString("nim");
+					Object[] mahasiswa = perMahasiswa.computeIfAbsent(nim, k -> {
+						try {
+							return new Object[] {
+									nim, rs.getString("name"), rs.getString("kelas"),
+									rs.getString("golongan"), rs.getBigDecimal("total_amount"),
+									new java.util.HashMap<Integer, Object[]>() };
+						} catch (java.sql.SQLException e) {
+							throw new IllegalStateException(e);
+						}
+					});
+
+					BigDecimal dibayar = rs.getBigDecimal("dibayar");
+					if (dibayar != null && dibayar.signum() > 0) {
+						@SuppressWarnings("unchecked")
+						Map<Integer, Object[]> termin = (Map<Integer, Object[]>) mahasiswa[5];
+						var terakhir = rs.getTimestamp("terakhir");
+						termin.put(rs.getInt("installment_no"), new Object[] {
+								terakhir == null ? null : terakhir.toLocalDateTime().toLocalDate(),
+								dibayar });
+					}
+					return nim;
+				})
+				.list();
+
+		return List.copyOf(perMahasiswa.values());
 	}
 
 	// --- Pembantu format ---

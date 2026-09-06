@@ -59,6 +59,14 @@ public class Payment {
 	@Column(name = "proof_file_path", nullable = false, length = 500)
 	private String proofFilePath;
 
+	/**
+	 * Gambar hasil praproses OpenCV — yang benar-benar dibaca Tesseract, bukan
+	 * berkas asli yang diunggah mahasiswa. Kosong untuk bukti lama dan untuk
+	 * pembacaan yang gagal sebelum sempat menghasilkan gambar.
+	 */
+	@Column(name = "processed_file_path", length = 500)
+	private String processedFilePath;
+
 	@Column(name = "bank_name", length = 60)
 	private String bankName;
 

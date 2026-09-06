@@ -33,6 +33,8 @@ export type StudentSummary = {
   startAcademicYear: string;
   walletBalance: string;
   pendaftaranExempt: boolean;
+  /** Dibebaskan dari syarat lunas seluruh UKT sebelum mendaftar tahap ujian. */
+  ujianExempt: boolean;
   active: boolean;
   nextDocumentStep: DocumentStep | null;
   documentsComplete: boolean;
@@ -107,6 +109,7 @@ export function useUpdateStudent() {
       phone?: string;
       studyClassId?: number;
       pendaftaranExempt?: boolean;
+      ujianExempt?: boolean;
       active?: boolean;
     }) =>
       apiFetch<StudentSummary>(`/students/${id}`, { method: "PUT", body }),

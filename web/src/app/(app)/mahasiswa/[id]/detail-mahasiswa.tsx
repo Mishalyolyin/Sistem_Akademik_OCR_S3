@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
+  Ban,
   KeyRound,
   PencilLine,
   Plus,
@@ -14,6 +15,11 @@ import {
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -39,13 +45,14 @@ import {
 } from "@/features/tagihan/api";
 import { DialogBuatTagihan } from "@/features/tagihan/dialog-buat-tagihan";
 import { DialogUbahNominal } from "@/features/tagihan/dialog-ubah-nominal";
+import { DialogBatalTagihan } from "@/features/tagihan/dialog-batal-tagihan";
 import { DialogPenyesuaian } from "@/features/penyesuaian/dialog-penyesuaian";
 import { DialogResetSandi } from "@/features/mahasiswa/dialog-reset-sandi";
 import { DialogUbahMahasiswa } from "@/features/mahasiswa/dialog-ubah-mahasiswa";
 import { DialogHapusMahasiswa } from "@/features/mahasiswa/dialog-hapus-mahasiswa";
 import { KartuDokumen } from "@/features/mahasiswa/kartu-dokumen";
 import { ApiError } from "@/lib/api";
-import { formatRupiah, formatTanggal } from "@/lib/format";
+import { formatRupiah, formatTanggal, formatTanggalJam } from "@/lib/format";
 
 export function DetailMahasiswa({ studentId }: { studentId: number }) {
   const mahasiswa = useStudent(studentId);
@@ -58,6 +65,9 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
   const [ubahTerbuka, setUbahTerbuka] = useState(false);
   const [hapusTerbuka, setHapusTerbuka] = useState(false);
   const [cicilanDiubah, setCicilanDiubah] = useState<Installment | null>(null);
+  const [tagihanDibatalkan, setTagihanDibatalkan] = useState<PaymentPlan | null>(
+    null,
+  );
 
   if (mahasiswa.isPending) {
     return (
@@ -199,12 +209,20 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
           plans.data.map((plan) => (
             <KartuTagihan
               key={plan.id}
+              onBatalkan={setTagihanDibatalkan}
               plan={plan}
               onUbahCicilan={setCicilanDiubah}
             />
           ))
         )}
       </section>
+
+      <DialogBatalTagihan
+        open={tagihanDibatalkan !== null}
+        onOpenChange={(next) => !next && setTagihanDibatalkan(null)}
+        studentId={mhs.id}
+        plan={tagihanDibatalkan}
+      />
 
       <DialogBuatTagihan
         open={buatTerbuka}
@@ -256,14 +274,25 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
 function KartuTagihan({
   plan,
   onUbahCicilan,
+  onBatalkan,
 }: {
   plan: PaymentPlan;
   onUbahCicilan: (installment: Installment) => void;
+  onBatalkan: (plan: PaymentPlan) => void;
 }) {
   const lunas = Number(plan.remaining) === 0;
+  const dibatalkan = plan.status === "CANCELLED";
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
+    <div
+      className={cn(
+        "overflow-hidden rounded-lg border border-border bg-card",
+        // Tagihan yang dibatalkan tetap ditampilkan, tapi diredupkan: ia bagian
+        // dari riwayat mahasiswa ini dan menghilangkannya membuat admin bertanya
+        // ke mana perginya tagihan yang tadi ada.
+        dibatalkan && "opacity-60",
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
         <div>
           <h4 className="font-heading text-sm font-semibold">
@@ -299,7 +328,33 @@ function KartuTagihan({
             {lunas ? "Lunas" : `sisa ${formatRupiah(plan.remaining)}`}
           </p>
         </div>
+
+        {!dibatalkan && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Batalkan tagihan ${plan.categoryLabel}`}
+                  onClick={() => onBatalkan(plan)}
+                >
+                  <Ban className="size-4" />
+                </Button>
+              }
+            />
+            <TooltipContent>Batalkan tagihan ini</TooltipContent>
+          </Tooltip>
+        )}
       </div>
+
+      {dibatalkan && (
+        <p className="border-t border-border bg-muted/50 px-5 py-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Dibatalkan</span>
+          {plan.cancelledAt ? ` ${formatTanggalJam(plan.cancelledAt)}` : ""} —{" "}
+          {plan.cancelReason}
+        </p>
+      )}
 
       <div className="overflow-x-auto border-t border-border">
         <Table>

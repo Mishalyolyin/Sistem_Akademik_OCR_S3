@@ -12,7 +12,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -39,10 +41,16 @@ class ReportControllerTest extends ControllerTestSupport {
 	private ReceiptGenerator receiptGenerator;
 	@MockitoBean
 	private OcrDatasetExporter datasetExporter;
+	@MockitoBean
+	private StudentDataExporter studentExporter;
 
 	@BeforeEach
 	void setUp() {
-		when(exporter.ledgerMahasiswa()).thenReturn("berkas-excel-palsu".getBytes());
+		when(exporter.ledgerMahasiswa(any(PaymentReportExporter.Filter.class)))
+				.thenReturn("berkas-excel-palsu".getBytes());
+		when(studentExporter.dataMahasiswa(any(), any()))
+				.thenReturn("berkas-mahasiswa-palsu".getBytes());
+		when(datasetExporter.datasetGambar(anyInt())).thenReturn("PK-palsu".getBytes());
 		when(datasetExporter.datasetOcr(anyBoolean()))
 				.thenReturn("payment_id,label\n1,VERIFIED\n".getBytes());
 	}
@@ -158,7 +166,7 @@ class ReportControllerTest extends ControllerTestSupport {
 		mockMvc.perform(sebagaiMahasiswa(get("/reports/kuitansi/7.pdf")))
 				.andExpect(status().isForbidden());
 
-		verify(exporter, never()).ledgerMahasiswa();
+		verify(exporter, never()).ledgerMahasiswa(any(PaymentReportExporter.Filter.class));
 		verify(receiptGenerator, never()).generate(7L);
 	}
 

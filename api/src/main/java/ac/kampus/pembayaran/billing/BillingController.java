@@ -42,6 +42,7 @@ public class BillingController {
 	private final PaymentPlanRepository planRepository;
 	private final InstallmentAmountChangeRepository changeRepository;
 	private final StudentService studentService;
+	private final PlanCancellationService cancellationService;
 
 	// --- DTO ---
 
@@ -87,6 +88,9 @@ public class BillingController {
 			BigDecimal amountPaid,
 			BigDecimal remaining,
 			PlanStatus status,
+			/** Terisi hanya bila status CANCELLED; layar memakainya sebagai keterangan. */
+			Instant cancelledAt,
+			String cancelReason,
 			List<InstallmentResponse> installments
 	) {
 		static PlanResponse from(PaymentPlan plan) {
@@ -95,8 +99,16 @@ public class BillingController {
 					plan.getAcademicYear(), plan.getTerm(), plan.getSemesterNumber(),
 					plan.getBaseAmount(), plan.getDiscountPercent(), plan.getTotalAmount(),
 					plan.amountPaid(), plan.remaining(), plan.getStatus(),
+					plan.getCancelledAt(), plan.getCancelReason(),
 					plan.getInstallments().stream().map(InstallmentResponse::from).toList());
 		}
+	}
+
+	public record CancelPlanRequest(
+			@NotNull(message = "Alasan wajib diisi.")
+			@Size(min = 5, max = 500, message = "Alasan minimal 5 karakter.")
+			String reason
+	) {
 	}
 
 	public record UpdateAmountRequest(
@@ -158,6 +170,17 @@ public class BillingController {
 		return planRepository.findWithInstallmentsById(planId)
 				.map(PlanResponse::from)
 				.orElseThrow(() -> NotFoundException.of("Tagihan", planId));
+	}
+
+	@PatchMapping("/plans/{planId}/cancel")
+	@Operation(summary = "Batalkan satu tagihan yang salah dibuat; alasan wajib. "
+			+ "Tagihan yang sudah menerima pembayaran terverifikasi ditolak.")
+	public PlanResponse cancel(
+			@PathVariable Long planId,
+			@Valid @RequestBody CancelPlanRequest request) {
+
+		return PlanResponse.from(cancellationService.batalkan(
+				planId, request.reason(), AuthService.currentUserId()));
 	}
 
 	@PatchMapping("/installments/{installmentId}/amount")

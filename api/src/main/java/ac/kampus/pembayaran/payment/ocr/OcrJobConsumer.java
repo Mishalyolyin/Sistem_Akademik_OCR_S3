@@ -139,6 +139,12 @@ public class OcrJobConsumer {
 		Map<String, Object> ocrData = new HashMap<>(hasil);
 		ocrData.put("flags", catatan);
 
+		// Gambar praprosesnya dipindahkan ke berkas, lalu DIBUANG dari JSON.
+		// Membiarkannya di sana berarti puluhan kilobyte base64 ikut masuk ke
+		// kolom jsonb, ikut terkirim tiap kali halaman forensik dibuka, dan
+		// ikut tercetak mentah-mentah di ekspor dataset.
+		simpanGambarPraproses(payment, ocrData);
+
 		payment.setOcrData(ocrData);
 		payment.setOcrConfidence(BigDecimal.valueOf(keyakinan).setScale(4, RoundingMode.HALF_UP));
 		payment.setBankName(asString(hasil.get("bank_name")));
@@ -182,6 +188,33 @@ public class OcrJobConsumer {
 		// Verifikasi otomatis langsung diikuti pembagian uang ke cicilan.
 		if (statusBaru == PaymentStatus.AUTO_VERIFIED) {
 			allocationService.allocate(payment.getId());
+		}
+	}
+
+	/**
+	 * Memindahkan gambar hasil praproses dari jawaban OCR ke penyimpanan berkas.
+	 *
+	 * <p>Yang disimpan adalah gambar yang benar-benar dibaca Tesseract, bukan
+	 * berkas asli yang diunggah mahasiswa — itulah yang berguna untuk menelusuri
+	 * pembacaan yang meleset, dan itulah bahan mentah dataset gambar nanti.
+	 * Piksel yang tidak disimpan hari ini tidak bisa dipulihkan besok.
+	 *
+	 * <p>Gagal menyimpan tidak menggagalkan apa pun: pembacaannya sudah selesai
+	 * dan hasilnya tetap sah tanpa gambar pendampingnya.
+	 */
+	private void simpanGambarPraproses(Payment payment, Map<String, Object> ocrData) {
+		Object base64 = ocrData.remove("processed_image_b64");
+		if (!(base64 instanceof String teks) || teks.isBlank()) {
+			return;
+		}
+
+		try {
+			byte[] isi = java.util.Base64.getDecoder().decode(teks);
+			storage.storeGenerated(isi, "bukti-praproses", "png")
+					.ifPresent(payment::setProcessedFilePath);
+		} catch (IllegalArgumentException e) {
+			log.warn("Gambar praproses pembayaran {} bukan base64 yang sah, dilewati.",
+					payment.getId());
 		}
 	}
 

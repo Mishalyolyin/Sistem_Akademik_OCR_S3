@@ -29,20 +29,20 @@ Karena greenfield, tidak ada beban migrasi data dan tidak ada risiko produksi.
 
 ### Temuan dari salinan Laravel di repo ini
 
-`Laravel/routes/web.php` memanggil 4 controller yang filenya tidak ada di salinan ini:
-`StudentDocumentController`, `PendaftaranController`, `DevOcrController`, `DevDocumentOcrController`.
-Middleware alias `documents.complete`, `pendaftaran.complete`, dan `developer` juga tidak terdaftar
-di `Laravel/bootstrap/app.php`.
+Salinan Laravel di repo ini sekarang **lengkap** — keempat controller yang sempat hilang
+(`StudentDocumentController`, `PendaftaranController`, `DevOcrController`,
+`DevDocumentOcrController`) sudah ada, begitu pula middleware `documents.complete`,
+`pendaftaran.complete`, dan `developer`. Ia kini bisa dipakai sebagai pembanding sungguhan, bukan
+hanya sebagai peta rute.
 
-**Bukan penghambat.** Isi file-file itu hanya berguna sebagai contoh, dan `routes/web.php` sudah
-memperlihatkan urutan alurnya dengan cukup jelas:
+Urutan alur dokumen wajibnya:
 
 ```
 Foto → No.KTP + KTP → No.KK + KK → Ijazah → Alamat → bayar Pendaftaran → akses tagihan UKT
 ```
 
-Alur ini dirancang ulang dari nol untuk S3. Kalau salinan lengkapnya mudah didapat, silakan
-disalin sebagai pembanding; kalau tidak, tidak ada yang hilang.
+Alur ini dirancang ulang dari nol untuk S3, dengan gerbang yang sama tapi kategori dan urutan
+biaya yang berbeda.
 
 ---
 
@@ -236,6 +236,20 @@ dihapus, supaya mahasiswa dan tagihan yang memakainya tetap bisa dibaca.
 Mahasiswa yang dimasukkan ke kelas kerjasama **default** ke tier `KERJASAMA` (40%), tapi tier
 tetap disimpan per mahasiswa supaya pengecualian tetap mungkin tanpa memindahkan kelas.
 
+### Pembatalan tagihan
+
+```
+payment_plans.cancelled_at, cancelled_by, cancel_reason
+CHECK: status = 'CANCELLED' <-> cancel_reason dan cancelled_at terisi
+```
+
+### Pembebasan gerbang
+
+```
+students.pendaftaran_exempt  -- bebas syarat lunas Pendaftaran
+students.ujian_exempt        -- bebas syarat lunas seluruh UKT sebelum tahap ujian
+```
+
 ### Audit perubahan nominal
 
 ```
@@ -287,6 +301,14 @@ installment_amount_changes(id, installment_id, old_amount, new_amount, reason, a
 12. **Empat tahap ujian harus lunas berurutan.** Mahasiswa hanya bisa mendaftar
    `UJIAN_KELAYAKAN` bila `SEMINAR_PROPOSAL` sudah lunas, dan seterusnya. Backend **wajib**
    memvalidasi urutan ini, bukan hanya menyembunyikan tombol di UI.
+12a. **Seluruh UKT harus lunas sebelum tahap ujian mana pun bisa didaftarkan.** Keenam semester
+   harus sudah **ditagihkan dan lunas** — bukan hanya yang kebetulan sudah dibuatkan tagihannya,
+   sebab menagihkan semester berikutnya adalah pekerjaan admin dan mahasiswa tidak boleh
+   diuntungkan karena pekerjaan itu belum dilakukan. Gerbang ini berdiri **sebelum** aturan urutan
+   di nomor 12, dan pesan galatnya menyebut semester mana yang menghalangi.
+12b. **Pengecualiannya data, bukan tambalan kode.** `students.ujian_exempt` membebaskan satu
+   mahasiswa dari gerbang itu — untuk yang UKT-nya ditanggung beasiswa belakangan atau sedang
+   menyicil di luar sistem. Polanya sama persis dengan `pendaftaran_exempt`.
 13. **Biaya ujian tidak kena potongan** dan tidak dicicil.
 
 ### Edit nominal cicilan
@@ -302,6 +324,22 @@ installment_amount_changes(id, installment_id, old_amount, new_amount, reason, a
 18. **`payment_plans.total_amount` dihitung ulang** = jumlah `amount` semua cicilan pada plan itu.
 19. Seluruh operasi dalam **satu transaksi dengan pessimistic lock** pada baris cicilan.
 
+### Pembatalan tagihan
+
+20. **Tagihan yang salah dibuat bisa dibatalkan**, statusnya jadi `CANCELLED`. Ini bukan
+    kemewahan: dua indeks unik (`uq_active_plan` dan `uq_one_time_plan`) membuat satu kekeliruan
+    permanen. Seminar Proposal yang terlanjur dibuat untuk mahasiswa keliru akan membuat mahasiswa
+    itu **tidak akan pernah** bisa punya Seminar Proposal lagi, dan UKT di tahun yang salah
+    mengunci tahun itu sekaligus memakan jatah 6 semester.
+21. **Alasan wajib**, minimal 5 karakter, tersimpan di `payment_plans.cancel_reason` beserta siapa
+    dan kapan. `CHECK` di database menjaga ketiganya terisi bersamaan dengan status `CANCELLED`.
+22. **Tagihan yang sudah menerima pembayaran terverifikasi ditolak.** Pembatalan tidak menyentuh
+    uang sama sekali. Jalannya dua langkah dan itu disengaja: batalkan dulu tiap keputusan
+    verifikasinya di panel verifikasi — masing-masing dengan alasannya sendiri — baru tagihannya
+    bisa dibatalkan. Satu tombol yang membalik lima transaksi dengan satu kalimat alasan justru
+    menghapus keterangan yang paling dicari ketika pembukuan diperiksa.
+23. Pesan penolakannya **menyebut jumlah dan nominalnya**, bukan sekadar "tidak bisa dibatalkan".
+
 ### Kenapa tabel audit terpisah dari `adjustments`
 
 `adjustments.amount` bermakna *delta terhadap uang yang sudah dibayar* (`amount_paid`), sedangkan
@@ -316,12 +354,19 @@ kalau digabung, riwayat "uang masuk" dan "tagihan berubah" bercampur di satu log
 - Dashboard statistik: mahasiswa aktif, status bayar, tren, statistik OCR per kelas
 - Verifikasi pembayaran **per kategori** (6 kategori), dengan penyaring per kelas
 - Kelola mahasiswa: tingkat potongan, kelas, reset password, bulk delete, download foto
+- Batalkan tagihan yang salah dibuat, dengan alasan wajib dan jejak audit
+- Dua pembebasan gerbang per mahasiswa: bebas biaya Pendaftaran, bebas syarat lunas UKT
 - Kelola kelas berhuruf, termasuk penanda kelas kerjasama
 - Atur tarif dasar dan persen potongan
 - Edit nominal cicilan + alasan + audit trail
 - Import mahasiswa dari Excel + template (kolom kelas dan tingkat potongan)
 - Penyesuaian (adjustment), pengaturan OCR
-- Export laporan dan ledger, receipt PDF
+- Export laporan pembayaran **dengan penyaring** kelas dan status, dalam dua format: daftar
+  transaksi (tiga lembar rekap) atau **ledger termin** — satu lembar per semester UKT, satu baris
+  per mahasiswa, sepasang kolom tanggal dan jumlah untuk tiap angsuran. Bentuk terakhir mengikuti
+  ledger sistem S2 yang sudah dipakai bagian keuangan; di sana enam termin, di sini lima
+- Export data mahasiswa beserta hasil pemeriksaan tiap dokumen wajib
+- Receipt PDF per pembayaran
 
 ### Mahasiswa
 - Gate dokumen wajib berurutan: Foto → No.KTP+KTP → No.KK+KK → Ijazah → Alamat
@@ -341,6 +386,13 @@ kalau digabung, riwayat "uang masuk" dan "tagihan berubah" bercampur di satu log
   leftover ≤ toleransi di-*discard* (kode unik bank)
 - Guard race condition: keputusan manual admin tidak boleh ditimpa hasil OCR yang datang telat
 - Reminder WhatsApp terjadwal
+- **Gambar hasil praproses OpenCV disimpan** (`payments.processed_file_path`) — yang benar-benar
+  dibaca Tesseract, bukan berkas asli unggahan mahasiswa. Piksel yang tidak disimpan hari ini tidak
+  bisa dipulihkan besok, beda dengan angka yang selalu bisa dihitung ulang
+- Statistik pembelajaran di halaman pengaturan OCR: berapa contoh berlabel terkumpul, dan seberapa
+  sering keputusan mesin sepakat dengan admin — satu-satunya ukuran yang menjawab apakah ambang
+  keyakinan kekencangan atau kekendoran
+- Export dataset **gambar** (ZIP: `gambar/` + `label.csv`) untuk melatih model penglihatan
 - Export dataset CSV pembacaan bukti untuk ML — hanya bukti yang **diputuskan admin** yang ikut,
   disandingkan dengan apa yang dibaca mesin. Verifikasi otomatis yang belum disentuh manusia
   sengaja tidak masuk: itu tebakan mesin sendiri, dan melatih model darinya hanya mengukuhkan
@@ -358,6 +410,10 @@ kalau digabung, riwayat "uang masuk" dan "tagihan berubah" bercampur di satu log
   ter-highlight
 - **Dialog edit nominal** dengan React Hook Form + Zod, status cicilan dihitung ulang langsung
   saat diketik
+- **Penanda semester berjalan**, diturunkan dari tanggal: chip di top bar admin (supaya tahun
+  akademik tidak ditebak dari ingatan saat membuat tagihan) dan kartu di portal mahasiswa yang
+  menyebut bulan jatuh temponya. Juli–Agustus ditandai **jeda**, bukan dipaksa masuk salah satu
+  term — memang tidak ada angsuran di dua bulan itu
 - Command palette (Ctrl+K): mencari halaman, mahasiswa, dan tindakan sekaligus. Daftar halamannya
   diturunkan dari konfigurasi menu dan ikut disaring per peran, supaya palet tidak jadi pintu
   belakang ke halaman yang endpointnya menolak

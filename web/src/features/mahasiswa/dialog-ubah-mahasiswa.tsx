@@ -54,6 +54,10 @@ export function DialogUbahMahasiswa({
     mahasiswa.studyClassId ? String(mahasiswa.studyClassId) : "",
   );
   const [aktif, setAktif] = useState(mahasiswa.active);
+  const [bebasPendaftaran, setBebasPendaftaran] = useState(
+    mahasiswa.pendaftaranExempt,
+  );
+  const [bebasUjian, setBebasUjian] = useState(mahasiswa.ujianExempt);
 
   const bolehSimpan = nama.trim().length > 0 && !ubah.isPending;
 
@@ -64,6 +68,8 @@ export function DialogUbahMahasiswa({
         name: nama.trim(),
         phone: telepon.trim(),
         studyClassId: kelasId ? Number(kelasId) : undefined,
+        pendaftaranExempt: bebasPendaftaran,
+        ujianExempt: bebasUjian,
         active: aktif,
       },
       {
@@ -145,6 +151,46 @@ export function DialogUbahMahasiswa({
               <span className="block text-xs text-muted-foreground">
                 Yang dinonaktifkan tetap tersimpan beserta seluruh riwayatnya,
                 hanya tidak lagi ikut di daftar aktif.
+              </span>
+            </span>
+          </label>
+
+          {/*
+            Dua pembebasan gerbang. Keduanya membuka jalan yang biasanya
+            tertutup, jadi keterangannya menyebut apa yang dilewati — bukan
+            sekadar nama penandanya, yang tidak berarti apa-apa bagi admin
+            yang membukanya enam bulan lagi.
+          */}
+          <label className="flex items-start gap-2.5 rounded-md border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 accent-primary"
+              checked={bebasPendaftaran}
+              onChange={(event) => setBebasPendaftaran(event.target.checked)}
+            />
+            <span>
+              Bebas biaya Pendaftaran
+              <span className="block text-xs text-muted-foreground">
+                Melewati syarat lunas Pendaftaran, sehingga tagihan lain bisa
+                langsung diakses. Untuk yang biaya pendaftarannya ditanggung
+                pihak lain atau sudah dibayar di luar sistem.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex items-start gap-2.5 rounded-md border border-warning/40 bg-warning/10 px-3 py-2.5 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-4 accent-primary"
+              checked={bebasUjian}
+              onChange={(event) => setBebasUjian(event.target.checked)}
+            />
+            <span>
+              Bebas syarat lunas UKT untuk tahap ujian
+              <span className="block text-xs text-muted-foreground">
+                Biasanya keempat tahap ujian baru bisa didaftarkan setelah
+                seluruh enam semester UKT ditagihkan dan lunas. Nyalakan ini
+                bila mahasiswa memang dibolehkan maju lebih dulu.
               </span>
             </span>
           </label>

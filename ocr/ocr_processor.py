@@ -1,4 +1,5 @@
 import sys
+import base64
 import json
 import os
 import re
@@ -271,7 +272,7 @@ def extract_text_from_image(image_path, doc_type='payment'):
         return None, {
             "error": "OCR libraries not installed. Please run: pip install -r app/Scripts/requirements.txt",
             "verification_status": "manual_review_required"
-        }
+        }, None
 
     # Set tesseract path for Windows if it exists
     windows_path = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -282,7 +283,7 @@ def extract_text_from_image(image_path, doc_type='payment'):
         # Load image (raster image or PDF — see load_document_image)
         img = load_document_image(image_path)
         if img is None:
-            return None, {"error": "Could not read image file", "verification_status": "failed"}
+            return None, {"error": "Could not read image file", "verification_status": "failed"}, None
 
         # Preprocessing
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -318,23 +319,40 @@ def extract_text_from_image(image_path, doc_type='payment'):
             _, processed = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             tess_config = ''
 
-        # Simpan gambar untuk keperluan skripsi
-        try:
-            base_dir = os.path.dirname(image_path)
-            base_name = os.path.basename(image_path).split('.')[0]
-            cv2.imwrite(os.path.join(base_dir, f"{base_name}_1_grayscale.jpg"), gray)
-            cv2.imwrite(os.path.join(base_dir, f"{base_name}_2_threshold.jpg"), processed)
-        except Exception:
-            pass
-
         # Perform OCR
         text = pytesseract.image_to_string(processed, lang='ind+eng', config=tess_config)
-        return text, None
+        return text, None, encode_processed(processed)
     except Exception as e:
         return None, {
             "error": str(e),
             "verification_status": "manual_review_required"
-        }
+        }, None
+
+
+def encode_processed(processed):
+    """
+    Encode the preprocessed image as base64 PNG so the caller can store it.
+
+    This is the image Tesseract actually read — grayscale, resized or
+    binarized — not the file the student uploaded. Keeping it is what makes an
+    image dataset possible later: pixels that were never saved cannot be
+    recovered, unlike numbers, which can always be recomputed.
+
+    PNG, not JPEG: the payment-proof branch produces a pure black-and-white
+    image, and JPEG's block artifacts would smear exactly the letter edges a
+    future model needs. PNG is lossless and, on binarized input, usually
+    smaller than the JPEG anyway.
+
+    Returns None rather than raising — a failure to encode a debugging aid must
+    never cost us the reading itself.
+    """
+    try:
+        ok, buffer = cv2.imencode('.png', processed)
+        if not ok:
+            return None
+        return base64.b64encode(buffer.tobytes()).decode('ascii')
+    except Exception:
+        return None
 
 
 _DIGIT_CONFUSION = str.maketrans({
@@ -635,16 +653,23 @@ def process_image(image_path, accounts=None, blacklist=None, max_days=None, stud
     if doc_type == 'photo':
         return process_photo(image_path)
 
-    text, error = extract_text_from_image(image_path, doc_type)
+    text, error, processed_b64 = extract_text_from_image(image_path, doc_type)
     if error:
         return error
 
+    # Gambar hasil praproses ditempelkan ke apa pun bentuk hasilnya, termasuk
+    # hasil pembacaan dokumen wajib — bukan hanya bukti bayar.
+    def with_image(result):
+        if processed_b64:
+            result['processed_image_b64'] = processed_b64
+        return result
+
     if doc_type == 'ktp':
-        return process_ktp(text, student_name)
+        return with_image(process_ktp(text, student_name))
     if doc_type == 'ijazah':
-        return process_ijazah(text, student_name)
+        return with_image(process_ijazah(text, student_name))
     if doc_type == 'kk':
-        return process_kk(text, student_name)
+        return with_image(process_kk(text, student_name))
 
     try:
         # 1. Extract Amount
@@ -670,7 +695,7 @@ def process_image(image_path, accounts=None, blacklist=None, max_days=None, stud
             result["verification_status"] = "rejected"
             result["flags"].append(f"Blacklist keywords found: {', '.join(blacklist_hits)}")
             result["confidence"] = 0.0
-            return result
+            return with_image(result)
 
         # 3. Check Date Validity — informational only. Student payments aren't always
         # made on time, so an old/missing receipt date no longer rejects or caps
@@ -721,7 +746,7 @@ def process_image(image_path, accounts=None, blacklist=None, max_days=None, stud
         else:
              result["verification_status"] = "low_confidence"
 
-        return result
+        return with_image(result)
 
     except Exception as e:
         return {

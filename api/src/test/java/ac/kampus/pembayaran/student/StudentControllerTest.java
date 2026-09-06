@@ -104,7 +104,8 @@ class StudentControllerTest extends ControllerTestSupport {
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.detail", containsString("2026/2027")));
 
-		verify(service, never()).update(anyLong(), any(), any(), any(), any(), any(), any(), any());
+		verify(service, never()).update(
+				anyLong(), any(), any(), any(), any(), any(), any(), any(), any());
 	}
 
 	@Test

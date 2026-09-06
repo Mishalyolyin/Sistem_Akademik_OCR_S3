@@ -69,6 +69,7 @@ public class StudentService {
 			AcademicTerm startTerm,
 			String startAcademicYear,
 			Boolean pendaftaranExempt,
+			Boolean ujianExempt,
 			Boolean active) {
 
 		Student student = get(id);
@@ -78,6 +79,7 @@ public class StudentService {
 		if (startTerm != null) student.setStartTerm(startTerm);
 		if (startAcademicYear != null) student.setStartAcademicYear(startAcademicYear);
 		if (pendaftaranExempt != null) student.setPendaftaranExempt(pendaftaranExempt);
+		if (ujianExempt != null) student.setUjianExempt(ujianExempt);
 		if (active != null) student.setActive(active);
 
 		if (studyClassId != null) {

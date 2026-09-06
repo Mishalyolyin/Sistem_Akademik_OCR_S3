@@ -32,14 +32,54 @@ public class ReportController {
 	private final PaymentReportExporter exporter;
 	private final ReceiptGenerator receiptGenerator;
 	private final OcrDatasetExporter datasetExporter;
+	private final StudentDataExporter studentExporter;
 
 	@GetMapping("/pembayaran.xlsx")
-	@Operation(summary = "Laporan Excel: ringkasan kelas, tagihan, dan riwayat pembayaran")
-	public ResponseEntity<Resource> laporanPembayaran() {
-		byte[] bytes = exporter.ledgerMahasiswa();
-		String nama = "laporan-pembayaran-%s.xlsx".formatted(LocalDate.now());
+	@Operation(summary = "Laporan Excel pembayaran, bisa disaring per kelas dan status. "
+			+ "Format TRANSAKSI memberi tiga lembar rekap; TERMIN memberi ledger "
+			+ "per semester dengan kolom tiap angsuran.")
+	public ResponseEntity<Resource> laporanPembayaran(
+			@RequestParam(required = false) Long classId,
+			@RequestParam(required = false) String status,
+			@RequestParam(required = false) PaymentReportExporter.Format format) {
+
+		var filter = new PaymentReportExporter.Filter(classId, status, format);
+		byte[] bytes = exporter.ledgerMahasiswa(filter);
+		String nama = "laporan-pembayaran-%s-%s.xlsx"
+				.formatted(filter.keterangan(), LocalDate.now());
 
 		return unduh(bytes, nama, MediaType.parseMediaType(XLSX));
+	}
+
+	@GetMapping("/mahasiswa.xlsx")
+	@Operation(summary = "Ekspor data mahasiswa beserta hasil pemeriksaan dokumennya")
+	public ResponseEntity<Resource> dataMahasiswa(
+			@RequestParam(required = false) Long classId,
+			@RequestParam(required = false) String tier) {
+
+		byte[] bytes = studentExporter.dataMahasiswa(classId, tier);
+		String nama = "data-mahasiswa-%s.xlsx".formatted(LocalDate.now());
+
+		return unduh(bytes, nama, MediaType.parseMediaType(XLSX));
+	}
+
+	@GetMapping("/dataset-ocr.zip")
+	@Operation(summary = "Dataset gambar bukti bayar: gambar hasil praproses + label.csv. "
+			+ "Hanya bukti berlabel admin yang gambarnya sudah tersimpan.")
+	public ResponseEntity<Resource> datasetGambar(
+			@RequestParam(defaultValue = "1000") int batas) {
+
+		byte[] bytes = datasetExporter.datasetGambar(Math.clamp(batas, 1, 5000));
+		String nama = "dataset-ocr-gambar-%s.zip".formatted(LocalDate.now());
+
+		return unduh(bytes, nama, MediaType.parseMediaType("application/zip"));
+	}
+
+	@GetMapping("/statistik-ocr")
+	@Operation(summary = "Berapa banyak bahan belajar yang sudah terkumpul, dan "
+			+ "seberapa sering keputusan mesin sepakat dengan admin")
+	public OcrDatasetExporter.Statistik statistikOcr() {
+		return datasetExporter.statistik();
 	}
 
 	@GetMapping("/kuitansi/{paymentId}.pdf")

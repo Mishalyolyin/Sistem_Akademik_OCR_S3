@@ -16,6 +16,7 @@ import {
   type SystemSetting,
 } from "@/features/pengaturan/api";
 import { ApiError } from "@/lib/api";
+import { PanelStatistikOcr } from "@/features/pengaturan/statistik-ocr";
 
 /** Nama yang lebih manusiawi daripada key mentah di database. */
 const label: Record<string, string> = {
@@ -91,6 +92,8 @@ export function HalamanPengaturan({
       )}
 
       {children}
+
+      {bagian === "ocr" && <PanelStatistikOcr />}
 
       {bagian === "ocr" && (
         <p className="rounded-lg border border-info/25 bg-info-soft px-4 py-3 text-sm text-info">

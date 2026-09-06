@@ -3,19 +3,19 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 6 September 2026, 08.40
+Terakhir diperbarui: 6 September 2026, 16.20
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 6 September 2026 pukul 08.40 di mesin pengembangan, semuanya lolos:
+Dijalankan 6 September 2026 pukul 16.20 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 331 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 356 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
-| Test unit frontend | `npm test` | ✅ 49 test lolos di 5 berkas |
+| Test unit frontend | `npm test` | ✅ 61 test lolos di 6 berkas |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
 | Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
@@ -23,6 +23,11 @@ Dijalankan 6 September 2026 pukul 08.40 di mesin pengembangan, semuanya lolos:
 | Susunan compose | `docker compose config` | ✅ dev terbaca; prod menolak tanpa `.env` terisi — memang penjagaannya |
 | Stack produksi | `up -d --build` lalu login | ✅ 5 service hidup, admin bisa masuk |
 | Endpoint dataset OCR | `GET /reports/dataset-ocr.csv` di stack produksi | ✅ 200 `text/csv`, header kolom benar, tanpa token 401 |
+| Endpoint baru | statistik OCR, data mahasiswa, ledger termin, dataset ZIP | ✅ keempatnya 200 di stack produksi |
+| Siklus batal tagihan | buat → terkunci → batal → slot bebas → buat lagi | ✅ berhasil penuh lewat API sungguhan |
+| Penjagaan batal tagihan | batal saat sudah ada uang masuk | ✅ ditolak 409, pesannya menyebut Rp 2.400.000 |
+| `CHECK` pembatalan | `UPDATE` langsung ke CANCELLED tanpa alasan | ✅ ditolak `ck_plan_cancel_reason` |
+| Gerbang lunas UKT | daftar Seminar Proposal tanpa UKT lunas | ✅ ditolak 409; menyala lagi setelah `ujianExempt` |
 
 Toolchain yang terpasang: JDK 21.0.12.1, Node 24.19.0, Python 3.14.7, Docker 29.7.2.
 
@@ -139,9 +144,10 @@ Dikerjakan berurutan, dari yang paling mendesak.
 
 ### Test otomatis
 
-Sudah ada **331 test backend** dan semuanya lolos:
+Sudah ada **356 test backend** dan semuanya lolos:
 
-- `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
+- `PaymentGenerationServiceTest` — 24 test aturan hitungan tagihan, termasuk
+  7 test gerbang lunas UKT sebelum tahap ujian
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
 - `PaymentAllocationServiceTest` — 17 test aturan pembagian uang ke cicilan dan
   penarikannya kembali
@@ -162,8 +168,13 @@ Sudah ada **331 test backend** dan semuanya lolos:
 - `StudentServiceTest` — 14 test pengembalian kata sandi mahasiswa ke NIM,
   pemeriksaan golongan saat mahasiswa dipindah, dan penjagaan penghapusan
 - `StudentImportServiceTest` — 5 test pemeriksaan golongan pada berkas import
+- `PlanCancellationServiceTest` — 7 test pembatalan tagihan, terutama
+  penolakannya saat tagihan sudah menerima uang
 - `OcrDatasetExporterTest` — 5 test pengutipan sel CSV dataset
-- `OcrDatasetExporterIntegrationTest` — 6 test query dataset di PostgreSQL asli
+- `ExcelExportIntegrationTest` — 7 test kedua ekspor Excel di PostgreSQL asli:
+  ledger termin, penyaring kelas dan status, dan pembedaan "belum terbaca"
+  dari "tidak cocok" di ekspor mahasiswa
+- `OcrDatasetExporterIntegrationTest` — 10 test query dataset di PostgreSQL asli
   lewat Testcontainers: penyaringan label manusia, kolom turunan dari flags, dan
   `ocr_data` yang tidak punya kunci `flags` sama sekali
 
@@ -211,6 +222,103 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### Hasil sisir sistem S2, dan jalan buntu yang ditemukan di dalamnya
+
+Salinan Laravel di repo ini ternyata sudah lengkap — keempat controller yang
+dulu disebut hilang kini ada — jadi ia bisa dipakai sebagai pembanding
+sungguhan. Sisirannya menemukan delapan hal, satu di antaranya bukan fitur
+yang kurang melainkan jalan buntu.
+
+**1. Tagihan yang salah dibuat akhirnya bisa dibatalkan.** `PlanStatus.CANCELLED`
+sudah ada di enum sejak awal, sudah dikecualikan oleh dua indeks unik, dan
+sudah disaring di enam tempat berbeda — tapi tidak satu pun baris kode pernah
+menuliskannya. Satu-satunya penulisan status tagihan adalah `ACTIVE ↔ COMPLETED`.
+
+Akibatnya permanen. Seminar Proposal yang terlanjur dibuat untuk mahasiswa
+keliru membuat mahasiswa itu tidak akan pernah bisa punya Seminar Proposal
+lagi, karena `uq_one_time_plan` melihat masih ada satu. UKT di tahun yang salah
+mengunci tahun itu sekaligus memakan jatah 6 semester. Sebelum ini, satu-satunya
+jalan keluar adalah menghapus mahasiswanya.
+
+Pembatalan **tidak menyentuh uang**. Tagihan yang sudah menerima pembayaran
+terverifikasi ditolak, dan pesannya menyebut berapa pembayaran dan berapa
+nominalnya. Jalannya dua langkah dan itu disengaja: batalkan dulu tiap
+keputusan verifikasinya di panel verifikasi, masing-masing dengan alasannya
+sendiri. Satu tombol yang membalik lima transaksi dengan satu kalimat alasan
+justru menghapus keterangan yang paling dicari saat pembukuan diperiksa.
+
+> **Catatan atas kekhawatiran yang keliru.** Dua kasus lain sempat dikira ikut
+> buntu, padahal tidak. Mahasiswa yang salah unggah tinggal mengunggah lagi —
+> `PaymentService.upload` hanya menolak cicilan yang sudah `PAID`. Admin yang
+> salah menolak bisa memakai `batalkanKeputusan`, yang mengembalikan status ke
+> `NEEDS_REVIEW` sekaligus menarik uang yang telanjur dibagikan.
+
+**2. Tahap ujian kini menunggu seluruh UKT lunas.** Keempat biaya ujian adalah
+akhir masa studi, dan kampus tidak meluluskan mahasiswa yang masih menunggak.
+Syaratnya keenam semester sudah **ditagihkan dan lunas** — bukan hanya yang
+kebetulan sudah dibuatkan tagihannya, sebab menagihkan semester berikutnya
+adalah pekerjaan admin dan mahasiswa tidak boleh diuntungkan karena pekerjaan
+itu belum dilakukan. Pesan galatnya menyebut semester mana yang menghalangi,
+bukan sekadar "belum lunas".
+
+Pengecualiannya data, bukan tambalan kode: `students.ujian_exempt`, polanya
+sama persis dengan `pendaftaran_exempt` yang sudah ada. Bagian keuangan sesekali
+memang membolehkan seseorang maju lebih dulu.
+
+**3. Gambar hasil praproses OCR akhirnya disimpan.** Yang dibaca Tesseract bukan
+berkas asli yang diunggah mahasiswa, melainkan hasil praproses OpenCV. Selama
+ini gambar itu dibuang begitu pembacaan selesai — dan piksel yang tidak disimpan
+hari ini tidak bisa dipulihkan besok, beda dengan angka yang selalu bisa
+dihitung ulang.
+
+Sekaligus menutup satu kebocoran: `ocr_processor.py` menulis dua berkas
+`_1_grayscale.jpg` dan `_2_threshold.jpg` di samping berkas sementara, dan
+hanya berkas sementaranya yang ikut dihapus. Dua gambar itu menumpuk di `/tmp`
+container tanpa batas. Sekarang gambarnya dikembalikan sebagai base64 di
+jawaban OCR, disimpan ke penyimpanan berkas oleh Spring, lalu **dibuang dari
+JSON** — kalau tidak, puluhan kilobyte base64 ikut mengendap di kolom `jsonb`,
+ikut terkirim tiap halaman forensik dibuka, dan ikut tercetak di ekspor dataset.
+
+**4. Dataset gambar.** ZIP berisi `gambar/<payment_id>.png`, `label.csv`, dan
+satu berkas keterangan. Melengkapi dataset angka yang dibuat sebelumnya:
+yang CSV untuk mengukur ambang keputusan, yang gambar untuk melatih model
+penglihatan.
+
+**5. Statistik pembelajaran di halaman pengaturan OCR.** Berapa contoh berlabel
+sudah terkumpul, berapa positif, berapa negatif, berapa yang punya gambar. Yang
+paling menentukan bukan itu semua melainkan **seberapa sering mesin sepakat
+dengan admin** — satu-satunya ukuran yang menjawab apakah ambang keyakinan
+kekencangan atau kekendoran. Di bawah 70%, layarnya menyarankan menaikkan
+ambang verifikasi otomatis.
+
+**6. Laporan pembayaran akhirnya punya penyaring**, dan dua format. Penyaringnya
+kelas dan status. Formatnya: daftar transaksi (tiga lembar rekap seperti
+sebelumnya) atau **ledger termin** — satu lembar per semester UKT, satu baris
+per mahasiswa, sepasang kolom tanggal dan jumlah untuk tiap angsuran. Bentuk
+terakhir mengikuti ledger S2 yang sudah dipakai bagian keuangan; di sana enam
+termin, di sini lima, sesuai jadwal bulanan Program Doktor.
+
+**7. Data mahasiswa akhirnya bisa diekspor.** Sistem sejak awal bisa
+*menerima* daftar mahasiswa lewat import Excel tapi tidak pernah bisa
+*mengeluarkannya*. Kolomnya memuat hasil pemeriksaan tiap dokumen, bukan
+sekadar "sudah unggah atau belum": NIK yang terbaca di KTP cocok atau tidak,
+nama di ijazah cocok, latar foto merah. Tiga keadaan dibedakan — berkasnya
+belum ada, sudah ada tapi belum terbaca, atau sudah terbaca dan hasilnya
+begini. Menyamakan "belum terbaca" dengan "tidak cocok" akan mengirim admin
+memeriksa berkas yang sebenarnya tidak bermasalah.
+
+**8. Penanda semester berjalan.** Chip di top bar admin dan kartu di portal
+mahasiswa, diturunkan dari tanggal. Bagi admin ini mencegah kekeliruan yang
+paling mudah terjadi dan paling telat ketahuan: membuat tagihan di tahun
+akademik yang salah karena menebaknya dari ingatan.
+
+Juli dan Agustus ditandai **jeda**, bukan dipaksa masuk salah satu term. Tidak
+ada angsuran jatuh tempo di dua bulan itu, dan memaksakannya masuk Genap akan
+membuat layar menyebut term yang cicilan terakhirnya sudah lewat sejak Juni.
+Perhitungannya juga sengaja tidak dirender di server: halaman ini dibangun jadi
+HTML statis saat build, jadi semester yang dihitung di sana akan membeku di
+nilai saat build dan tetap salah berbulan-bulan tanpa satu pun galat.
 
 ### Dua fitur yang tertulis di rencana tapi tidak pernah dibangun
 

@@ -29,6 +29,7 @@ import {
 import { kategoriLabel, urutanUjian } from "@/features/tarif/konstanta";
 import { ApiError } from "@/lib/api";
 import { formatRupiah, formatTanggal } from "@/lib/format";
+import { KartuSemester } from "@/components/penanda-semester";
 
 export function HalamanTagihan() {
   const profil = useProfil();
@@ -70,6 +71,8 @@ export function HalamanTagihan() {
 
   return (
     <div className="flex flex-col gap-5">
+      <KartuSemester />
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-heading text-xl font-semibold tracking-tight">

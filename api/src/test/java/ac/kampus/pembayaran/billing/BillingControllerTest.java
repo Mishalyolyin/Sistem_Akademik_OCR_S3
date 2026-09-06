@@ -40,6 +40,8 @@ class BillingControllerTest extends ControllerTestSupport {
 	@MockitoBean
 	private InstallmentBillingService billingService;
 	@MockitoBean
+	private PlanCancellationService cancellationService;
+	@MockitoBean
 	private PaymentPlanRepository planRepository;
 	@MockitoBean
 	private InstallmentAmountChangeRepository changeRepository;

@@ -15,6 +15,7 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/shell/user-menu";
 import { CommandPalette } from "@/components/shell/command-palette";
+import { ChipSemester } from "@/components/penanda-semester";
 import {
   findActiveSection,
   findPageTitle,
@@ -146,6 +147,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <h1 className="truncate font-heading text-sm font-semibold">
             {findPageTitle(pathname)}
           </h1>
+          {/*
+            Semester berjalan selalu terlihat: hampir tiap tagihan yang dibuat
+            admin butuh tahun akademik dan term, dan menebaknya dari ingatan
+            adalah cara paling mudah membuat tagihan di tahun yang salah —
+            kekeliruan yang baru ketahuan setelah mahasiswa membayar.
+          */}
+          <ChipSemester className="hidden sm:inline-flex" />
           <Button
             variant="outline"
             size="sm"

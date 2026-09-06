@@ -10,6 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.lang.Nullable;
 
+import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,4 +31,27 @@ public interface PaymentRepository
 	/** Baca status terkini tanpa memuat seluruh entitas. */
 	@Query("SELECT p.status FROM Payment p WHERE p.id = :id")
 	Optional<PaymentStatus> findStatusById(@Param("id") Long id);
+
+	/**
+	 * Pembayaran yang masih dianggap sah pada satu tagihan.
+	 *
+	 * <p>Dipakai sebelum membatalkan tagihan: uang yang sudah diterima tidak
+	 * boleh hilang hanya karena tagihannya dicoret. Yang ditolak sengaja tidak
+	 * ikut — penolakan berarti uang itu memang tidak pernah diakui masuk.
+	 */
+	@Query("""
+			SELECT COUNT(p) FROM Payment p
+			WHERE p.paymentPlan.id = :planId AND p.status IN :statuses
+			""")
+	long countOnPlan(
+			@Param("planId") Long planId,
+			@Param("statuses") Collection<PaymentStatus> statuses);
+
+	@Query("""
+			SELECT COALESCE(SUM(p.amount), 0) FROM Payment p
+			WHERE p.paymentPlan.id = :planId AND p.status IN :statuses
+			""")
+	BigDecimal sumOnPlan(
+			@Param("planId") Long planId,
+			@Param("statuses") Collection<PaymentStatus> statuses);
 }

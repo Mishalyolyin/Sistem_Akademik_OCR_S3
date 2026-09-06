@@ -55,6 +55,7 @@ public class PaymentGenerationService {
 				: null;
 
 		assertNotDuplicated(student, category, academicYear, term);
+		assertUktLunas(student, category);
 		assertExamSequence(student, category);
 
 		TuitionRate rate = rateRepository
@@ -196,6 +197,60 @@ public class PaymentGenerationService {
 		if (ada) {
 			throw new BusinessRuleException(
 					"%s sudah pernah ditagih %s.".formatted(student.getName(), category.label()));
+		}
+	}
+
+	/**
+	 * Tahap ujian baru boleh diajukan setelah SELURUH UKT lunas.
+	 *
+	 * <p>Ketat dengan sengaja: keempat biaya ujian adalah akhir masa studi, dan
+	 * kampus tidak meluluskan mahasiswa yang masih menunggak. "Seluruh" berarti
+	 * keenam semester sudah ditagihkan <b>dan</b> lunas — bukan hanya yang
+	 * kebetulan sudah dibuatkan tagihannya, sebab menagihkan semester berikutnya
+	 * adalah pekerjaan admin dan mahasiswa tidak boleh diuntungkan karena
+	 * pekerjaan itu belum dilakukan.
+	 *
+	 * <p>Pengecualiannya {@code students.ujian_exempt}, ditetapkan admin per
+	 * mahasiswa. Bagian keuangan sesekali memang membolehkan seseorang maju
+	 * lebih dulu — mahasiswa dengan beasiswa yang UKT-nya ditanggung belakangan,
+	 * atau yang sedang menyicil di luar sistem. Tanpa penanda itu satu-satunya
+	 * jalan adalah menyentuh database langsung.
+	 *
+	 * <p>Pesan galatnya menyebut semester mana yang menghalangi. "Belum lunas"
+	 * saja memaksa admin membuka tagihan satu per satu untuk mencarinya.
+	 */
+	private void assertUktLunas(Student student, PaymentCategory category) {
+		if (!PaymentCategory.examSequence().contains(category) || student.isUjianExempt()) {
+			return;
+		}
+
+		List<PaymentPlan> ukt = planRepository
+				.findByStudentIdOrderByCategoryAscSemesterNumberAsc(student.getId()).stream()
+				.filter(p -> p.getCategory() == PaymentCategory.UKT)
+				.filter(p -> p.getStatus() != PlanStatus.CANCELLED)
+				.toList();
+
+		List<String> penghalang = new java.util.ArrayList<>();
+
+		if (ukt.size() < MAX_SEMESTER_UKT) {
+			penghalang.add("%d dari %d semester belum ditagihkan"
+					.formatted(MAX_SEMESTER_UKT - ukt.size(), MAX_SEMESTER_UKT));
+		}
+
+		String belumLunas = ukt.stream()
+				.filter(p -> !p.isFullyPaid())
+				.map(p -> "semester %d (sisa %s)".formatted(p.getSemesterNumber(), p.remaining()))
+				.collect(java.util.stream.Collectors.joining(", "));
+		if (!belumLunas.isEmpty()) {
+			penghalang.add("belum lunas: " + belumLunas);
+		}
+
+		if (!penghalang.isEmpty()) {
+			throw new BusinessRuleException(
+					("Seluruh UKT harus lunas sebelum mendaftar %s. %s. "
+							+ "Bila mahasiswa ini memang dibolehkan maju lebih dulu, "
+							+ "nyalakan pembebasan syarat ujian di halaman detailnya.")
+							.formatted(category.label(), String.join("; ", penghalang)));
 		}
 	}
 

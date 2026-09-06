@@ -52,6 +52,8 @@ public class StudentController {
 			String startAcademicYear,
 			BigDecimal walletBalance,
 			boolean pendaftaranExempt,
+			/** Dibebaskan dari syarat lunas seluruh UKT sebelum mendaftar tahap ujian. */
+			boolean ujianExempt,
 			boolean active,
 			/** Langkah dokumen pertama yang belum lengkap, null bila sudah lengkap. */
 			Student.DocumentStep nextDocumentStep,
@@ -82,6 +84,7 @@ public class StudentController {
 			String startAcademicYear,
 
 			Boolean pendaftaranExempt,
+			Boolean ujianExempt,
 			Boolean active
 	) {
 	}
@@ -128,6 +131,7 @@ public class StudentController {
 				request.startTerm(),
 				request.startAcademicYear(),
 				request.pendaftaranExempt(),
+				request.ujianExempt(),
 				request.active()));
 	}
 
@@ -199,6 +203,7 @@ public class StudentController {
 				student.getStartAcademicYear(),
 				student.getWalletBalance(),
 				student.isPendaftaranExempt(),
+				student.isUjianExempt(),
 				student.isActive(),
 				student.nextIncompleteDocumentStep(),
 				student.hasCompletedDocuments(),

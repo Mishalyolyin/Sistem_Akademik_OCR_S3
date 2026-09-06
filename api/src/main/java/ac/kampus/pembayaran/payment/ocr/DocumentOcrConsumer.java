@@ -75,7 +75,15 @@ public class DocumentOcrConsumer {
 		studentRepository.save(student);
 	}
 
-	private void simpan(Student student, StudentDocument jenis, Map<String, Object> hasil) {
+	private void simpan(Student student, StudentDocument jenis, Map<String, Object> mentah) {
+		// Service OCR ikut mengirim gambar hasil praprosesnya sebagai base64.
+		// Untuk dokumen wajib gambar itu tidak disimpan — nilainya hanya sebagai
+		// bahan dataset, dan yang dilatih adalah pembacaan bukti bayar, bukan
+		// KTP. Yang penting ia tidak ikut mengendap puluhan kilobyte per
+		// mahasiswa di kolom jsonb, terkirim tiap halaman forensik dibuka.
+		Map<String, Object> hasil = new java.util.HashMap<>(mentah);
+		hasil.remove("processed_image_b64");
+
 		switch (jenis) {
 			case FOTO -> student.setProfilePictureAnalysis(hasil);
 			case KTP -> student.setKtpOcrData(hasil);

@@ -224,4 +224,67 @@ class OcrDatasetExporterIntegrationTest {
 		// pecah jadi beberapa baris CSV dan dataset ikut rusak.
 		assertThat(csv).contains("\"TRANSFER BERHASIL\nRp 1.200.000\n7 1234 5678 90\"");
 	}
+
+	@Test
+	@DisplayName("statistik menghitung contoh berlabel dan kesepakatan mesin")
+	void statistik() {
+		var hasil = exporter.statistik();
+
+		// Dua bukti berlabel manusia: satu diterima, satu ditolak. Yang
+		// AUTO_VERIFIED dan PENDING tidak ikut — keduanya belum jadi jawaban.
+		assertThat(hasil.berlabel()).isEqualTo(2);
+		assertThat(hasil.diterima()).isEqualTo(1);
+		assertThat(hasil.ditolak()).isEqualTo(1);
+
+		// Mesin mengusulkan AUTO_VERIFIED untuk keduanya; admin setuju pada
+		// yang pertama dan menolak yang kedua.
+		assertThat(hasil.mesinSepakat()).isEqualTo(1);
+		assertThat(hasil.mesinKeliru()).isEqualTo(1);
+		assertThat(hasil.akurasiMesin()).isEqualByComparingTo("50.0");
+
+		assertThat(hasil.belumDiputuskan()).isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("akurasi mesin kosong bila belum ada yang bisa dibandingkan")
+	void akurasiTanpaPembanding() {
+		jdbc.sql("DELETE FROM verification_logs").update();
+
+		assertThat(exporter.statistik().akurasiMesin()).isNull();
+	}
+
+	@Test
+	@DisplayName("dataset gambar tetap menghasilkan ZIP sah walau tidak ada gambarnya")
+	void datasetGambarTanpaBerkas() throws Exception {
+		// Bukti di fixture ini belum punya processed_file_path, jadi tidak ada
+		// gambar yang bisa dimasukkan. ZIP-nya tetap harus utuh dan tetap
+		// membawa label.csv — berkas rusak jauh lebih membingungkan daripada
+		// berkas kosong yang menerangkan dirinya.
+		byte[] zip = exporter.datasetGambar(100);
+
+		var isi = new java.util.ArrayList<String>();
+		try (var in = new java.util.zip.ZipInputStream(
+				new java.io.ByteArrayInputStream(zip))) {
+			for (var e = in.getNextEntry(); e != null; e = in.getNextEntry()) {
+				isi.add(e.getName());
+			}
+		}
+
+		assertThat(isi).containsExactlyInAnyOrder("label.csv", "BACA-DULU.txt");
+	}
+
+	@Test
+	@DisplayName("bukti yang punya gambar ikut terdaftar di label.csv")
+	void datasetGambarDenganBerkas() throws Exception {
+		jdbc.sql("UPDATE payments SET processed_file_path = ? WHERE id = ?")
+				.params("bukti-praproses/tidak-ada.png", idDiverifikasi)
+				.update();
+
+		// Berkasnya sengaja tidak ada di penyimpanan: query-nya tetap harus
+		// jalan, dan gambar yang hilang dilewati tanpa menggagalkan ekspor.
+		byte[] zip = exporter.datasetGambar(100);
+
+		assertThat(zip).isNotEmpty();
+		assertThat(exporter.statistik().adaGambar()).isEqualTo(1);
+	}
 }

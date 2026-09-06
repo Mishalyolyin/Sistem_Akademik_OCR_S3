@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -76,6 +77,36 @@ public class FileStorageService {
 		}
 
 		return "%s/%s/%s".formatted(folder, today, namaBerkas);
+	}
+
+	/**
+	 * Menyimpan berkas yang dihasilkan sistem sendiri, bukan unggahan pengguna.
+	 *
+	 * <p>Dipakai untuk gambar hasil praproses OCR. Tidak melewati pemeriksaan
+	 * ekstensi dan ukuran seperti {@link #store}: isinya bukan berasal dari
+	 * luar, dan kegagalan menyimpannya tidak boleh menggagalkan pembacaan yang
+	 * sudah berhasil — karena itu galatnya dikembalikan sebagai kosong, bukan
+	 * dilempar.
+	 *
+	 * @return path relatif, atau kosong bila gagal disimpan.
+	 */
+	public Optional<String> storeGenerated(byte[] isi, String folder, String ekstensi) {
+		if (isi == null || isi.length == 0) {
+			return Optional.empty();
+		}
+
+		LocalDate today = LocalDate.now();
+		Path folderTujuan = root.resolve(folder).resolve(today.toString());
+		String namaBerkas = UUID.randomUUID() + "." + ekstensi;
+
+		try {
+			Files.createDirectories(folderTujuan);
+			Files.write(folderTujuan.resolve(namaBerkas), isi);
+			return Optional.of("%s/%s/%s".formatted(folder, today, namaBerkas));
+		} catch (IOException e) {
+			log.warn("Gagal menyimpan berkas hasil sistem di {}: {}", folderTujuan, e.getMessage());
+			return Optional.empty();
+		}
 	}
 
 	public Path resolve(String relativePath) {

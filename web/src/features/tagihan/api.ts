@@ -29,6 +29,9 @@ export type PaymentPlan = {
   amountPaid: string;
   remaining: string;
   status: PlanStatus;
+  /** Keduanya terisi hanya bila status CANCELLED. */
+  cancelledAt: string | null;
+  cancelReason: string | null;
   installments: Installment[];
 };
 
@@ -63,6 +66,26 @@ export function useCreatePlan(studentId: number) {
       apiFetch<PaymentPlan>(`/students/${studentId}/plans`, {
         method: "POST",
         body,
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [KEY, studentId] }),
+  });
+}
+
+/**
+ * Membatalkan satu tagihan yang salah dibuat.
+ *
+ * Tagihan yang dibatalkan berhenti mengunci slotnya: tanpa ini, satu Seminar
+ * Proposal yang terlanjur dibuat untuk mahasiswa keliru membuat mahasiswa itu
+ * tidak akan pernah bisa punya Seminar Proposal lagi.
+ */
+export function useCancelPlan(studentId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ planId, reason }: { planId: number; reason: string }) =>
+      apiFetch<PaymentPlan>(`/plans/${planId}/cancel`, {
+        method: "PATCH",
+        body: { reason },
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: [KEY, studentId] }),
   });

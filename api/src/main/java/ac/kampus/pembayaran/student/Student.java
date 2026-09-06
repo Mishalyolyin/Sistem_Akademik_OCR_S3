@@ -136,6 +136,10 @@ public class Student {
 	@Column(name = "pendaftaran_exempt", nullable = false)
 	private boolean pendaftaranExempt;
 
+	/** Membebaskan dari syarat lunas seluruh UKT sebelum mendaftar tahap ujian. */
+	@Column(name = "ujian_exempt", nullable = false)
+	private boolean ujianExempt;
+
 	@Column(name = "import_batch_id")
 	private Long importBatchId;
 

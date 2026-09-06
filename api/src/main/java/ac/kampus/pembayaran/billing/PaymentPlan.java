@@ -93,6 +93,20 @@ public class PaymentPlan {
 	@Builder.Default
 	private List<Installment> installments = new ArrayList<>();
 
+	/**
+	 * Jejak pembatalan. Terisi bersamaan dengan status CANCELLED, dan kosong
+	 * selama tidak — pasangannya dijaga CHECK di migrasi V12, bukan hanya di
+	 * sini, supaya tidak ada jalan lain yang bisa memisahkannya.
+	 */
+	@Column(name = "cancelled_at")
+	private Instant cancelledAt;
+
+	@Column(name = "cancelled_by")
+	private Long cancelledBy;
+
+	@Column(name = "cancel_reason", length = 500)
+	private String cancelReason;
+
 	@Column(name = "created_at", insertable = false, updatable = false)
 	private Instant createdAt;
 
