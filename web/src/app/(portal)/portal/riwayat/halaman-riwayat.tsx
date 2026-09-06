@@ -38,7 +38,7 @@ export function HalamanRiwayat() {
           {data.map((item) => (
             <li
               key={item.id}
-              className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4"
+              className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card shadow-sm p-4"
             >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>

@@ -81,24 +81,28 @@ export function HalamanDashboard() {
           value={data.mahasiswaAktif.toLocaleString("id-ID")}
           sublabel="Semua kelas"
           icon={Users}
+          tone="info"
         />
         <StatTile
           label="Total tertagih"
           value={formatRupiah(tertagih)}
+          sublabel="Seluruh kategori"
           icon={Wallet}
+          tone="primary"
         />
         <StatTile
           label="Total terkumpul"
           value={formatRupiah(terkumpul)}
           sublabel={`${persen}% dari tagihan`}
           icon={BadgeCheck}
-          tone={persen >= 100 ? "success" : undefined}
+          tone="success"
         />
         <StatTile
           label="Saldo mahasiswa"
           value={formatRupiah(data.totalSaldoMahasiswa)}
           sublabel="Kelebihan bayar"
           icon={PiggyBank}
+          tone="warning"
         />
       </StatRow>
 
@@ -112,6 +116,7 @@ export function HalamanDashboard() {
             value={String(data.status.menungguDibaca)}
             sublabel="Antre di OCR"
             icon={Hourglass}
+            tone="info"
             href="/verifikasi/semua?status=PENDING"
           />
           <StatTile
@@ -156,7 +161,7 @@ export function HalamanDashboard() {
         />
       </div>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-card">
+      <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
         <div className="flex items-center justify-between gap-3 px-5 py-3.5">
           <div>
             <h3 className="font-heading text-sm font-semibold">
@@ -241,7 +246,7 @@ export function HalamanDashboard() {
 
 function RingkasanKategori({ data }: { data: KategoriRingkas[] }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-card">
+    <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
       <h3 className="px-5 py-3.5 font-heading text-sm font-semibold">
         Per kategori tagihan
       </h3>
@@ -289,7 +294,7 @@ function RingkasanKategori({ data }: { data: KategoriRingkas[] }) {
 
 function RingkasanKelas({ data }: { data: KelasRingkas[] }) {
   return (
-    <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
+    <section className="flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
       <h3 className="px-5 py-3.5 font-heading text-sm font-semibold">Per kelas</h3>
       <div className="flex-1 border-t border-border">
         {data.length === 0 ? (
@@ -360,14 +365,18 @@ function Bar({ persen }: { persen: number }) {
   const nilai = Math.min(Math.max(persen, 0), 100);
   return (
     <div
-      className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+      className="h-2.5 w-full overflow-hidden rounded-full bg-muted/80 inset-shadow-sm"
       role="img"
       aria-label={`${Math.round(nilai)} persen terkumpul`}
     >
       <div
         className={cn(
-          "h-full rounded-full",
-          nilai >= 100 ? "bg-success" : nilai > 0 ? "bg-primary" : "bg-transparent",
+          "h-full rounded-full transition-[width] duration-700 ease-out",
+          nilai >= 100
+            ? "bg-gradient-to-r from-success to-success/70"
+            : nilai > 0
+              ? "bg-gradient-to-r from-primary to-info"
+              : "bg-transparent",
         )}
         style={{ width: `${nilai}%` }}
       />

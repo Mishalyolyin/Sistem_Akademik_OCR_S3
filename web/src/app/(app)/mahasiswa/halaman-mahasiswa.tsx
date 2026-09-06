@@ -239,7 +239,7 @@ function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-card">
+      <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card shadow-sm">
       <Table>
         <TableHeader>
           <TableRow>

@@ -61,7 +61,7 @@ export function PanelUktOtomatis() {
   }
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border bg-card px-5 py-4">
+    <section className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card shadow-sm px-5 py-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <CalendarCheck

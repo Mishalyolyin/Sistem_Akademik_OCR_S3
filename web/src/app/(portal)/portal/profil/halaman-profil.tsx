@@ -30,7 +30,7 @@ export function HalamanProfil() {
         </p>
       </div>
 
-      <dl className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card">
+      <dl className="flex flex-col divide-y divide-border rounded-2xl border border-border/70 bg-card shadow-sm">
         <Baris label="Nama" nilai={data.nama} />
         <Baris label="NIM" nilai={data.nim} mono />
         <Baris label="Email" nilai={data.email ?? "—"} mono />

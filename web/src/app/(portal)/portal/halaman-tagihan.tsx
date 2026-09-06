@@ -150,7 +150,7 @@ function DaftarSendiri({
   const terkunci = berikutnya !== "PENDAFTARAN" && !pendaftaranLunas;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/70 bg-card shadow-sm px-4 py-3">
       <div>
         <p className="text-sm font-medium">
           Daftarkan {kategoriLabel[berikutnya]}
@@ -194,7 +194,7 @@ function KartuTagihan({
   const lunas = Number(tagihan.sisa) === 0;
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border bg-card">
+    <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div>
           <h3 className="font-heading text-sm font-semibold">

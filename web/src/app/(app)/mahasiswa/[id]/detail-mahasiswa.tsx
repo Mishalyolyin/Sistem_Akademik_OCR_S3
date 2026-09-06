@@ -277,7 +277,7 @@ function KartuTagihan({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-border bg-card",
+        "overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm",
         // Tagihan yang dibatalkan tetap ditampilkan, tapi diredupkan: ia bagian
         // dari riwayat mahasiswa ini dan menghilangkannya membuat admin bertanya
         // ke mana perginya tagihan yang tadi ada.

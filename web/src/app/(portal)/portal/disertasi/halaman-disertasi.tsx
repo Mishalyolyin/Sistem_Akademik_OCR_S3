@@ -151,7 +151,7 @@ function FormIdentitas({
 
   return (
     <form
-      className="flex flex-col gap-4 rounded-lg border border-border bg-card px-5 py-4"
+      className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-card shadow-sm px-5 py-4"
       onSubmit={(event) => {
         event.preventDefault();
         if (bolehSimpan) {

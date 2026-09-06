@@ -88,7 +88,7 @@ export function HalamanPengaturan({
           }
         />
       ) : (
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card">
+        <ul className="flex flex-col divide-y divide-border rounded-2xl border border-border/70 bg-card shadow-sm">
           {daftar.map((setting) => (
             <BarisPengaturan key={setting.key} setting={setting} />
           ))}

@@ -182,3 +182,13 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* Noda warna latar halaman depan. Bergerak sangat lambat dan hanya dalam
+   jarak kecil: yang dicari kesan hidup, bukan gerakan yang menarik perhatian
+   dari isi halaman. Dibungkus motion-safe di tempat pemakaiannya, jadi yang
+   memilih mengurangi animasi di sistemnya tidak melihat gerakan sama sekali. */
+@keyframes apung {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33%      { transform: translate3d(3%, -4%, 0) scale(1.06); }
+  66%      { transform: translate3d(-3%, 3%, 0) scale(0.96); }
+}

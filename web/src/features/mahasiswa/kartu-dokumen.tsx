@@ -36,7 +36,7 @@ export function KartuDokumen({ mahasiswa }: { mahasiswa: StudentSummary }) {
       <h3 className="font-heading text-sm font-semibold">Dokumen wajib</h3>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-border bg-card">
+        <div className="rounded-2xl border border-border/70 bg-card shadow-sm">
           <dl className="flex flex-col divide-y divide-border text-sm">
             <div className="flex items-center justify-between gap-3 px-4 py-2.5">
               <dt className="text-muted-foreground">NIK</dt>
@@ -84,7 +84,7 @@ export function KartuDokumen({ mahasiswa }: { mahasiswa: StudentSummary }) {
           </dl>
         </div>
 
-        <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-card">
+        <ul className="flex flex-col divide-y divide-border rounded-2xl border border-border/70 bg-card shadow-sm">
           {URUTAN.map((jenis) => {
             const ada = mahasiswa.dokumenTersedia.includes(jenis);
             return (

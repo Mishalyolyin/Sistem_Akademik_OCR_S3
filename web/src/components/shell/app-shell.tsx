@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <Link
           href={beranda}
-          className="mb-2 flex size-9 items-center justify-center rounded-lg bg-primary font-heading text-sm font-bold text-primary-foreground focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          className="mb-2 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-info font-heading text-sm font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:scale-105 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
           aria-label="Beranda"
         >
           SP
@@ -73,17 +73,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     aria-label={section.title}
                     aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "relative flex size-9 items-center justify-center rounded-lg transition-colors focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                      "relative flex size-9 items-center justify-center rounded-xl transition-all duration-200 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
                       isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground",
+                        ? "bg-primary/12 text-primary shadow-sm"
+                        : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground",
                     )}
                   >
                     {/* Penanda aktif di tepi rail, bukan sekadar warna latar. */}
                     <span
                       className={cn(
-                        "absolute -left-3 h-5 w-0.5 rounded-r-full bg-primary transition-opacity",
-                        isActive ? "opacity-100" : "opacity-0",
+                        "absolute -left-3 w-1 rounded-r-full bg-primary transition-all duration-200",
+                        isActive ? "h-6 opacity-100" : "h-0 opacity-0",
                       )}
                       aria-hidden
                     />

@@ -60,7 +60,7 @@ export function HalamanImport() {
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5">
+        <section className="flex flex-col gap-4 rounded-2xl border border-border/70 bg-card shadow-sm p-5">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
@@ -99,7 +99,7 @@ export function HalamanImport() {
           {hasil ? <HasilImport hasil={hasil} /> : <PetunjukKolom />}
         </section>
 
-        <aside className="flex flex-col gap-3 rounded-lg border border-border bg-card p-5">
+        <aside className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card shadow-sm p-5">
           <h3 className="font-heading text-sm font-semibold">Riwayat import</h3>
           {riwayat.isPending ? (
             <p className="text-sm text-muted-foreground">Memuat…</p>

@@ -51,7 +51,7 @@ export function PanelStatistikOcr() {
   const dibandingkan = data.mesinSepakat + data.mesinKeliru;
 
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border bg-card px-5 py-4">
+    <section className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card shadow-sm px-5 py-4">
       <div className="flex items-start gap-3">
         <Brain className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
         <div>

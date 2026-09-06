@@ -346,7 +346,7 @@ function KartuLaporan({
   children?: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-border bg-card px-5 py-4">
+    <section className="rounded-2xl border border-border/70 bg-card shadow-sm px-5 py-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <Icon className={`mt-0.5 size-5 shrink-0 ${warnaIkon}`} />
