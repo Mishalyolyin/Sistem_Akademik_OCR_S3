@@ -3,16 +3,14 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BadgeCheck,
   BookMarked,
   CalendarRange,
   FileCheck2,
   GraduationCap,
   LogIn,
   Landmark,
-  ScanLine,
+  HeartHandshake,
   ScrollText,
-  ShieldCheck,
   Sparkles,
   Wallet,
 } from "lucide-react";
@@ -68,24 +66,6 @@ const alur = [
   },
 ];
 
-const keunggulan = [
-  {
-    icon: ScanLine,
-    judul: "Bukti bayar dibaca sendiri",
-    isi: "Unggah struk transfer, sistem membaca nominal, tanggal, dan rekening tujuannya. Yang meyakinkan langsung diverifikasi; yang meragukan diteruskan ke admin.",
-  },
-  {
-    icon: ShieldCheck,
-    judul: "Setiap rupiah punya jejak",
-    isi: "Verifikasi, penolakan, penyesuaian saldo, dan perubahan nominal semuanya tercatat beserta alasan dan siapa yang melakukannya.",
-  },
-  {
-    icon: BadgeCheck,
-    judul: "Potongan terhitung otomatis",
-    isi: "Golongan potongan menentukan nominal angsuran tanpa diketik manual, dan terkunci begitu Anda mengunggah bukti pertama.",
-  },
-];
-
 export function Beranda() {
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-background">
@@ -96,9 +76,9 @@ export function Beranda() {
       <main className="relative">
         <Hero />
         <Kelembagaan />
+        <TentangProgram />
         <Biaya />
         <Alur />
-        <Keunggulan />
         <Penutup />
       </main>
 
@@ -196,14 +176,14 @@ function Navbar() {
         <Logo />
 
         <div className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
+          <a href="#program" className="transition-colors hover:text-foreground">
+            Tentang program
+          </a>
           <a href="#biaya" className="transition-colors hover:text-foreground">
             Rincian biaya
           </a>
           <a href="#alur" className="transition-colors hover:text-foreground">
-            Alur pembayaran
-          </a>
-          <a href="#sistem" className="transition-colors hover:text-foreground">
-            Cara kerja
+            Tata cara bayar
           </a>
         </div>
 
@@ -227,21 +207,21 @@ function Hero() {
         <div className="text-center lg:text-left">
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/10 px-3.5 py-1.5 text-xs font-medium text-primary">
             <Sparkles className="size-3.5" />
-            Program Doktor Pendidikan Agama Islam
+            Penerimaan mahasiswa baru dibuka
           </span>
 
           <h1 className="mt-6 font-heading text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-[3.4rem]">
-            Bayar kuliah tanpa{" "}
+            Program Doktor{" "}
             <span className="bg-gradient-to-r from-primary via-success to-primary bg-clip-text text-transparent">
-              antre di loket
+              Pendidikan Agama Islam
             </span>
           </h1>
 
           <p className="mx-auto mt-5 max-w-xl text-base text-pretty text-muted-foreground sm:text-lg lg:mx-0">
-            Seluruh tagihan Program Doktor PAI Universitas Islam Sultan Agung
-            ada di satu tempat. Unggah bukti transfer dari mana saja — sistem
-            membacanya sendiri, dan status pembayaran Anda terbarui tanpa perlu
-            menunggu jam kerja.
+            Jenjang tertinggi Pendidikan Agama Islam di Fakultas Agama Islam
+            Universitas Islam Sultan Agung, Semarang. Melengkapi jenjang sarjana
+            dan magister yang telah lama berjalan, dengan Budaya Akademik Islami
+            sebagai dasar penyelenggaraannya.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
@@ -249,19 +229,19 @@ function Hero() {
               href="/login"
               className="group inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-xl shadow-primary/25 transition-all hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-primary/30 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
             >
-              Masuk ke akun saya
+              Masuk ke akun mahasiswa
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <a
-              href="#biaya"
+              href="#program"
               className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-6 py-3 text-sm font-medium backdrop-blur transition-colors hover:bg-card focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
             >
-              Lihat rincian biaya
+              Kenali programnya
             </a>
           </div>
         </div>
 
-        <KartuTagihanContoh />
+        <KartuProgram />
       </div>
 
       <dl className="mt-16 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -275,19 +255,23 @@ function Hero() {
 }
 
 /**
- * Pratinjau kartu tagihan sebagai gambar utama.
+ * Kartu identitas program sebagai gambar utama.
  *
- * <p>Situs kampus lazimnya memakai foto gedung atau kegiatan mahasiswa di
- * sini. Repo ini tidak punya satu pun aset foto, dan foto stok justru membuat
- * halaman terlihat seperti templat yang bisa dipakai kampus mana saja. Yang
- * ditampilkan karena itu adalah <b>apa yang sebenarnya dijanjikan halaman
- * ini</b>: bentuk tagihan yang akan dilihat mahasiswa begitu ia masuk.
+ * <p>Semula di sini ada pratinjau kartu tagihan beserta batang kemajuan
+ * pembayaran. Itu keliru: yang membuka halaman depan adalah calon mahasiswa
+ * yang belum punya tagihan apa pun, dan kemajuan pembayaran orang lain tidak
+ * menjual apa-apa kepadanya. Yang dijual seharusnya programnya.
+ *
+ * <p>Yang ditampilkan sekarang silsilah jenjangnya — sarjana dan magister yang
+ * sudah lama berjalan, lalu doktor yang baru dibuka. Itu jawaban paling
+ * meyakinkan atas keraguan yang wajar terhadap program baru: fakultasnya sudah
+ * mengelola jalur yang sama sejak lama.
  */
-function KartuTagihanContoh() {
-  const cicilan = [
-    { ke: 1, bulan: "September", lunas: true },
-    { ke: 2, bulan: "Oktober", lunas: true },
-    { ke: 3, bulan: "November", lunas: false },
+function KartuProgram() {
+  const jenjang = [
+    { kode: "S1", nama: "Pendidikan Agama Islam", ket: "Sarjana" },
+    { kode: "S2", nama: "Pendidikan Agama Islam", ket: "Magister" },
+    { kode: "S3", nama: "Pendidikan Agama Islam", ket: "Doktor", baru: true },
   ];
 
   return (
@@ -296,63 +280,62 @@ function KartuTagihanContoh() {
         aria-hidden
         className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-primary/15 to-success/15 blur-2xl"
       />
-
-      {/* Kartu di belakang, sedikit miring: memberi kesan tumpukan tanpa
-          menambah isi yang harus dibaca. */}
       <div
         aria-hidden
         className="absolute inset-x-4 -top-3 h-full rotate-[-3deg] rounded-3xl border border-border/60 bg-card/70 shadow-lg"
       />
 
-      <div className="relative rounded-3xl border border-border/70 bg-card p-6 shadow-2xl shadow-primary/10">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="font-heading font-semibold">UKT Semester 1</p>
-            <p className="text-xs text-muted-foreground">
-              2026/2027 Gasal · Kelas Kerjasama A
-            </p>
-          </div>
-          <span className="rounded-full bg-success/12 px-2.5 py-1 text-xs font-medium text-success">
-            Berjalan
-          </span>
-        </div>
-
-        <p className="mt-5 font-heading text-3xl font-bold tabular-nums">
-          {rupiah(6_000_000)}
+      <div className="relative rounded-3xl border border-border/70 bg-card p-7 shadow-2xl shadow-primary/10">
+        <p className="text-xs font-semibold tracking-widest text-primary uppercase">
+          Fakultas Agama Islam
         </p>
-        <p className="text-xs text-muted-foreground">
-          setelah potongan kerjasama 40%
+        <p className="mt-1 font-heading text-lg font-bold tracking-tight">
+          Universitas Islam Sultan Agung
         </p>
+        <p className="text-sm text-muted-foreground">Semarang</p>
 
-        <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted">
-          <div className="h-full w-2/5 rounded-full bg-gradient-to-r from-primary to-success" />
-        </div>
-
-        <ul className="mt-5 flex flex-col gap-2.5">
-          {cicilan.map((c) => (
+        <ul className="mt-6 flex flex-col gap-2.5">
+          {jenjang.map((j) => (
             <li
-              key={c.ke}
-              className="flex items-center justify-between rounded-xl border border-border/60 px-3 py-2.5 text-sm"
+              key={j.kode}
+              className={cn(
+                "flex items-center gap-3 rounded-2xl border px-3.5 py-3 transition-colors",
+                j.baru
+                  ? "border-primary/30 bg-primary/[0.07]"
+                  : "border-border/60",
+              )}
             >
-              <span>
-                Angsuran {c.ke}
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {c.bulan}
+              <span
+                className={cn(
+                  "flex size-9 shrink-0 items-center justify-center rounded-xl font-heading text-sm font-bold",
+                  j.baru
+                    ? "bg-gradient-to-br from-primary to-success text-primary-foreground shadow-md shadow-primary/25"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {j.kode}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">
+                  {j.nama}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {j.ket}
                 </span>
               </span>
-              {c.lunas ? (
-                <span className="flex items-center gap-1.5 text-xs font-medium text-success">
-                  <BadgeCheck className="size-3.5" />
-                  Lunas
-                </span>
-              ) : (
-                <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-                  {rupiah(1_200_000)}
+              {j.baru && (
+                <span className="shrink-0 rounded-full bg-primary/12 px-2.5 py-1 text-xs font-medium text-primary">
+                  Baru
                 </span>
               )}
             </li>
           ))}
         </ul>
+
+        <p className="mt-5 border-t border-border/60 pt-4 text-xs text-muted-foreground">
+          Program Doktor dibuka berdasarkan Keputusan Menteri Agama Republik
+          Indonesia Nomor 822 Tahun 2025.
+        </p>
       </div>
     </div>
   );
@@ -554,8 +537,8 @@ function Alur() {
   return (
     <section id="alur" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-20">
       <Judul
-        kecil="Alur pembayaran"
-        besar="Empat langkah, berurutan"
+        kecil="Cara bayar"
+        besar="Tata cara pembayaran"
         keterangan="Tiap langkah membuka langkah berikutnya. Sistem menjaga urutannya, jadi tidak ada tahap yang bisa terlewat."
       />
 
@@ -592,17 +575,49 @@ function Alur() {
   );
 }
 
-function Keunggulan() {
+/**
+ * Pengenalan program dan kampusnya.
+ *
+ * <p>Menggantikan bagian yang semula memaparkan cara kerja pembacaan OCR dan
+ * jejak audit. Kemampuan itu nyata, tapi ia menjual sistemnya kepada pengelola
+ * — sementara yang membaca halaman depan adalah calon mahasiswa, yang
+ * pertanyaannya sama sekali berbeda: program apa ini, siapa yang
+ * menyelenggarakan, dan kenapa di sini.
+ *
+ * <p>Seluruh keterangan di bawah bersumber dari pengumuman resmi pendirian
+ * program. Tidak ada visi, misi, kurikulum, atau nama dosen yang dikarang —
+ * ketiganya belum diumumkan, dan mengarangnya di halaman resmi jauh lebih
+ * merugikan daripada membiarkannya kosong.
+ */
+function TentangProgram() {
+  const alasan = [
+    {
+      icon: Landmark,
+      judul: "Diselenggarakan Fakultas Agama Islam",
+      isi: "Fakultas yang sama telah mengelola jenjang sarjana dan magister Pendidikan Agama Islam. Program doktor melanjutkan jalur yang sudah berjalan, bukan memulai dari nol.",
+    },
+    {
+      icon: BookMarked,
+      judul: "Berdasar Budaya Akademik Islami",
+      isi: "Nilai yang menjadi dasar seluruh penyelenggaraan pendidikan di Universitas Islam Sultan Agung, dari ruang kuliah sampai pelayanan mahasiswa.",
+    },
+    {
+      icon: HeartHandshake,
+      judul: "Takrimul aulad",
+      isi: "Memuliakan anak didik sebagai pusat pelayanan pendidikan — prinsip yang disebut fakultas saat program ini dibuka.",
+    },
+  ];
+
   return (
-    <section id="sistem" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-20">
+    <section id="program" className="mx-auto max-w-6xl scroll-mt-20 px-6 py-20">
       <Judul
-        kecil="Cara kerja"
-        besar="Yang membedakannya dari setor tunai"
-        keterangan="Bukan sekadar memindahkan formulir ke layar."
+        kecil="Tentang program"
+        besar="Jenjang tertinggi, di fakultas yang sudah menempuhnya"
+        keterangan="Program Doktor Pendidikan Agama Islam dibuka berdasarkan Keputusan Menteri Agama Republik Indonesia Nomor 822 Tahun 2025, tertanggal 28 Juli 2025."
       />
 
       <div className="mt-12 grid gap-5 md:grid-cols-3">
-        {keunggulan.map((item) => {
+        {alasan.map((item) => {
           const Icon = item.icon;
           return (
             <article
@@ -612,7 +627,7 @@ function Keunggulan() {
               <span className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-success text-primary-foreground shadow-lg shadow-primary/20 transition-transform group-hover:scale-105">
                 <Icon className="size-5" />
               </span>
-              <h3 className="mt-5 font-heading text-lg font-semibold">
+              <h3 className="mt-5 font-heading text-lg font-semibold text-balance">
                 {item.judul}
               </h3>
               <p className="mt-2 text-sm text-pretty text-muted-foreground">
@@ -622,6 +637,11 @@ function Keunggulan() {
           );
         })}
       </div>
+
+      <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-pretty text-muted-foreground">
+        Keterangan kurikulum, staf pengajar, dan jadwal penerimaan akan
+        ditambahkan di halaman ini setelah diumumkan program studi.
+      </p>
     </section>
   );
 }
