@@ -73,23 +73,13 @@ export function HalamanTagihan() {
     <div className="flex flex-col gap-5">
       <KartuSemester />
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="font-heading text-xl font-semibold tracking-tight">
-            Tagihan saya
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {profil.data.kelas} · {profil.data.nim}
-          </p>
-        </div>
-
-        {Number(profil.data.saldo) > 0 && (
-          <span className="flex items-center gap-1.5 rounded-md border border-info/25 bg-info-soft px-2.5 py-1.5 text-sm text-info">
-            <Wallet className="size-4" />
-            Saldo {formatRupiah(profil.data.saldo)}
-          </span>
-        )}
-      </div>
+      <RingkasanSaya
+        nama={profil.data.nama}
+        kelas={profil.data.kelas}
+        nim={profil.data.nim}
+        saldo={profil.data.saldo}
+        tagihan={tagihan.data ?? []}
+      />
 
       {!profil.data.pendaftaranLunas && (
         <p className="rounded-lg border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
@@ -369,5 +359,109 @@ function DialogBayar({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Ringkasan kewajiban mahasiswa, di paling atas halaman.
+ *
+ * <p>Sebelumnya halaman ini langsung menampilkan daftar tagihan tanpa satu pun
+ * angka gabungan. Padahal yang dicari mahasiswa saat membukanya hampir selalu
+ * satu hal: <b>berapa lagi yang harus saya bayar</b>. Menjawabnya menuntut dia
+ * menjumlahkan sendiri sisa tiap kartu di bawah.
+ */
+function RingkasanSaya({
+  nama,
+  kelas,
+  nim,
+  saldo,
+  tagihan,
+}: {
+  nama: string;
+  kelas: string | null;
+  nim: string;
+  saldo: string;
+  tagihan: Tagihan[];
+}) {
+  const total = tagihan.reduce((n, t) => n + Number(t.total), 0);
+  const dibayar = tagihan.reduce((n, t) => n + Number(t.dibayar), 0);
+  const sisa = Math.max(total - dibayar, 0);
+  const persen = total === 0 ? 0 : Math.min((dibayar / total) * 100, 100);
+  const lunas = total > 0 && sisa === 0;
+
+  return (
+    <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-primary/10 via-card to-success/10 px-6 py-6 shadow-sm">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-20 -right-16 size-56 rounded-full bg-primary/15 blur-3xl"
+      />
+
+      <div className="relative flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="font-heading text-2xl font-bold tracking-tight text-balance">
+            {nama}
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {kelas ?? "Belum berkelas"} · {nim}
+          </p>
+        </div>
+
+        {Number(saldo) > 0 && (
+          <span className="flex items-center gap-1.5 rounded-full border border-info/25 bg-info/10 px-3 py-1.5 text-sm font-medium text-info">
+            <Wallet className="size-4" />
+            Saldo {formatRupiah(saldo)}
+          </span>
+        )}
+      </div>
+
+      {total > 0 && (
+        <>
+          <dl className="relative mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div>
+              <dt className="text-xs text-muted-foreground">Total tagihan</dt>
+              <dd className="mt-0.5 font-heading text-xl font-bold tabular-nums">
+                {formatRupiah(total)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Sudah dibayar</dt>
+              <dd className="mt-0.5 font-heading text-xl font-bold text-success tabular-nums">
+                {formatRupiah(dibayar)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">
+                {lunas ? "Sisa" : "Masih harus dibayar"}
+              </dt>
+              <dd
+                className={cn(
+                  "mt-0.5 font-heading text-xl font-bold tabular-nums",
+                  lunas ? "text-success" : "text-warning",
+                )}
+              >
+                {formatRupiah(sisa)}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="relative mt-5 flex items-center gap-3">
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted/70">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-[width] duration-1000 ease-out",
+                  lunas
+                    ? "bg-gradient-to-r from-success to-success/70"
+                    : "bg-gradient-to-r from-primary to-success",
+                )}
+                style={{ width: `${persen}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-sm font-medium tabular-nums">
+              {Math.round(persen)}%
+            </span>
+          </div>
+        </>
+      )}
+    </section>
   );
 }

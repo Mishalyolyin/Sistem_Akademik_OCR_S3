@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import {
+  Layers,
+  School,
   ArrowRight,
   BadgeCheck,
   Clock,
@@ -11,6 +13,7 @@ import {
   Users,
   Wallet,
   XCircle,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -81,7 +84,6 @@ export function HalamanDashboard() {
           value={data.mahasiswaAktif.toLocaleString("id-ID")}
           sublabel="Semua kelas"
           icon={Users}
-          tone="info"
         />
         <StatTile
           label="Total tertagih"
@@ -247,16 +249,18 @@ export function HalamanDashboard() {
 function RingkasanKategori({ data }: { data: KategoriRingkas[] }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
-      <h3 className="px-5 py-3.5 font-heading text-sm font-semibold">
-        Per kategori tagihan
-      </h3>
-      <div className="border-t border-border">
+      <KepalaKartu
+        icon={Layers}
+        judul="Per kategori tagihan"
+        keterangan="Seberapa jauh tiap jenis biaya terkumpul"
+      />
+      <div className="border-t border-border/70">
         {data.length === 0 ? (
           <p className="px-5 py-6 text-sm text-muted-foreground">
             Belum ada tagihan.
           </p>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-border/60">
             {data.map((item) => {
               const tertagih = Number(item.tertagih);
               const terkumpul = Number(item.terkumpul);
@@ -280,8 +284,7 @@ function RingkasanKategori({ data }: { data: KategoriRingkas[] }) {
                       </span>
                     </span>
                   </div>
-                  <Bar persen={persen} />
-
+                  <Bar persen={persen} tampilkanPersen />
                 </li>
               );
             })}
@@ -295,14 +298,18 @@ function RingkasanKategori({ data }: { data: KategoriRingkas[] }) {
 function RingkasanKelas({ data }: { data: KelasRingkas[] }) {
   return (
     <section className="flex flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
-      <h3 className="px-5 py-3.5 font-heading text-sm font-semibold">Per kelas</h3>
-      <div className="flex-1 border-t border-border">
+      <KepalaKartu
+        icon={School}
+        judul="Per kelas"
+        keterangan="Uang terkumpul dan keadaan pembacaan buktinya"
+      />
+      <div className="flex-1 border-t border-border/70">
         {data.length === 0 ? (
           <p className="px-5 py-6 text-sm text-muted-foreground">
             Belum ada kelas.
           </p>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-border/60">
             {data.map((item) => {
               const tertagih = Number(item.tertagih);
               const terkumpul = Number(item.terkumpul);
@@ -361,9 +368,42 @@ function RingkasanKelas({ data }: { data: KelasRingkas[] }) {
   );
 }
 
-function Bar({ persen }: { persen: number }) {
-  const nilai = Math.min(Math.max(persen, 0), 100);
+/**
+ * Kepala kartu ringkasan: ikon berlatar lembut, judul, dan satu baris
+ * keterangan. Sebelumnya hanya teks kecil setebal isi kartunya, sehingga dua
+ * kartu bersebelahan tidak punya pembeda selain kata pertamanya.
+ */
+function KepalaKartu({
+  icon: Icon,
+  judul,
+  keterangan,
+}: {
+  icon: LucideIcon;
+  judul: string;
+  keterangan: string;
+}) {
   return (
+    <div className="flex items-start gap-3 px-5 py-4">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <Icon className="size-4" />
+      </span>
+      <div className="min-w-0">
+        <h3 className="font-heading text-sm font-semibold">{judul}</h3>
+        <p className="text-xs text-muted-foreground">{keterangan}</p>
+      </div>
+    </div>
+  );
+}
+
+function Bar({
+  persen,
+  tampilkanPersen,
+}: {
+  persen: number;
+  tampilkanPersen?: boolean;
+}) {
+  const nilai = Math.min(Math.max(persen, 0), 100);
+  const batang = (
     <div
       className="h-2.5 w-full overflow-hidden rounded-full bg-muted/80 inset-shadow-sm"
       role="img"
@@ -375,11 +415,32 @@ function Bar({ persen }: { persen: number }) {
           nilai >= 100
             ? "bg-gradient-to-r from-success to-success/70"
             : nilai > 0
-              ? "bg-gradient-to-r from-primary to-info"
+              ? "bg-gradient-to-r from-primary to-success"
               : "bg-transparent",
         )}
         style={{ width: `${nilai}%` }}
       />
+    </div>
+  );
+
+  if (!tampilkanPersen) {
+    return batang;
+  }
+
+  // Angka persen ikut ditulis, bukan hanya digambar. Batang sepanjang seperempat
+  // dan sepertiga sulit dibedakan sekilas, dan yang dicari admin justru
+  // bedanya.
+  return (
+    <div className="flex items-center gap-3">
+      {batang}
+      <span
+        className={cn(
+          "w-10 shrink-0 text-right text-xs font-medium tabular-nums",
+          nilai >= 100 ? "text-success" : "text-muted-foreground",
+        )}
+      >
+        {Math.round(nilai)}%
+      </span>
     </div>
   );
 }

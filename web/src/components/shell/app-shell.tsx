@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <Link
           href={beranda}
-          className="mb-2 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-info font-heading text-sm font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:scale-105 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          className="mb-2 flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-success font-heading text-sm font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-transform hover:scale-105 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
           aria-label="Beranda"
         >
           SP

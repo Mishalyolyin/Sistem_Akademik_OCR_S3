@@ -132,8 +132,8 @@ function Aurora() {
       className="pointer-events-none fixed inset-0 overflow-hidden"
     >
       <div className="absolute -top-40 -left-32 size-[42rem] rounded-full bg-primary/20 blur-[120px] motion-safe:animate-[apung_18s_ease-in-out_infinite]" />
-      <div className="absolute -top-24 right-0 size-[34rem] rounded-full bg-info/20 blur-[120px] motion-safe:animate-[apung_22s_ease-in-out_infinite_reverse]" />
-      <div className="absolute top-[60%] left-1/3 size-[38rem] rounded-full bg-success/15 blur-[130px] motion-safe:animate-[apung_26s_ease-in-out_infinite]" />
+      <div className="absolute -top-24 right-0 size-[34rem] rounded-full bg-success/18 blur-[120px] motion-safe:animate-[apung_22s_ease-in-out_infinite_reverse]" />
+      <div className="absolute top-[60%] left-1/3 size-[38rem] rounded-full bg-primary/14 blur-[130px] motion-safe:animate-[apung_26s_ease-in-out_infinite]" />
       {/* Kisi halus, supaya bidang kosong tidak terasa benar-benar kosong. */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:64px_64px] opacity-[0.35] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
     </div>
@@ -143,7 +143,7 @@ function Aurora() {
 function Logo({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-info font-heading text-sm font-bold text-primary-foreground shadow-lg shadow-primary/25">
+      <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-success font-heading text-sm font-bold text-primary-foreground shadow-lg shadow-primary/25">
         SP
       </span>
       <span className="font-heading text-sm font-semibold tracking-tight">
@@ -194,7 +194,7 @@ function Hero() {
 
       <h1 className="mt-6 font-heading text-4xl leading-[1.05] font-bold tracking-tight text-balance sm:text-6xl">
         Bayar kuliah tanpa{" "}
-        <span className="bg-gradient-to-r from-primary via-info to-success bg-clip-text text-transparent">
+        <span className="bg-gradient-to-r from-primary via-success to-primary bg-clip-text text-transparent">
           antre di loket
         </span>
       </h1>
@@ -308,7 +308,7 @@ function Biaya() {
             ))}
           </ul>
 
-          <div className="flex items-center justify-between gap-4 border-t border-border/60 bg-gradient-to-r from-primary/10 to-info/10 px-6 py-5">
+          <div className="flex items-center justify-between gap-4 border-t border-border/60 bg-gradient-to-r from-primary/10 to-success/10 px-6 py-5">
             <div>
               <p className="font-heading font-semibold">Total masa studi</p>
               <p className="text-xs text-muted-foreground">
@@ -349,7 +349,7 @@ function Biaya() {
                   */}
                   <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-info transition-[width] duration-700"
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-success transition-[width] duration-700"
                       style={{ width: `${100 - g.potongan}%` }}
                     />
                   </div>
@@ -393,7 +393,7 @@ function Alur() {
                 {i + 1}
               </span>
 
-              <span className="relative flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-info/15 text-primary">
+              <span className="relative flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-success/15 text-primary">
                 <Icon className="size-5" />
               </span>
               <h3 className="relative mt-4 font-heading font-semibold">
@@ -427,7 +427,7 @@ function Keunggulan() {
               key={item.judul}
               className="group rounded-3xl border border-border/60 bg-card/70 p-7 backdrop-blur-sm transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-primary/5"
             >
-              <span className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-info text-primary-foreground shadow-lg shadow-primary/20 transition-transform group-hover:scale-105">
+              <span className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-success text-primary-foreground shadow-lg shadow-primary/20 transition-transform group-hover:scale-105">
                 <Icon className="size-5" />
               </span>
               <h3 className="mt-5 font-heading text-lg font-semibold">
@@ -447,7 +447,7 @@ function Keunggulan() {
 function Penutup() {
   return (
     <section className="mx-auto max-w-6xl px-6 pt-6 pb-24">
-      <div className="relative overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-br from-primary/12 via-info/10 to-success/10 px-8 py-14 text-center backdrop-blur-sm">
+      <div className="relative overflow-hidden rounded-[2rem] border border-primary/20 bg-gradient-to-br from-primary/14 via-success/10 to-primary/10 px-8 py-14 text-center backdrop-blur-sm">
         <div
           aria-hidden
           className="absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-primary/25 blur-[90px]"
