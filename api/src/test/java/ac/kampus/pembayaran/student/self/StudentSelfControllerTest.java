@@ -42,6 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class StudentSelfControllerTest extends ControllerTestSupport {
 
 	@MockitoBean
+	private ac.kampus.pembayaran.dissertation.DissertationService dissertationService;
+	@MockitoBean
 	private StudentSelfService selfService;
 	@MockitoBean
 	private PaymentGenerationService generationService;

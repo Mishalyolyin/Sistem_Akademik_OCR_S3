@@ -43,6 +43,8 @@ class ReportControllerTest extends ControllerTestSupport {
 	private OcrDatasetExporter datasetExporter;
 	@MockitoBean
 	private StudentDataExporter studentExporter;
+	@MockitoBean
+	private StudentPhotoExporter photoExporter;
 
 	@BeforeEach
 	void setUp() {
@@ -51,6 +53,7 @@ class ReportControllerTest extends ControllerTestSupport {
 		when(studentExporter.dataMahasiswa(any(), any()))
 				.thenReturn("berkas-mahasiswa-palsu".getBytes());
 		when(datasetExporter.datasetGambar(anyInt())).thenReturn("PK-palsu".getBytes());
+		when(photoExporter.fotoKelas(any())).thenReturn("PK-foto-palsu".getBytes());
 		when(datasetExporter.datasetOcr(anyBoolean()))
 				.thenReturn("payment_id,label\n1,VERIFIED\n".getBytes());
 	}
@@ -139,6 +142,26 @@ class ReportControllerTest extends ControllerTestSupport {
 				.andExpect(status().isOk());
 
 		verify(datasetExporter).datasetOcr(true);
+	}
+
+	@Test
+	@DisplayName("foto mahasiswa terunduh sebagai ZIP bertanggal")
+	void fotoTerunduh() throws Exception {
+		mockMvc.perform(sebagaiAdmin(get("/reports/foto-mahasiswa.zip").param("classId", "3")))
+				.andExpect(status().isOk())
+				.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+						containsString("foto-mahasiswa-")));
+
+		verify(photoExporter).fotoKelas(3L);
+	}
+
+	@Test
+	@DisplayName("mahasiswa tidak boleh menarik foto seangkatan")
+	void fotoMahasiswaDitolak() throws Exception {
+		mockMvc.perform(sebagaiMahasiswa(get("/reports/foto-mahasiswa.zip")))
+				.andExpect(status().isForbidden());
+
+		verify(photoExporter, never()).fotoKelas(any());
 	}
 
 	@Test

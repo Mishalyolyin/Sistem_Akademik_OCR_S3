@@ -48,11 +48,25 @@ public class FileStorageService {
 	 * @return path relatif terhadap folder penyimpanan, itu yang dicatat di database.
 	 */
 	public String store(MultipartFile file, String folder) {
+		return store(file, folder, MAKS_BYTE);
+	}
+
+	/**
+	 * Menyimpan unggahan dengan batas ukuran yang ditentukan pemanggil.
+	 *
+	 * <p>Batasnya tidak sama untuk semua jenis berkas, dan itu disengaja. Bukti
+	 * transfer adalah tangkapan layar — sepuluh megabyte sudah kelewat longgar,
+	 * dan melonggarkannya lagi hanya membuka pintu untuk unggahan yang tidak
+	 * ada gunanya. Naskah disertasi memang besar, dan menolaknya di angka yang
+	 * sama akan membuat fitur itu tidak terpakai sama sekali.
+	 */
+	public String store(MultipartFile file, String folder, long maksByte) {
 		if (file.isEmpty()) {
 			throw new BusinessRuleException("Berkas kosong.");
 		}
-		if (file.getSize() > MAKS_BYTE) {
-			throw new BusinessRuleException("Berkas terlalu besar. Maksimal 10 MB.");
+		if (file.getSize() > maksByte) {
+			throw new BusinessRuleException(
+					"Berkas terlalu besar. Maksimal %d MB.".formatted(maksByte / (1024 * 1024)));
 		}
 
 		String ekstensi = extensionOf(file.getOriginalFilename());

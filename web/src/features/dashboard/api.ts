@@ -14,6 +14,12 @@ export type KelasRingkas = {
   jumlahMahasiswa: number;
   tertagih: string;
   terkumpul: string;
+  /** Bukti bayar yang sudah pernah dibaca OCR di kelas ini. */
+  buktiDibaca: number;
+  buktiPerluDitinjau: number;
+  buktiGagalDibaca: number;
+  /** Hilang dari JSON bila belum ada satu pun bukti yang dibaca. */
+  rataKeyakinan?: string | null;
 };
 
 export type AntreanItem = {

@@ -62,6 +62,7 @@ public class StudentSelfController {
 	private final PaymentRepository paymentRepository;
 	private final PaymentService paymentService;
 	private final DiscountTierRateRepository tierRepository;
+	private final ac.kampus.pembayaran.dissertation.DissertationService dissertationService;
 
 	// --- DTO ---
 
@@ -218,6 +219,12 @@ public class StudentSelfController {
 			wajibPendaftaranLunas(student);
 		}
 
+		// Keempat tahap ujian menguji satu disertasi yang sama, jadi identitasnya
+		// harus sudah ada sebelum tahap pertamanya didaftarkan.
+		if (PaymentCategory.examSequence().contains(request.category())) {
+			wajibDisertasiTerisi(student);
+		}
+
 		return toTagihan(generationService.generate(
 				student,
 				request.category(),
@@ -265,6 +272,25 @@ public class StudentSelfController {
 			throw new BusinessRuleException(
 					"Lengkapi dulu dokumen wajib. Langkah berikutnya: %s."
 							.formatted(StudentSelfService.namaLangkah(langkah)));
+		}
+	}
+
+	/**
+	 * Tahap ujian butuh disertasi yang sudah punya identitas.
+	 *
+	 * <p>Gerbang ini sengaja di portal, bukan di
+	 * {@code PaymentGenerationService} bersama urutan tahap dan syarat lunas
+	 * UKT. Alasannya: admin kadang membuatkan tagihan dari formulir kertas yang
+	 * sudah ditandatangani promotor, dan menahannya di sana berarti pekerjaan
+	 * admin ikut terhenti karena mahasiswa belum sempat mengetik judulnya.
+	 * Yang dijaga di sini adalah pendaftaran mandiri — satu-satunya jalur di
+	 * mana tidak ada manusia lain yang memeriksa.
+	 */
+	private void wajibDisertasiTerisi(Student student) {
+		if (!dissertationService.sudahDiisi(student.getId())) {
+			throw new BusinessRuleException(
+					"Isi dulu judul disertasi dan nama kedua promotor di halaman Disertasi "
+							+ "sebelum mendaftar tahap ujian.");
 		}
 	}
 

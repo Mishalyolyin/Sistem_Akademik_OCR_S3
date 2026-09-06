@@ -30,7 +30,11 @@ import {
   PageHeader,
   TableSkeleton,
 } from "@/components/page-header";
-import { useDashboard, type KategoriRingkas } from "@/features/dashboard/api";
+import {
+  useDashboard,
+  type KategoriRingkas,
+  type KelasRingkas,
+} from "@/features/dashboard/api";
 import { kategoriLabel, type PaymentCategory } from "@/features/tarif/konstanta";
 import { ApiError } from "@/lib/api";
 import { formatRupiah, formatTanggalJam } from "@/lib/format";
@@ -272,6 +276,7 @@ function RingkasanKategori({ data }: { data: KategoriRingkas[] }) {
                     </span>
                   </div>
                   <Bar persen={persen} />
+
                 </li>
               );
             })}
@@ -282,11 +287,7 @@ function RingkasanKategori({ data }: { data: KategoriRingkas[] }) {
   );
 }
 
-function RingkasanKelas({
-  data,
-}: {
-  data: { kelas: string; jumlahMahasiswa: number; tertagih: string; terkumpul: string }[];
-}) {
+function RingkasanKelas({ data }: { data: KelasRingkas[] }) {
   return (
     <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card">
       <h3 className="px-5 py-3.5 font-heading text-sm font-semibold">Per kelas</h3>
@@ -316,6 +317,35 @@ function RingkasanKelas({
                     </span>
                   </div>
                   <Bar persen={persen} />
+
+                  {/*
+                    Angka OCR ikut per kelas karena masalah pembacaan hampir
+                    selalu berkelompok: satu kelas yang diajari memfoto struk
+                    dengan cara yang sama akan menghasilkan bukti yang sama
+                    sulitnya dibaca. Satu angka global menyembunyikan justru
+                    kelas yang perlu dibantu.
+                  */}
+                  {item.buktiDibaca > 0 && (
+                    <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                      <span>{item.buktiDibaca} bukti terbaca</span>
+                      {item.buktiPerluDitinjau > 0 && (
+                        <span className="text-warning">
+                          {item.buktiPerluDitinjau} perlu ditinjau
+                        </span>
+                      )}
+                      {item.buktiGagalDibaca > 0 && (
+                        <span className="text-destructive">
+                          {item.buktiGagalDibaca} gagal dibaca
+                        </span>
+                      )}
+                      {item.rataKeyakinan != null && (
+                        <span>
+                          keyakinan rata-rata{" "}
+                          {(Number(item.rataKeyakinan) * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </li>
               );
             })}

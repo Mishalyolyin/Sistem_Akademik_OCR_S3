@@ -3,21 +3,21 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 6 September 2026, 16.20
+Terakhir diperbarui: 6 September 2026, 17.10
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 6 September 2026 pukul 16.20 di mesin pengembangan, semuanya lolos:
+Dijalankan 6 September 2026 pukul 17.10 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 356 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 386 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Test unit frontend | `npm test` | ✅ 61 test lolos di 6 berkas |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
-| Build frontend | `npm run build` | ✅ 23 rute terbentuk |
+| Build frontend | `npm run build` | ✅ sukses, bertambah rute `/portal/disertasi` |
 | Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
 | Service OCR (container) | `docker build` lalu `GET /health` | ✅ Python 3.14.7, OpenCV 5.0.0, Tesseract 5.5.0 |
 | Susunan compose | `docker compose config` | ✅ dev terbaca; prod menolak tanpa `.env` terisi — memang penjagaannya |
@@ -28,6 +28,9 @@ Dijalankan 6 September 2026 pukul 16.20 di mesin pengembangan, semuanya lolos:
 | Penjagaan batal tagihan | batal saat sudah ada uang masuk | ✅ ditolak 409, pesannya menyebut Rp 2.400.000 |
 | `CHECK` pembatalan | `UPDATE` langsung ke CANCELLED tanpa alasan | ✅ ditolak `ck_plan_cancel_reason` |
 | Gerbang lunas UKT | daftar Seminar Proposal tanpa UKT lunas | ✅ ditolak 409; menyala lagi setelah `ujianExempt` |
+| Alur disertasi | isi identitas → gerbang ujian → admin membacanya | ✅ penuh lewat API sungguhan |
+| `CHECK` disertasi | `INSERT` judul dan promotor terlalu pendek | ✅ ditolak `ck_dissertation_title` dan `ck_dissertation_promotor` |
+| Foto ZIP & dashboard | `GET /reports/foto-mahasiswa.zip`, angka OCR per kelas | ✅ 200, dan angkanya muncul di ringkasan kelas |
 
 Toolchain yang terpasang: JDK 21.0.12.1, Node 24.19.0, Python 3.14.7, Docker 29.7.2.
 
@@ -144,7 +147,7 @@ Dikerjakan berurutan, dari yang paling mendesak.
 
 ### Test otomatis
 
-Sudah ada **356 test backend** dan semuanya lolos:
+Sudah ada **386 test backend** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 24 test aturan hitungan tagihan, termasuk
   7 test gerbang lunas UKT sebelum tahap ujian
@@ -170,6 +173,11 @@ Sudah ada **356 test backend** dan semuanya lolos:
 - `StudentImportServiceTest` — 5 test pemeriksaan golongan pada berkas import
 - `PlanCancellationServiceTest` — 7 test pembatalan tagihan, terutama
   penolakannya saat tagihan sudah menerima uang
+- `DissertationServiceTest` — 11 test aturan identitas dan naskah disertasi
+- `DissertationControllerTest` — 12 test batas wewenang mahasiswa dan admin
+- `DashboardQueryIntegrationTest` — 5 test query dashboard per kelas dan ekspor
+  foto di PostgreSQL asli, termasuk penjagaan agar angka uang tidak berlipat
+  saat satu cicilan disentuh banyak pembayaran
 - `OcrDatasetExporterTest` — 5 test pengutipan sel CSV dataset
 - `ExcelExportIntegrationTest` — 7 test kedua ekspor Excel di PostgreSQL asli:
   ledger termin, penyaring kelas dan status, dan pembedaan "belum terbaca"
@@ -222,6 +230,60 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### Disertasi akhirnya punya tempat di sistem
+
+Tiga item terakhir dari sisir sistem S2 dikerjakan sekaligus. Yang terbesar:
+sampai sekarang sistem ini hanya tahu bahwa seorang mahasiswa **membayar**
+Ujian Tertutup — tidak tahu disertasi mana yang sedang diuji maupun siapa yang
+membimbingnya. Admin yang memverifikasi bukti bayarnya cuma melihat nominal.
+
+**Satu baris per mahasiswa, bukan per tagihan.** Sistem S2 menyimpannya per
+tagihan (`munaqosah_details.payment_plan_id`) karena di sana Munaqosah memang
+hanya satu tagihan. Di S3 keempat tahap ujian mengacu ke satu disertasi yang
+sama, jadi menempelkannya ke tagihan berarti judul yang sama tersimpan empat
+kali — dan keempat salinan itu bebas menyimpang tanpa ada yang menyadarinya.
+Kunci primernya `student_id` itu sendiri, jadi "satu mahasiswa satu disertasi"
+dijamin skema, bukan oleh kode yang mengingat untuk memeriksanya.
+
+**Identitas dan naskah sengaja dipisah.** Judul dan kedua promotor ditetapkan
+jauh sebelum naskahnya jadi — itulah yang dibawa ke Seminar Proposal. Naskah
+disertasi dan artikel jurnalnya baru ada menjelang Ujian Tertutup dan Terbuka.
+Menuntut semuanya sekaligus berarti tidak ada seorang pun bisa mendaftar tahap
+ujian pertama sampai disertasinya hampir selesai, persis kebalikan dari urutan
+yang sebenarnya. Karena itu yang jadi syarat mendaftar hanya identitasnya.
+
+**Gerbangnya di portal, bukan di `PaymentGenerationService`** bersama urutan
+tahap dan syarat lunas UKT. Admin kadang membuatkan tagihan dari formulir kertas
+yang sudah ditandatangani promotor; menahannya di sana berarti pekerjaan admin
+ikut terhenti karena mahasiswa belum sempat mengetik judulnya. Yang dijaga
+adalah pendaftaran mandiri — satu-satunya jalur di mana tidak ada manusia lain
+yang memeriksa.
+
+Naskahnya tidak ditaruh di folder publik: ia karya yang belum terbit, dan
+tautannya tidak boleh bisa ditebak. Batas ukuran unggahannya juga dinaikkan
+khusus untuk berkas ini — bukti transfer tetap 10 MB, karena tangkapan layar
+sebesar itu sudah kelewat longgar dan melonggarkannya lagi hanya membuka pintu
+untuk unggahan yang tidak ada gunanya.
+
+**Unduh foto per kelas.** ZIP berisi foto profil, dinamai `NIM_Nama` dan
+dikelompokkan per folder kelas — bukan nama acak dari penyimpanan, yang justru
+memaksa penerimanya mencocokkan gambar dengan daftar mahasiswa secara manual.
+Foto yang tercatat di database tapi berkasnya raib ikut didaftar di
+`FOTO-HILANG.txt`, bukan hilang diam-diam.
+
+**Statistik OCR per kelas di dashboard.** RENCANA_V2 menjanjikannya sejak awal;
+yang ada selama ini cuma rekap uang. Per kelas karena masalah pembacaan hampir
+selalu berkelompok: satu kelas yang diajari memfoto struk dengan cara yang sama
+akan menghasilkan bukti yang sama sulitnya dibaca, dan satu angka global
+menyembunyikan justru kelas yang perlu dibantu.
+
+Query per kelasnya ditulis ulang jadi dua CTE terpisah lalu digabungkan. Yang
+lama menggabungkan cicilan dalam satu rantai JOIN; menambahkan pembayaran ke
+rantai itu akan menggandakan tiap cicilan sebanyak pembayaran yang
+menyentuhnya, dan angka "tertagih" ikut menggelembung tanpa ada galat yang
+memberi tahu. `DashboardQueryIntegrationTest` menguji persis bentuk itu: satu
+cicilan disentuh tiga pembayaran, dan angkanya harus tetap satu kali.
 
 ### Hasil sisir sistem S2, dan jalan buntu yang ditemukan di dalamnya
 

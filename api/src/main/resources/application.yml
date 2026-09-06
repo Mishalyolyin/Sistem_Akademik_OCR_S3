@@ -50,8 +50,10 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 12MB
+      # Naskah disertasi adalah berkas terbesar yang ditangani sistem ini;
+      # bukti transfer tetap dibatasi 10 MB oleh FileStorageService sendiri.
+      max-file-size: 25MB
+      max-request-size: 30MB
 
 server:
   port: ${SERVER_PORT:8080}

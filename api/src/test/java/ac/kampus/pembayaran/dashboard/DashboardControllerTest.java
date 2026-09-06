@@ -46,7 +46,8 @@ class DashboardControllerTest extends ControllerTestSupport {
 						new BigDecimal("60000000"), new BigDecimal("20000000"))));
 		when(repository.summaryByClass()).thenReturn(List.of(
 				new DashboardController.KelasRingkas("Kelas A", 12,
-						new BigDecimal("30000000"), new BigDecimal("10000000"))));
+						new BigDecimal("30000000"), new BigDecimal("10000000"),
+						8, 2, 1, new BigDecimal("0.7250"))));
 		when(repository.verificationQueue()).thenReturn(List.of(
 				new DashboardController.AntreanItem(9L, "Uji Coba", "2612600001", "UKT",
 						new BigDecimal("1200000"), "NEEDS_REVIEW",

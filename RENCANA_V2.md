@@ -243,6 +243,18 @@ payment_plans.cancelled_at, cancelled_by, cancel_reason
 CHECK: status = 'CANCELLED' <-> cancel_reason dan cancelled_at terisi
 ```
 
+### Disertasi
+
+```
+dissertation_details(student_id PK, title, promotor, copromotor,
+                     dissertation_file_path, article_file_path)
+```
+
+**Satu baris per mahasiswa, bukan per tagihan.** Sistem S2 menyimpannya per tagihan
+(`munaqosah_details.payment_plan_id`) karena di sana Munaqosah hanya satu tagihan. Di S3 keempat
+tahap ujian mengacu ke satu disertasi yang sama, jadi menempelkannya ke tagihan berarti judul yang
+sama tersimpan empat kali — dan keempat salinan itu bebas menyimpang tanpa ada yang menyadarinya.
+
 ### Pembebasan gerbang
 
 ```
@@ -309,6 +321,15 @@ installment_amount_changes(id, installment_id, old_amount, new_amount, reason, a
 12b. **Pengecualiannya data, bukan tambalan kode.** `students.ujian_exempt` membebaskan satu
    mahasiswa dari gerbang itu — untuk yang UKT-nya ditanggung beasiswa belakangan atau sedang
    menyicil di luar sistem. Polanya sama persis dengan `pendaftaran_exempt`.
+12c. **Identitas disertasi wajib ada sebelum mendaftar tahap ujian.** Judul, promotor, dan
+   ko-promotor. Gerbang ini di **portal**, bukan di `PaymentGenerationService` bersama dua aturan
+   di atas: admin kadang membuatkan tagihan dari formulir kertas yang sudah ditandatangani
+   promotor, dan menahannya di sana berarti pekerjaan admin ikut terhenti karena mahasiswa belum
+   sempat mengetik judulnya. Yang dijaga adalah pendaftaran mandiri — satu-satunya jalur di mana
+   tidak ada manusia lain yang memeriksa.
+12d. **Naskah disertasi dan artikel jurnal dipisah dari identitasnya, dan tidak jadi syarat
+   mendaftar.** Judul ditetapkan jauh sebelum naskahnya jadi; menuntut keduanya sekaligus berarti
+   tidak ada yang bisa mendaftar Seminar Proposal sampai disertasinya hampir selesai.
 13. **Biaya ujian tidak kena potongan** dan tidak dicicil.
 
 ### Edit nominal cicilan
@@ -351,10 +372,16 @@ kalau digabung, riwayat "uang masuk" dan "tagihan berubah" bercampur di satu log
 ## Modul & Fitur
 
 ### Admin
-- Dashboard statistik: mahasiswa aktif, status bayar, tren, statistik OCR per kelas
+- Dashboard statistik: mahasiswa aktif, status bayar, tren, dan **statistik OCR per kelas** —
+  berapa bukti terbaca, berapa perlu ditinjau, berapa gagal, dan keyakinan rata-ratanya. Per kelas
+  karena masalah pembacaan hampir selalu berkelompok: satu kelas yang diajari memfoto struk dengan
+  cara yang sama menghasilkan bukti yang sama sulitnya dibaca
 - Verifikasi pembayaran **per kategori** (6 kategori), dengan penyaring per kelas
 - Kelola mahasiswa: tingkat potongan, kelas, reset password, bulk delete, download foto
 - Batalkan tagihan yang salah dibuat, dengan alasan wajib dan jejak audit
+- Lihat disertasi tiap mahasiswa: judul, kedua promotor, dan naskahnya — dipakai saat
+  memverifikasi bukti bayar tahap ujian
+- Unduh foto profil satu kelas sekaligus dalam satu ZIP, dinamai NIM_Nama
 - Dua pembebasan gerbang per mahasiswa: bebas biaya Pendaftaran, bebas syarat lunas UKT
 - Kelola kelas berhuruf, termasuk penanda kelas kerjasama
 - Atur tarif dasar dan persen potongan
@@ -371,6 +398,7 @@ kalau digabung, riwayat "uang masuk" dan "tagihan berubah" bercampur di satu log
 ### Mahasiswa
 - Gate dokumen wajib berurutan: Foto → No.KTP+KTP → No.KK+KK → Ijazah → Alamat
 - Gate pembayaran Pendaftaran sebelum akses tagihan UKT
+- Isi identitas disertasi (judul, promotor, ko-promotor) dan unggah naskahnya
 - Lihat tagihan UKT per semester (maksimal 6) dan sisa cicilan
 - Ajukan pembayaran tahap ujian **sesuai urutan wajib**
 - Upload bukti transfer → OCR async → status

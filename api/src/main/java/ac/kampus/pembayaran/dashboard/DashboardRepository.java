@@ -93,25 +93,67 @@ public class DashboardRepository {
 				.list();
 	}
 
+	/**
+	 * Rekap per kelas: uang dan keadaan pembacaan bukti.
+	 *
+	 * <p>Angka uang dan angka OCR dihitung di dua subquery TERPISAH lalu
+	 * digabungkan, bukan dalam satu JOIN berantai. Menggabungkan cicilan dan
+	 * pembayaran dalam satu FROM membuat tiap cicilan tergandakan sebanyak
+	 * pembayaran yang menyentuhnya — dan jumlah "tertagih" ikut menggelembung
+	 * tanpa ada galat yang memberi tahu.
+	 */
 	public List<DashboardController.KelasRingkas> summaryByClass() {
 		return jdbc.sql("""
-						SELECT COALESCE(c.name, 'Tanpa kelas')       AS kelas,
-						       COUNT(DISTINCT s.id)                  AS jumlah_mahasiswa,
-						       COALESCE(SUM(i.amount), 0)            AS tertagih,
-						       COALESCE(SUM(i.amount_paid), 0)       AS terkumpul
-						FROM students s
-						LEFT JOIN study_classes c ON c.id = s.study_class_id
-						LEFT JOIN payment_plans p ON p.student_id = s.id AND p.status <> 'CANCELLED'
-						LEFT JOIN installments i ON i.payment_plan_id = p.id
-						WHERE s.active
-						GROUP BY c.name
-						ORDER BY kelas
+						WITH kelas_mahasiswa AS (
+						    SELECT s.id AS student_id,
+						           COALESCE(c.name, 'Tanpa kelas') AS kelas
+						    FROM students s
+						    LEFT JOIN study_classes c ON c.id = s.study_class_id
+						    WHERE s.active
+						),
+						uang AS (
+						    SELECT km.kelas,
+						           COUNT(DISTINCT km.student_id)   AS jumlah_mahasiswa,
+						           COALESCE(SUM(i.amount), 0)      AS tertagih,
+						           COALESCE(SUM(i.amount_paid), 0) AS terkumpul
+						    FROM kelas_mahasiswa km
+						    LEFT JOIN payment_plans p
+						           ON p.student_id = km.student_id AND p.status <> 'CANCELLED'
+						    LEFT JOIN installments i ON i.payment_plan_id = p.id
+						    GROUP BY km.kelas
+						),
+						ocr AS (
+						    SELECT km.kelas,
+						           COUNT(*) FILTER (WHERE pay.ocr_data IS NOT NULL) AS dibaca,
+						           COUNT(*) FILTER (WHERE pay.status = 'NEEDS_REVIEW') AS perlu_ditinjau,
+						           COUNT(*) FILTER (WHERE pay.status = 'FAILED') AS gagal,
+						           ROUND(AVG(pay.ocr_confidence)
+						                 FILTER (WHERE pay.ocr_confidence IS NOT NULL), 4) AS rata
+						    FROM kelas_mahasiswa km
+						    LEFT JOIN payments pay ON pay.student_id = km.student_id
+						    GROUP BY km.kelas
+						)
+						SELECT uang.kelas,
+						       uang.jumlah_mahasiswa,
+						       uang.tertagih,
+						       uang.terkumpul,
+						       COALESCE(ocr.dibaca, 0)         AS dibaca,
+						       COALESCE(ocr.perlu_ditinjau, 0) AS perlu_ditinjau,
+						       COALESCE(ocr.gagal, 0)          AS gagal,
+						       ocr.rata
+						FROM uang
+						LEFT JOIN ocr ON ocr.kelas = uang.kelas
+						ORDER BY uang.kelas
 						""")
 				.query((rs, n) -> new DashboardController.KelasRingkas(
 						rs.getString("kelas"),
 						rs.getLong("jumlah_mahasiswa"),
 						rs.getBigDecimal("tertagih"),
-						rs.getBigDecimal("terkumpul")))
+						rs.getBigDecimal("terkumpul"),
+						rs.getLong("dibaca"),
+						rs.getLong("perlu_ditinjau"),
+						rs.getLong("gagal"),
+						rs.getBigDecimal("rata")))
 				.list();
 	}
 

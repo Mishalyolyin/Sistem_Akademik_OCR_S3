@@ -54,11 +54,27 @@ public class DashboardController {
 	) {
 	}
 
+	/**
+	 * Rekap satu kelas: uangnya sekaligus keadaan pembacaan buktinya.
+	 *
+	 * <p>Angka OCR ikut per kelas karena masalah pembacaan hampir selalu
+	 * berkelompok — satu kelas yang diajari cara memfoto struk dengan cara yang
+	 * sama akan menghasilkan bukti yang sama sulitnya dibaca. Melihatnya hanya
+	 * sebagai satu angka global menyembunyikan justru kelas yang perlu dibantu.
+	 */
 	public record KelasRingkas(
 			String kelas,
 			long jumlahMahasiswa,
 			BigDecimal tertagih,
-			BigDecimal terkumpul
+			BigDecimal terkumpul,
+			/** Bukti bayar yang sudah pernah dibaca OCR di kelas ini. */
+			long buktiDibaca,
+			/** Yang masih menunggu keputusan admin. */
+			long buktiPerluDitinjau,
+			/** Yang pembacaannya gagal setelah semua percobaan habis. */
+			long buktiGagalDibaca,
+			/** Rata-rata keyakinan pembacaan; kosong bila belum ada yang dibaca. */
+			BigDecimal rataKeyakinan
 	) {
 	}
 

@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { FileCheck2, History, LogOut, ReceiptText, UserRound } from "lucide-react";
+import {
+  BookOpen,
+  FileCheck2,
+  History,
+  LogOut,
+  ReceiptText,
+  UserRound,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -11,6 +18,7 @@ import { useAuth } from "@/lib/auth";
 const menu = [
   { href: "/portal", label: "Tagihan", icon: ReceiptText, exact: true },
   { href: "/portal/dokumen", label: "Dokumen", icon: FileCheck2 },
+  { href: "/portal/disertasi", label: "Disertasi", icon: BookOpen },
   { href: "/portal/riwayat", label: "Riwayat", icon: History },
   { href: "/portal/profil", label: "Profil", icon: UserRound },
 ];

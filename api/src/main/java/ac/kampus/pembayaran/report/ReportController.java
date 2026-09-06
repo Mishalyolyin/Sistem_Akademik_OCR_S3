@@ -33,6 +33,7 @@ public class ReportController {
 	private final ReceiptGenerator receiptGenerator;
 	private final OcrDatasetExporter datasetExporter;
 	private final StudentDataExporter studentExporter;
+	private final StudentPhotoExporter photoExporter;
 
 	@GetMapping("/pembayaran.xlsx")
 	@Operation(summary = "Laporan Excel pembayaran, bisa disaring per kelas dan status. "
@@ -61,6 +62,18 @@ public class ReportController {
 		String nama = "data-mahasiswa-%s.xlsx".formatted(LocalDate.now());
 
 		return unduh(bytes, nama, MediaType.parseMediaType(XLSX));
+	}
+
+	@GetMapping("/foto-mahasiswa.zip")
+	@Operation(summary = "Foto profil mahasiswa satu kelas dalam satu ZIP, "
+			+ "dinamai NIM_Nama dan dikelompokkan per folder kelas")
+	public ResponseEntity<Resource> fotoMahasiswa(
+			@RequestParam(required = false) Long classId) {
+
+		byte[] bytes = photoExporter.fotoKelas(classId);
+		String nama = "foto-mahasiswa-%s.zip".formatted(LocalDate.now());
+
+		return unduh(bytes, nama, MediaType.parseMediaType("application/zip"));
 	}
 
 	@GetMapping("/dataset-ocr.zip")

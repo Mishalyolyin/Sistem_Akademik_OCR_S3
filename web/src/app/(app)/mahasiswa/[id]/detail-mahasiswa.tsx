@@ -51,6 +51,7 @@ import { DialogResetSandi } from "@/features/mahasiswa/dialog-reset-sandi";
 import { DialogUbahMahasiswa } from "@/features/mahasiswa/dialog-ubah-mahasiswa";
 import { DialogHapusMahasiswa } from "@/features/mahasiswa/dialog-hapus-mahasiswa";
 import { KartuDokumen } from "@/features/mahasiswa/kartu-dokumen";
+import { KartuDisertasi } from "@/features/disertasi/kartu-disertasi";
 import { ApiError } from "@/lib/api";
 import { formatRupiah, formatTanggal, formatTanggalJam } from "@/lib/format";
 
@@ -184,6 +185,10 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
       <Separator />
 
       <KartuDokumen mahasiswa={mhs} />
+
+      <Separator />
+
+      <KartuDisertasi studentId={mhs.id} />
 
       <Separator />
 

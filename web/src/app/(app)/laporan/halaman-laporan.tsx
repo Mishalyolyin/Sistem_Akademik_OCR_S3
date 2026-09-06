@@ -6,6 +6,7 @@ import {
   Download,
   FileSpreadsheet,
   Images,
+  ImageDown,
   Loader2,
   ShieldAlert,
   Table2,
@@ -62,6 +63,9 @@ export function HalamanLaporan() {
   // Penyaring data mahasiswa.
   const [kelasMhs, setKelasMhs] = useState(SEMUA);
   const [tier, setTier] = useState(SEMUA);
+
+  // Penyaring foto.
+  const [kelasFoto, setKelasFoto] = useState(SEMUA);
 
   // Mati secara bawaan, dan sengaja tidak diingat antar kunjungan: menyertakan
   // teks struk harus jadi keputusan sadar tiap kali, bukan setelan yang
@@ -204,6 +208,40 @@ export function HalamanLaporan() {
                 ...golongan.daftar.map((g) => ({
                   nilai: g.tier,
                   label: g.label,
+                })),
+              ]}
+            />
+          </Penyaring>
+        </KartuLaporan>
+
+        {/* --- Foto mahasiswa --- */}
+        <KartuLaporan
+          icon={ImageDown}
+          warnaIkon="text-primary"
+          nama="Foto Mahasiswa"
+          keterangan="ZIP foto profil, dinamai NIM_Nama dan dikelompokkan per folder kelas. Untuk mencetak kartu mahasiswa dan berkas wisuda. Mahasiswa yang fotonya tercatat tapi berkasnya raib ikut didaftar di dalam ZIP."
+          tombol="Unduh ZIP"
+          sedang={mengunduh === "foto"}
+          onUnduh={() =>
+            unduh(
+              "foto",
+              `reports/foto-mahasiswa.zip${query({ classId: kelasFoto })}`,
+              "foto-mahasiswa.zip",
+              "Foto Mahasiswa",
+            )
+          }
+        >
+          <Penyaring>
+            <Pilihan
+              id="kelas-foto"
+              label="Kelas"
+              nilai={kelasFoto}
+              onGanti={setKelasFoto}
+              pilihan={[
+                { nilai: SEMUA, label: "Semua kelas" },
+                ...daftarKelas.map((k) => ({
+                  nilai: String(k.id),
+                  label: k.displayName,
                 })),
               ]}
             />
