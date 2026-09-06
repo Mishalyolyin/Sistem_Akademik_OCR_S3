@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -57,6 +58,9 @@ public class StudentController {
 			boolean documentsComplete,
 			String nik,
 			String kkNumber,
+			/** Keduanya datang dari pembacaan ijazah; tidak ada isian manualnya. */
+			String birthPlace,
+			LocalDate birthDate,
 			/** Kode dokumen yang berkasnya sudah ada dan bisa dibuka admin. */
 			List<String> dokumenTersedia,
 			/** Golongan terkunci karena mahasiswa sudah pernah mengunggah bukti bayar. */
@@ -200,6 +204,8 @@ public class StudentController {
 				student.hasCompletedDocuments(),
 				student.getNik(),
 				student.getKkNumber(),
+				student.getBirthPlace(),
+				student.getBirthDate(),
 				StudentDocument.tersediaUntuk(student),
 				service.tierLocked(student));
 	}

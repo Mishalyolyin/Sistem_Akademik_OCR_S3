@@ -25,6 +25,8 @@ import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.Map;
 
 @Entity
 @Table(name = "students")
@@ -96,6 +98,35 @@ public class Student {
 
 	@Column(columnDefinition = "text")
 	private String address;
+
+	// --- Hasil pembacaan OCR atas dokumen di atas ---
+	//
+	// Disimpan apa adanya, sama seperti payments.ocr_data: bentuk jawaban
+	// service OCR bisa berubah, dan yang berguna saat menelusuri justru field
+	// yang tidak diduga ada.
+
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "ktp_ocr_data", columnDefinition = "jsonb")
+	private Map<String, Object> ktpOcrData;
+
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "kk_ocr_data", columnDefinition = "jsonb")
+	private Map<String, Object> kkOcrData;
+
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "ijazah_ocr_data", columnDefinition = "jsonb")
+	private Map<String, Object> ijazahOcrData;
+
+	@JdbcTypeCode(SqlTypes.JSON)
+	@Column(name = "profile_picture_analysis", columnDefinition = "jsonb")
+	private Map<String, Object> profilePictureAnalysis;
+
+	/** Keduanya datang dari pembacaan ijazah; tidak ada isian manualnya. */
+	@Column(name = "birth_place", length = 100)
+	private String birthPlace;
+
+	@Column(name = "birth_date")
+	private LocalDate birthDate;
 
 	// --- Keuangan ---
 

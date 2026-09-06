@@ -1,5 +1,6 @@
 package ac.kampus.pembayaran.payment.ocr;
 
+import ac.kampus.pembayaran.student.StudentDocument;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -31,6 +32,28 @@ public class OcrJobPublisher {
 		} else {
 			publish(paymentId);
 		}
+	}
+
+	/** Sama seperti di atas, untuk dokumen wajib mahasiswa. */
+	public void publishDocumentAfterCommit(Long studentId, StudentDocument jenis) {
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			TransactionSynchronizationManager.registerSynchronization(
+					new TransactionSynchronization() {
+						@Override
+						public void afterCommit() {
+							publishDocument(studentId, jenis);
+						}
+					});
+		} else {
+			publishDocument(studentId, jenis);
+		}
+	}
+
+	private void publishDocument(Long studentId, StudentDocument jenis) {
+		rabbitTemplate.convertAndSend(
+				RabbitConfig.EXCHANGE, RabbitConfig.ROUTING_KEY_DOKUMEN,
+				new DocumentOcrJobMessage(studentId, jenis));
+		log.info("Pembacaan {} mahasiswa {} masuk antrean", jenis, studentId);
 	}
 
 	private void publish(Long paymentId) {

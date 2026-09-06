@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Eye } from "lucide-react";
+import { AlertTriangle, Check, Eye, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PratinjauBerkas } from "@/components/pratinjau-berkas";
+import { formatTanggal } from "@/lib/format";
 import {
   dokumenLabels,
   useDokumenMahasiswa,
+  usePemeriksaanDokumen,
+  type HasilPeriksaDokumen,
   type JenisDokumen,
   type StudentSummary,
 } from "./api";
@@ -22,6 +25,11 @@ const URUTAN: JenisDokumen[] = ["foto", "ktp", "kk", "ijazah"];
  */
 export function KartuDokumen({ mahasiswa }: { mahasiswa: StudentSummary }) {
   const [dibuka, setDibuka] = useState<JenisDokumen | null>(null);
+  const periksa = usePemeriksaanDokumen(mahasiswa.id);
+
+  const hasilPer = new Map(
+    (periksa.data ?? []).map((hasil) => [hasil.jenis, hasil]),
+  );
 
   return (
     <section className="flex flex-col gap-3">
@@ -47,6 +55,23 @@ export function KartuDokumen({ mahasiswa }: { mahasiswa: StudentSummary }) {
               </dd>
             </div>
             <div className="flex items-center justify-between gap-3 px-4 py-2.5">
+              <dt className="text-muted-foreground">Tempat, tanggal lahir</dt>
+              <dd className="text-right">
+                {mahasiswa.birthPlace || mahasiswa.birthDate ? (
+                  <>
+                    {mahasiswa.birthPlace ?? "—"}
+                    {mahasiswa.birthDate
+                      ? `, ${formatTanggal(mahasiswa.birthDate)}`
+                      : ""}
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">
+                    belum terbaca dari ijazah
+                  </span>
+                )}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-3 px-4 py-2.5">
               <dt className="text-muted-foreground">Alamat</dt>
               <dd className="text-right">
                 {mahasiswa.documentsComplete ? (
@@ -65,11 +90,14 @@ export function KartuDokumen({ mahasiswa }: { mahasiswa: StudentSummary }) {
             return (
               <li
                 key={jenis}
-                className="flex items-center justify-between gap-3 px-4 py-2"
+                className="flex items-start justify-between gap-3 px-4 py-2"
               >
-                <span className={ada ? undefined : "text-muted-foreground"}>
-                  {dokumenLabels[jenis]}
-                </span>
+                <div className="min-w-0">
+                  <span className={ada ? undefined : "text-muted-foreground"}>
+                    {dokumenLabels[jenis]}
+                  </span>
+                  {ada && <Kesimpulan hasil={hasilPer.get(jenis)} />}
+                </div>
                 {ada ? (
                   <Button
                     variant="outline"
@@ -125,5 +153,40 @@ function PratinjauDokumen({
       berkas={berkas}
       onClose={onClose}
     />
+  );
+}
+
+/**
+ * Kesimpulan pembacaan satu dokumen.
+ *
+ * <p>Tiga keadaan, bukan dua. "Tidak cocok" berarti mesin membaca sesuatu yang
+ * berbeda dan dokumennya layak dilihat; "tidak bisa disimpulkan" berarti
+ * mesinnya yang gagal membaca, dan itu bukan alasan mencurigai mahasiswanya.
+ * Menyamakan keduanya membuat admin curiga pada dokumen yang baik-baik saja.
+ */
+function Kesimpulan({ hasil }: { hasil?: HasilPeriksaDokumen }) {
+  if (!hasil || !hasil.sudahDibaca) {
+    return (
+      <span className="block text-xs text-muted-foreground">
+        Belum dibaca mesin.
+      </span>
+    );
+  }
+
+  const nada =
+    hasil.cocok === true
+      ? "text-success"
+      : hasil.cocok === false
+        ? "text-warning"
+        : "text-muted-foreground";
+
+  const Ikon =
+    hasil.cocok === true ? Check : hasil.cocok === false ? AlertTriangle : HelpCircle;
+
+  return (
+    <span className={`flex items-start gap-1.5 text-xs ${nada}`}>
+      <Ikon className="mt-0.5 size-3 shrink-0" />
+      <span>{hasil.keterangan}</span>
+    </span>
   );
 }

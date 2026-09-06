@@ -29,6 +29,19 @@ public class RabbitConfig {
 	public static final String DLX = "pembayaran.ocr.dlx";
 	public static final String DLQ = "pembayaran.ocr.jobs.dlq";
 
+	/**
+	 * Antrean terpisah untuk dokumen wajib mahasiswa.
+	 *
+	 * <p>Dipisah dari antrean bukti bayar karena keduanya punya kepentingan yang
+	 * berbeda: bukti bayar menahan uang dan harus segera diputuskan, sementara
+	 * pembacaan dokumen hanya membantu admin memeriksa. Menumpuknya di satu
+	 * antrean membuat unggahan dokumen massal saat pendaftaran menunda
+	 * pembacaan bukti bayar yang justru mendesak.
+	 */
+	public static final String QUEUE_DOKUMEN = "pembayaran.ocr.dokumen";
+	public static final String ROUTING_KEY_DOKUMEN = "ocr.dokumen";
+	public static final String DLQ_DOKUMEN = "pembayaran.ocr.dokumen.dlq";
+
 	@Bean
 	DirectExchange ocrExchange() {
 		return new DirectExchange(EXCHANGE, true, false);
@@ -62,6 +75,31 @@ public class RabbitConfig {
 		return BindingBuilder.bind(ocrDeadLetterQueue())
 				.to(ocrDeadLetterExchange())
 				.with(ROUTING_KEY);
+	}
+
+	@Bean
+	Queue ocrDocumentQueue() {
+		return QueueBuilder.durable(QUEUE_DOKUMEN)
+				.deadLetterExchange(DLX)
+				.deadLetterRoutingKey(ROUTING_KEY_DOKUMEN)
+				.build();
+	}
+
+	@Bean
+	Binding ocrDocumentBinding() {
+		return BindingBuilder.bind(ocrDocumentQueue()).to(ocrExchange()).with(ROUTING_KEY_DOKUMEN);
+	}
+
+	@Bean
+	Queue ocrDocumentDeadLetterQueue() {
+		return QueueBuilder.durable(DLQ_DOKUMEN).build();
+	}
+
+	@Bean
+	Binding ocrDocumentDeadLetterBinding() {
+		return BindingBuilder.bind(ocrDocumentDeadLetterQueue())
+				.to(ocrDeadLetterExchange())
+				.with(ROUTING_KEY_DOKUMEN);
 	}
 
 	@Bean

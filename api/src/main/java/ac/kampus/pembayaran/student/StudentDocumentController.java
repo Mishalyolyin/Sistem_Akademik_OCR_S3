@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
  * Menyajikan dokumen wajib mahasiswa: foto, KTP, Kartu Keluarga, dan ijazah.
  *
@@ -34,6 +36,18 @@ public class StudentDocumentController {
 	private final StudentService service;
 	private final StudentSelfService selfService;
 	private final FileStorageService storage;
+
+	/**
+	 * Ringkasan pembacaan keempat dokumen: cocok, tidak, atau belum bisa
+	 * disimpulkan. Dipisah dari daftar mahasiswa supaya halaman daftar tidak ikut
+	 * memuat hasil OCR yang hanya dipakai di halaman detail.
+	 */
+	@GetMapping("/students/{id}/dokumen")
+	@PreAuthorize("hasRole('ADMIN')")
+	@Operation(summary = "Hasil pembacaan dokumen wajib satu mahasiswa")
+	public List<StudentDocumentCheck.Hasil> pemeriksaan(@PathVariable Long id) {
+		return StudentDocumentCheck.untuk(service.get(id));
+	}
 
 	@GetMapping("/students/{id}/dokumen/{jenis}")
 	@PreAuthorize("hasRole('ADMIN')")

@@ -83,5 +83,15 @@ public class OcrClient {
 				String accounts, String blacklist, Integer maxDays, String studentName) {
 			return new OcrRequest("payment", accounts, blacklist, maxDays, studentName);
 		}
+
+		/**
+		 * Dokumen wajib mahasiswa. Rekening tujuan, blacklist, dan batas umur
+		 * tanggal tidak dikirim: ketiganya hanya berlaku untuk bukti transfer.
+		 * Nama mahasiswa tetap dikirim karena itulah yang dicocokkan dengan nama
+		 * di ijazah dan dengan daftar anggota di Kartu Keluarga.
+		 */
+		public static OcrRequest forDocument(String docType, String studentName) {
+			return new OcrRequest(docType, null, null, null, studentName);
+		}
 	}
 }

@@ -3,17 +3,17 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 5 September 2026, 23.05
+Terakhir diperbarui: 6 September 2026, 00.30
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 5 September 2026 pukul 23.05 di mesin pengembangan, semuanya lolos:
+Dijalankan 6 September 2026 pukul 00.30 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 303 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 315 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Test unit frontend | `npm test` | ✅ 33 test lolos di 4 berkas |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
@@ -128,15 +128,16 @@ Dikerjakan berurutan, dari yang paling mendesak.
 
 ### Test otomatis
 
-Sudah ada **303 test backend** dan semuanya lolos:
+Sudah ada **315 test backend** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
 - `PaymentAllocationServiceTest` — 17 test aturan pembagian uang ke cicilan dan
   penarikannya kembali
 - `PaymentServiceBatalTest` — 7 test pembatalan keputusan verifikasi
+- `StudentDocumentCheckTest` — 12 test ringkasan pembacaan dokumen
 - `ApiApplicationTests` — 1 test yang menyalakan PostgreSQL asli lewat
-  Testcontainers, sekaligus memverifikasi kesepuluh migrasi Flyway
+  Testcontainers, sekaligus memverifikasi kesebelas migrasi Flyway
 - `OcrJobConsumerTest` — 10 test keputusan otomatis atas hasil pembacaan bukti,
   termasuk kapan nominal boleh ditulis ulang
 - `SecurityLayerTest` — 8 test lapisan HTTP: peran mana yang diterima di
@@ -195,6 +196,50 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### OCR dokumen mahasiswa akhirnya disambungkan
+
+Service OCR sudah bisa membaca KTP, Kartu Keluarga, ijazah, dan menganalisis
+foto **sejak awal** — `ocr/ocr_processor.py` punya `process_ktp`, `process_kk`,
+`process_ijazah`, dan `process_photo`, dan `main.py` menerima keempat jenisnya.
+Yang tidak pernah ada adalah sisi Spring yang mengirim berkasnya ke sana. Jadi
+kemampuan itu menganggur sepenuhnya, dan admin memeriksa tiap dokumen dengan
+mata tanpa satu pun petunjuk.
+
+- Migrasi V11 menambah empat kolom JSONB untuk hasil pembacaan, plus
+  `birth_place` dan `birth_date` — keduanya **tidak punya isian manual di mana
+  pun**, jadi nilainya memang hanya bisa datang dari ijazah
+- Antrean dokumen **dipisah** dari antrean bukti bayar. Keduanya punya
+  kepentingan berbeda: bukti bayar menahan uang dan harus segera diputuskan,
+  sementara pembacaan dokumen hanya membantu. Menumpuknya di satu antrean
+  membuat unggahan dokumen massal saat pendaftaran menunda pembacaan bukti bayar
+- Pembacaan berjalan di belakang layar dan **tidak menahan unggahan**: mahasiswa
+  tidak menunggu Tesseract, dan service OCR yang sedang mati tidak membuat
+  unggahannya gagal. Gate dokumen tidak bergantung padanya sama sekali
+- Unggah ulang **membuang hasil lama** lebih dulu; hasil yang tertinggal akan
+  dibaca admin sebagai hasil berkas yang baru
+- Tempat dan tanggal lahir hanya diisi bila masih kosong. Sekali admin
+  membetulkannya dengan mata sendiri, pembacaan ulang tidak boleh menimpanya
+  lagi dengan tebakan mesin
+
+**Tidak ada dokumen yang diterima atau ditolak otomatis.** Tesseract tidak bisa
+memeriksa hologram, stempel, atau tanda tangan; berpura-pura bisa justru
+berbahaya. Yang disajikan adalah **kecocokan** — NIK yang terbaca sama atau
+tidak dengan yang diketik, nama di ijazah sama atau tidak dengan nama mahasiswa.
+
+Kesimpulannya punya **tiga** keadaan, bukan dua: cocok, tidak cocok, dan tidak
+bisa disimpulkan. Yang ketiga berarti mesinnya gagal membaca — bukan alasan
+mencurigai mahasiswanya. Menyamakan keduanya membuat admin curiga pada dokumen
+yang sebenarnya baik-baik saja.
+
+**Diuji langsung terhadap sistem yang hidup**, dengan service OCR sungguhan
+(Tesseract 5.4, OpenCV 5.0): mahasiswa mengunggah KTP → NIK terbaca
+`3374010101990001` dan disimpulkan cocok → mengunggah KTP yang sama tapi
+mengetik NIK berbeda → **"NIK berbeda: terbaca 3374010101990001, diketik
+3374019999999999"** → mengunggah ijazah → nama cocok, dan tempat/tanggal lahir
+**SEMARANG, 1995-05-10** terisi sendiri dari pembacaan, data yang sebelumnya
+tidak bisa ditangkap sistem ini sama sekali. Berkas dan data ujinya dikembalikan
+seperti semula.
 
 ### Verifikasi yang keliru akhirnya bisa dibatalkan
 

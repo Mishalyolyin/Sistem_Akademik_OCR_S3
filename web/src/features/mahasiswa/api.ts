@@ -38,6 +38,9 @@ export type StudentSummary = {
   documentsComplete: boolean;
   nik: string | null;
   kkNumber: string | null;
+  /** Keduanya datang dari pembacaan ijazah; tidak ada isian manualnya. */
+  birthPlace: string | null;
+  birthDate: string | null;
   /** Dokumen yang berkasnya sudah ada, jadi tombol bukanya boleh muncul. */
   dokumenTersedia: JenisDokumen[];
   discountTierLocked: boolean;
@@ -180,6 +183,32 @@ export const documentStepLabels: Record<DocumentStep, string> = {
   IJAZAH: "Ijazah",
   ADDRESS: "Alamat",
 };
+
+export type HasilPeriksaDokumen = {
+  jenis: JenisDokumen;
+  adaBerkas: boolean;
+  sudahDibaca: boolean;
+  /**
+   * null berarti tidak bisa disimpulkan — biasanya tulisannya tidak terbaca.
+   * Dibedakan dari false yang berarti terbaca tapi memang berbeda.
+   */
+  cocok: boolean | null;
+  keterangan: string;
+};
+
+/**
+ * Ringkasan pembacaan OCR atas keempat dokumen.
+ *
+ * Terpisah dari data mahasiswa supaya halaman daftar tidak ikut memuat hasil
+ * OCR yang hanya dipakai di halaman detail.
+ */
+export function usePemeriksaanDokumen(studentId: number) {
+  return useQuery({
+    queryKey: [KEY, "dokumen", studentId],
+    queryFn: () =>
+      apiFetch<HasilPeriksaDokumen[]>(`/students/${studentId}/dokumen`),
+  });
+}
 
 /**
  * Berkas dokumen wajib satu mahasiswa. Berkasnya tidak ada di folder publik,

@@ -5,7 +5,9 @@ import ac.kampus.pembayaran.common.BusinessRuleException;
 import ac.kampus.pembayaran.common.NotFoundException;
 import ac.kampus.pembayaran.common.PaymentCategory;
 import ac.kampus.pembayaran.payment.FileStorageService;
+import ac.kampus.pembayaran.payment.ocr.OcrJobPublisher;
 import ac.kampus.pembayaran.student.Student;
+import ac.kampus.pembayaran.student.StudentDocument;
 import ac.kampus.pembayaran.student.StudentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +39,7 @@ public class StudentSelfService {
 
 	private final StudentRepository studentRepository;
 	private final FileStorageService storage;
+	private final OcrJobPublisher ocrPublisher;
 
 	@Transactional(readOnly = true)
 	public Student current() {
@@ -56,7 +59,7 @@ public class StudentSelfService {
 	public Student simpanFoto(MultipartFile berkas) {
 		Student student = current();
 		student.setProfilePicture(storage.store(berkas, "dokumen/foto"));
-		return studentRepository.save(student);
+		return simpanLaluBaca(student, StudentDocument.FOTO);
 	}
 
 	@Transactional
@@ -71,7 +74,10 @@ public class StudentSelfService {
 
 		student.setNik(bersih);
 		student.setKtpFilePath(storage.store(berkas, "dokumen/ktp"));
-		return studentRepository.save(student);
+		// Hasil pembacaan sebelumnya dibuang: berkasnya sudah berganti, dan
+		// hasil lama yang tertinggal akan dibaca admin sebagai hasil yang baru.
+		student.setKtpOcrData(null);
+		return simpanLaluBaca(student, StudentDocument.KTP);
 	}
 
 	@Transactional
@@ -86,7 +92,8 @@ public class StudentSelfService {
 
 		student.setKkNumber(bersih);
 		student.setKkFilePath(storage.store(berkas, "dokumen/kk"));
-		return studentRepository.save(student);
+		student.setKkOcrData(null);
+		return simpanLaluBaca(student, StudentDocument.KK);
 	}
 
 	@Transactional
@@ -95,7 +102,23 @@ public class StudentSelfService {
 		wajibSudahSampai(student, Student.DocumentStep.IJAZAH);
 
 		student.setIjazahFilePath(storage.store(berkas, "dokumen/ijazah"));
-		return studentRepository.save(student);
+		student.setIjazahOcrData(null);
+		return simpanLaluBaca(student, StudentDocument.IJAZAH);
+	}
+
+	/**
+	 * Menyimpan mahasiswa lalu mengantrekan pembacaan dokumennya.
+	 *
+	 * <p>Pembacaannya berjalan di belakang layar dan TIDAK menahan unggahan:
+	 * mahasiswa yang sedang mengisi dokumen tidak boleh menunggu Tesseract, dan
+	 * service OCR yang sedang mati tidak boleh membuat unggahannya gagal.
+	 * Hasilnya menyusul, atau tidak sama sekali — gate dokumen tidak
+	 * bergantung padanya.
+	 */
+	private Student simpanLaluBaca(Student student, StudentDocument jenis) {
+		Student tersimpan = studentRepository.save(student);
+		ocrPublisher.publishDocumentAfterCommit(tersimpan.getId(), jenis);
+		return tersimpan;
 	}
 
 	@Transactional
