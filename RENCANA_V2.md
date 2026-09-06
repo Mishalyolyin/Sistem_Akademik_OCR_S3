@@ -3,7 +3,8 @@
 ## Context
 
 Ada sistem pembayaran SKS berbasis **Laravel 12 + PHP 8.2** yang sudah live dan dipakai di kampus
-untuk program **Magister (S2)** (`Laravel/` di repo ini adalah salinan lokalnya).
+untuk program **Magister (S2)**. Salinan lokalnya sempat ada di repo ini sebagai pembanding, dan
+kini tinggal di repo lama — sistem S3 tidak bergantung padanya sama sekali.
 
 **Rencana ini BUKAN mengganti sistem itu.** Ini proyek baru dan terpisah untuk
 **Program Doktor (S3) PAI UNISSULA**, dibangun dengan bahasa dan framework yang berbeda dari
@@ -27,9 +28,9 @@ Karena greenfield, tidak ada beban migrasi data dan tidak ada risiko produksi.
 | Angsuran UKT | 4x, tiap 3 bulan | **5x, bulanan** |
 | Kerjasama | Kategori tagihan khusus, nominal diketik admin | **Salah satu dari 5 tingkat potongan**, nominal terhitung otomatis |
 
-### Temuan dari salinan Laravel di repo ini
+### Temuan dari sisir menyeluruh terhadap sistem S2
 
-Salinan Laravel di repo ini sekarang **lengkap** — keempat controller yang sempat hilang
+Sisirnya dilakukan atas salinan lengkap sistem S2 — keempat controller yang sempat hilang
 (`StudentDocumentController`, `PendaftaranController`, `DevOcrController`,
 `DevDocumentOcrController`) sudah ada, begitu pula middleware `documents.complete`,
 `pendaftaran.complete`, dan `developer`. Ia kini bisa dipakai sebagai pembanding sungguhan, bukan

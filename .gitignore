@@ -16,3 +16,4 @@ __pycache__/
 # Berkas unggahan
 api/storage/
 ocr/bukti-uji.png
+Laravel/

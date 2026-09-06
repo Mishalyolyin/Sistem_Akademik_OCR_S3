@@ -339,9 +339,9 @@ cicilan disentuh tiga pembayaran, dan angkanya harus tetap satu kali.
 
 ### Hasil sisir sistem S2, dan jalan buntu yang ditemukan di dalamnya
 
-Salinan Laravel di repo ini ternyata sudah lengkap — keempat controller yang
-dulu disebut hilang kini ada — jadi ia bisa dipakai sebagai pembanding
-sungguhan. Sisirannya menemukan delapan hal, satu di antaranya bukan fitur
+Salinan sistem S2 ternyata sudah lengkap — keempat controller yang dulu disebut
+hilang ternyata ada — jadi ia bisa dipakai sebagai pembanding sungguhan.
+Salinannya sendiri tidak ikut dibawa ke repo ini; ia tinggal di repo lama. Sisirannya menemukan delapan hal, satu di antaranya bukan fitur
 yang kurang melainkan jalan buntu.
 
 **1. Tagihan yang salah dibuat akhirnya bisa dibatalkan.** `PlanStatus.CANCELLED`
