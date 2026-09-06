@@ -145,7 +145,9 @@ export function HalamanMahasiswa() {
       ) : error ? (
         <ErrorState
           message={
-            error instanceof ApiError ? error.message : "Coba muat ulang halaman."
+            error instanceof ApiError
+              ? error.message
+              : "Coba muat ulang halaman."
           }
         />
       ) : data.content.length === 0 ? (
@@ -198,7 +200,9 @@ function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
   // Pilihan hanya berlaku untuk baris yang sedang tampil; berpindah halaman
   // atau menyaring ulang membuat daftar idnya tidak lagi ada di layar.
   const idHalamanIni = data.map((mhs) => mhs.id);
-  const dipilihDiHalamanIni = terpilih.filter((id) => idHalamanIni.includes(id));
+  const dipilihDiHalamanIni = terpilih.filter((id) =>
+    idHalamanIni.includes(id),
+  );
   const semuaTerpilih =
     data.length > 0 && dipilihDiHalamanIni.length === data.length;
 
@@ -220,11 +224,7 @@ function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
             <strong>{dipilihDiHalamanIni.length}</strong> mahasiswa dipilih
           </span>
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setTerpilih([])}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setTerpilih([])}>
               Batalkan pilihan
             </Button>
             <Button
@@ -240,149 +240,149 @@ function TabelMahasiswa({ data }: { data: StudentSummary[] }) {
       )}
 
       <div className="overflow-x-auto rounded-2xl border border-border/70 bg-card shadow-sm">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10">
-              <Checkbox
-                checked={semuaTerpilih}
-                aria-label="Pilih semua mahasiswa di halaman ini"
-                onCheckedChange={(checked) =>
-                  setTerpilih((sebelumnya) =>
-                    checked
-                      ? [
-                          ...sebelumnya.filter(
-                            (id) => !idHalamanIni.includes(id),
-                          ),
-                          ...idHalamanIni,
-                        ]
-                      : sebelumnya.filter((id) => !idHalamanIni.includes(id)),
-                  )
-                }
-              />
-            </TableHead>
-            <TableHead>Mahasiswa</TableHead>
-            <TableHead>Kelas</TableHead>
-            <TableHead>Golongan potongan</TableHead>
-            <TableHead>Mulai</TableHead>
-            <TableHead>Dokumen</TableHead>
-            <TableHead className="text-right">Saldo</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((mhs) => (
-            <TableRow key={mhs.id}>
-              <TableCell>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">
                 <Checkbox
-                  checked={terpilih.includes(mhs.id)}
-                  aria-label={`Pilih ${mhs.name}`}
-                  onCheckedChange={(checked) => toggleSatu(mhs.id, !!checked)}
+                  checked={semuaTerpilih}
+                  aria-label="Pilih semua mahasiswa di halaman ini"
+                  onCheckedChange={(checked) =>
+                    setTerpilih((sebelumnya) =>
+                      checked
+                        ? [
+                            ...sebelumnya.filter(
+                              (id) => !idHalamanIni.includes(id),
+                            ),
+                            ...idHalamanIni,
+                          ]
+                        : sebelumnya.filter((id) => !idHalamanIni.includes(id)),
+                    )
+                  }
                 />
-              </TableCell>
-
-              <TableCell>
-                <Link
-                  href={`/mahasiswa/${mhs.id}`}
-                  className="block font-medium hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                >
-                  {mhs.name}
-                </Link>
-                <span className="block font-mono text-xs text-muted-foreground">
-                  {mhs.nim}
-                </span>
-              </TableCell>
-
-              <TableCell className="whitespace-nowrap text-muted-foreground">
-                {mhs.className ?? "—"}
-              </TableCell>
-
-              <TableCell>
-                {mhs.discountTierLocked ? (
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <span className="inline-flex cursor-help items-center gap-1.5 text-sm">
-                          <Lock className="size-3.5 text-muted-foreground" />
-                          {golongan.label(mhs.discountTier)}
-                        </span>
-                      }
-                    />
-                    <TooltipContent>
-                      Terkunci: mahasiswa sudah pernah mengunggah bukti bayar
-                    </TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <Select
-                    value={mhs.discountTier}
-                    onValueChange={(value) =>
-                      value &&
-                      ubahTier.mutate(
-                        { id: mhs.id, tier: value as DiscountTier },
-                        {
-                          onSuccess: (updated) =>
-                            toast.success(
-                              `${updated.name} kini ${golongan.label(updated.discountTier)}.`,
-                            ),
-                          onError: (e) =>
-                            toast.error(
-                              e instanceof ApiError
-                                ? e.message
-                                : "Gagal mengubah golongan.",
-                            ),
-                        },
-                      )
-                    }
-                  >
-                    <SelectTrigger
-                      className="h-8 w-48"
-                      aria-label={`Golongan ${mhs.name}`}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {golongan.aktif.map((tier) => (
-                        <SelectItem key={tier.tier} value={tier.tier}>
-                          {tier.label}
-                          {Number(tier.percent) > 0
-                            ? ` (−${Number(tier.percent)}%)`
-                            : ""}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </TableCell>
-
-              <TableCell className="whitespace-nowrap text-muted-foreground">
-                {mhs.startAcademicYear}{" "}
-                {mhs.startTerm === "GASAL" ? "Gasal" : "Genap"}
-              </TableCell>
-
-              <TableCell>
-                {mhs.documentsComplete ? (
-                  <span className="text-sm text-success">Lengkap</span>
-                ) : (
-                  <span
-                    className={cn(
-                      "text-sm text-warning",
-                      "whitespace-nowrap",
-                    )}
-                  >
-                    Menunggu{" "}
-                    {mhs.nextDocumentStep
-                      ? documentStepLabels[mhs.nextDocumentStep]
-                      : "—"}
-                  </span>
-                )}
-              </TableCell>
-
-              <TableCell className="text-right whitespace-nowrap">
-                {formatRupiah(mhs.walletBalance)}
-              </TableCell>
+              </TableHead>
+              <TableHead>Mahasiswa</TableHead>
+              <TableHead>Kelas</TableHead>
+              <TableHead>Golongan potongan</TableHead>
+              <TableHead>Mulai</TableHead>
+              <TableHead>Dokumen</TableHead>
+              <TableHead className="text-right">Saldo</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {data.map((mhs) => (
+              <TableRow key={mhs.id}>
+                <TableCell>
+                  <Checkbox
+                    checked={terpilih.includes(mhs.id)}
+                    aria-label={`Pilih ${mhs.name}`}
+                    onCheckedChange={(checked) => toggleSatu(mhs.id, !!checked)}
+                  />
+                </TableCell>
+
+                <TableCell>
+                  <Link
+                    href={`/mahasiswa/${mhs.id}`}
+                    className="block font-medium hover:underline focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+                  >
+                    {mhs.name}
+                  </Link>
+                  <span className="block font-mono text-xs text-muted-foreground">
+                    {mhs.nim}
+                  </span>
+                </TableCell>
+
+                <TableCell className="whitespace-nowrap text-muted-foreground">
+                  {mhs.className ?? "—"}
+                </TableCell>
+
+                <TableCell>
+                  {mhs.discountTierLocked ? (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <span className="inline-flex cursor-help items-center gap-1.5 text-sm">
+                            <Lock className="size-3.5 text-muted-foreground" />
+                            {golongan.label(mhs.discountTier)}
+                          </span>
+                        }
+                      />
+                      <TooltipContent>
+                        Terkunci: mahasiswa sudah pernah mengunggah bukti bayar
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Select
+                      value={mhs.discountTier}
+                      onValueChange={(value) =>
+                        value &&
+                        ubahTier.mutate(
+                          { id: mhs.id, tier: value as DiscountTier },
+                          {
+                            onSuccess: (updated) =>
+                              toast.success(
+                                `${updated.name} kini ${golongan.label(updated.discountTier)}.`,
+                              ),
+                            onError: (e) =>
+                              toast.error(
+                                e instanceof ApiError
+                                  ? e.message
+                                  : "Gagal mengubah golongan.",
+                              ),
+                          },
+                        )
+                      }
+                    >
+                      <SelectTrigger
+                        className="h-8 w-48"
+                        aria-label={`Golongan ${mhs.name}`}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {golongan.aktif.map((tier) => (
+                          <SelectItem key={tier.tier} value={tier.tier}>
+                            {tier.label}
+                            {Number(tier.percent) > 0
+                              ? ` (−${Number(tier.percent)}%)`
+                              : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </TableCell>
+
+                <TableCell className="whitespace-nowrap text-muted-foreground">
+                  {mhs.startAcademicYear}{" "}
+                  {mhs.startTerm === "GASAL" ? "Gasal" : "Genap"}
+                </TableCell>
+
+                <TableCell>
+                  {mhs.documentsComplete ? (
+                    <span className="text-sm text-success">Lengkap</span>
+                  ) : (
+                    <span
+                      className={cn(
+                        "text-sm text-warning",
+                        "whitespace-nowrap",
+                      )}
+                    >
+                      Menunggu{" "}
+                      {mhs.nextDocumentStep
+                        ? documentStepLabels[mhs.nextDocumentStep]
+                        : "—"}
+                    </span>
+                  )}
+                </TableCell>
+
+                <TableCell className="text-right whitespace-nowrap">
+                  {formatRupiah(mhs.walletBalance)}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
 
       <DialogHapusMassal

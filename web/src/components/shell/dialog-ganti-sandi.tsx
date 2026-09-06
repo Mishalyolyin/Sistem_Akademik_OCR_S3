@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Info, Loader2 } from "lucide-react";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -79,7 +79,10 @@ export function DialogGantiSandi({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : tutup())}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (next ? onOpenChange(true) : tutup())}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Ganti kata sandi</DialogTitle>
@@ -144,7 +147,9 @@ export function DialogGantiSandi({
               onChange={(event) => setUlangi(event.target.value)}
             />
             {tidakCocok && (
-              <p className="text-xs text-danger">Belum sama dengan yang di atas.</p>
+              <p className="text-xs text-danger">
+                Belum sama dengan yang di atas.
+              </p>
             )}
           </div>
 
@@ -159,8 +164,11 @@ export function DialogGantiSandi({
             <Button type="button" variant="outline" onClick={tutup}>
               Batal
             </Button>
-            <Button type="submit" disabled={!bolehSimpan || ganti.isPending}>
-              {ganti.isPending && <Loader2 className="animate-spin" />}
+            <Button
+              type="submit"
+              disabled={!bolehSimpan}
+              loading={ganti.isPending}
+            >
               Ganti kata sandi
             </Button>
           </DialogFooter>

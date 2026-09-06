@@ -35,17 +35,11 @@ export function HalamanProfil() {
         <Baris label="NIM" nilai={data.nim} mono />
         <Baris label="Email" nilai={data.email ?? "—"} mono />
         <Baris label="Kelas" nilai={data.kelas ?? "—"} />
-        <Baris
-          label="Golongan potongan"
-          nilai={
-            data.golonganLabel
-          }
-        />
+        <Baris label="Golongan potongan" nilai={data.golonganLabel} />
         <Baris label="Nomor WhatsApp" nilai={data.telepon ?? "—"} />
         <Baris label="Alamat" nilai={data.alamat ?? "—"} />
         <Baris label="Saldo" nilai={formatRupiah(data.saldo)} />
       </dl>
-
     </div>
   );
 }

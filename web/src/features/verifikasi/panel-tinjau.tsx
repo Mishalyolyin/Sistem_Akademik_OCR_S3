@@ -8,7 +8,6 @@ import {
   Check,
   Download,
   History,
-  Loader2,
   RefreshCw,
   TriangleAlert,
   Undo2,
@@ -58,6 +57,15 @@ export function PanelTinjau({
   const putuskan = useDecidePayment();
   const bacaUlang = useRequeueOcr();
   const [batalTerbuka, setBatalTerbuka] = useState(false);
+  /**
+   * Tindakan mana yang sedang berjalan. Dua tombol memakai satu mutation yang
+   * sama, jadi `isPending` saja akan membuat KEDUANYA berputar — dan admin yang
+   * baru menekan Tolak melihat Verifikasi ikut berputar tepat pada saat ia
+   * paling ingin yakin tidak salah pencet.
+   */
+  const [sedangMemutus, setSedangMemutus] = useState<"terima" | "tolak" | null>(
+    null,
+  );
   const riwayat = usePaymentLogs(payment?.id ?? null);
 
   if (!payment) return null;
@@ -74,6 +82,7 @@ export function PanelTinjau({
     payment.status === "REJECTED";
 
   function putus(approve: boolean) {
+    setSedangMemutus(approve ? "terima" : "tolak");
     putuskan.mutate(
       { id: payment!.id, approve, note: alasan.trim() || undefined },
       {
@@ -85,10 +94,12 @@ export function PanelTinjau({
           );
           onClose();
         },
-        onError: (e) =>
+        onError: (e) => {
+          setSedangMemutus(null);
           toast.error(
             e instanceof ApiError ? e.message : "Gagal menyimpan keputusan.",
-          ),
+          );
+        },
       },
     );
   }
@@ -177,22 +188,21 @@ export function PanelTinjau({
                 <Button
                   variant="ghost"
                   size="xs"
-                  disabled={bacaUlang.isPending || sudahDiputuskan}
+                  disabled={sudahDiputuskan}
+                  loading={bacaUlang.isPending}
                   onClick={() =>
                     bacaUlang.mutate(payment.id, {
                       onSuccess: () => toast.success("Bukti dibaca ulang."),
                       onError: (e) =>
                         toast.error(
-                          e instanceof ApiError ? e.message : "Gagal membaca ulang.",
+                          e instanceof ApiError
+                            ? e.message
+                            : "Gagal membaca ulang.",
                         ),
                     })
                   }
                 >
-                  {bacaUlang.isPending ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <RefreshCw />
-                  )}
+                  <RefreshCw />
                   Baca ulang
                 </Button>
               </div>
@@ -331,19 +341,17 @@ export function PanelTinjau({
                   <Button
                     className="flex-1"
                     disabled={putuskan.isPending}
+                    loading={sedangMemutus === "terima"}
                     onClick={() => putus(true)}
                   >
-                    {putuskan.isPending ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Check />
-                    )}
+                    <Check />
                     Verifikasi
                   </Button>
                   <Button
                     variant="destructive"
                     className="flex-1"
-                    disabled={putuskan.isPending || alasan.trim().length < 5}
+                    disabled={alasan.trim().length < 5 || putuskan.isPending}
+                    loading={sedangMemutus === "tolak"}
                     onClick={() => putus(false)}
                   >
                     <X />
@@ -454,7 +462,9 @@ function DialogBatalkan({
                 { id: payment.id, alasan: alasan.trim() },
                 {
                   onSuccess: () => {
-                    toast.success("Keputusan dibatalkan, uangnya ditarik kembali.");
+                    toast.success(
+                      "Keputusan dibatalkan, uangnya ditarik kembali.",
+                    );
                     onClose();
                   },
                   onError: (e) =>
@@ -467,7 +477,6 @@ function DialogBatalkan({
               )
             }
           >
-            {batalkan.isPending && <Loader2 className="animate-spin" />}
             Batalkan keputusan
           </Button>
         </DialogFooter>

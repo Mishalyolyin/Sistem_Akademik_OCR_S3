@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -78,7 +78,9 @@ export function DialogHapusMassal({
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            {hasil ? "Sebagian tidak bisa dihapus" : "Hapus mahasiswa terpilih?"}
+            {hasil
+              ? "Sebagian tidak bisa dihapus"
+              : "Hapus mahasiswa terpilih?"}
           </DialogTitle>
           <DialogDescription>
             {hasil
@@ -131,10 +133,9 @@ export function DialogHapusMassal({
               <Button
                 type="button"
                 variant="destructive"
-                disabled={hapus.isPending}
+                loading={hapus.isPending}
                 onClick={jalankan}
               >
-                {hapus.isPending && <Loader2 className="animate-spin" />}
                 Hapus {terpilih.length} mahasiswa
               </Button>
             </>

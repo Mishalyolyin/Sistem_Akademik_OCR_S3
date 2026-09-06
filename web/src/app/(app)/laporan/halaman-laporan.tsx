@@ -7,7 +7,6 @@ import {
   FileSpreadsheet,
   Images,
   ImageDown,
-  Loader2,
   ShieldAlert,
   Table2,
   Users,
@@ -358,8 +357,8 @@ function KartuLaporan({
           </div>
         </div>
 
-        <Button variant="outline" disabled={sedang} onClick={onUnduh}>
-          {sedang ? <Loader2 className="animate-spin" /> : <Download />}
+        <Button variant="outline" loading={sedang} onClick={onUnduh}>
+          <Download />
           {tombol}
         </Button>
       </div>
@@ -370,9 +369,7 @@ function KartuLaporan({
 }
 
 function Penyaring({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mt-3 flex flex-wrap gap-3">{children}</div>
-  );
+  return <div className="mt-3 flex flex-wrap gap-3">{children}</div>;
 }
 
 function Pilihan({

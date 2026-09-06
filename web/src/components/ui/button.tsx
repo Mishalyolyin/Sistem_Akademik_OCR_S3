@@ -1,7 +1,8 @@
-import { Button as ButtonPrimitive } from "@base-ui/react/button"
-import { cva, type VariantProps } from "class-variance-authority"
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
+import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2 } from "lucide-react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
   "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -37,22 +38,49 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
-)
+  },
+);
 
+/**
+ * Tombol dengan keadaan menunggu bawaan.
+ *
+ * <p>Sebelum ini `Button` tidak mengenal keadaan menunggu sama sekali, dan
+ * dua puluh empat tempat di sembilan belas berkas menuliskannya sendiri —
+ * masing-masing dengan susunan sedikit berbeda, dan sebagian lupa menonaktifkan
+ * tombolnya sehingga satu tindakan bisa terkirim dua kali.
+ *
+ * <p>Isi tombol sengaja TIDAK diganti oleh pemuat. Mengganti "Verifikasi"
+ * dengan lingkaran berputar membuat lebar tombol melompat, dan seluruh baris
+ * tombol di sekitarnya ikut bergeser tepat pada saat pengguna sedang menunggu
+ * jawaban. Pemuatnya karena itu disisipkan di depan, dan isinya diredupkan.
+ */
 function Button({
   className,
   variant = "default",
   size = "default",
+  loading = false,
+  disabled,
+  children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonPrimitive.Props &
+  VariantProps<typeof buttonVariants> & {
+    /** Menonaktifkan tombol dan menyisipkan pemuat di depan isinya. */
+    loading?: boolean;
+  }) {
   return (
     <ButtonPrimitive
       data-slot="button"
+      // aria-busy memberi tahu pembaca layar bahwa tindakannya sedang berjalan.
+      // Tanpa itu, tombol yang mati terbaca sekadar "tidak bisa ditekan".
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
-    />
-  )
+    >
+      {loading && <Loader2 className="animate-spin" aria-hidden />}
+      {loading ? <span className="opacity-70">{children}</span> : children}
+    </ButtonPrimitive>
+  );
 }
 
-export { Button, buttonVariants }
+export { Button, buttonVariants };

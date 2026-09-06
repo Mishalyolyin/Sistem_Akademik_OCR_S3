@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Loader2, LockKeyhole } from "lucide-react";
+import { LockKeyhole } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -118,12 +118,8 @@ export default function LoginPage() {
             )}
           </div>
 
-          <Button type="submit" size="lg" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <LockKeyhole />
-            )}
+          <Button type="submit" size="lg" loading={isSubmitting}>
+            <LockKeyhole />
             {isSubmitting ? "Memeriksa…" : "Masuk"}
           </Button>
         </form>

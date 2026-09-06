@@ -21,10 +21,7 @@ import {
   PageHeader,
   TableSkeleton,
 } from "@/components/page-header";
-import {
-  useForensikList,
-  type BarisForensik,
-} from "@/features/forensik/api";
+import { useForensikList, type BarisForensik } from "@/features/forensik/api";
 import { ApiError } from "@/lib/api";
 import { formatRupiah, formatTanggalJam } from "@/lib/format";
 import { PanelForensik } from "@/features/forensik/panel-forensik";

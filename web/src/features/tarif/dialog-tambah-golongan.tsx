@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Info, Loader2 } from "lucide-react";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -40,7 +40,8 @@ export function DialogTambahGolongan({
   const angkaPersen = Number(persen);
 
   const persenTidakMasukAkal =
-    persen.length > 0 && (Number.isNaN(angkaPersen) || angkaPersen < 0 || angkaPersen > 100);
+    persen.length > 0 &&
+    (Number.isNaN(angkaPersen) || angkaPersen < 0 || angkaPersen > 100);
   const kodeTidakSah = kodeAkhir.length > 0 && !POLA_KODE.test(kodeAkhir);
   const bolehSimpan =
     nama.trim().length > 0 &&
@@ -80,7 +81,10 @@ export function DialogTambahGolongan({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : tutup())}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (next ? onOpenChange(true) : tutup())}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Tambah golongan potongan</DialogTitle>
@@ -177,8 +181,11 @@ export function DialogTambahGolongan({
             <Button type="button" variant="outline" onClick={tutup}>
               Batal
             </Button>
-            <Button type="submit" disabled={!bolehSimpan || buat.isPending}>
-              {buat.isPending && <Loader2 className="animate-spin" />}
+            <Button
+              type="submit"
+              disabled={!bolehSimpan}
+              loading={buat.isPending}
+            >
               Tambah golongan
             </Button>
           </DialogFooter>

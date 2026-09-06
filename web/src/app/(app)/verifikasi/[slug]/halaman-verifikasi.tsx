@@ -58,10 +58,16 @@ export function HalamanVerifikasi({ view }: { view: VerifikasiView }) {
     : null;
 
   const ringkasan = useMemo(() => {
-    const perluDitinjau = rows.filter((r) => r.status === "NEEDS_REVIEW").length;
+    const perluDitinjau = rows.filter(
+      (r) => r.status === "NEEDS_REVIEW",
+    ).length;
     const tidakCocok = rows.filter((r) => {
       const terbaca = r.ocrData?.extracted_amount;
-      return terbaca !== null && terbaca !== undefined && terbaca !== Number(r.amount);
+      return (
+        terbaca !== null &&
+        terbaca !== undefined &&
+        terbaca !== Number(r.amount)
+      );
     }).length;
     const terverifikasi = rows.filter(
       (r) => r.status === "AUTO_VERIFIED" || r.status === "VERIFIED",
@@ -70,7 +76,10 @@ export function HalamanVerifikasi({ view }: { view: VerifikasiView }) {
       perluDitinjau,
       tidakCocok,
       jumlahTerverifikasi: terverifikasi.length,
-      nominalMasuk: terverifikasi.reduce((total, r) => total + Number(r.amount), 0),
+      nominalMasuk: terverifikasi.reduce(
+        (total, r) => total + Number(r.amount),
+        0,
+      ),
     };
   }, [rows]);
 
@@ -111,7 +120,9 @@ export function HalamanVerifikasi({ view }: { view: VerifikasiView }) {
       ) : error ? (
         <ErrorState
           message={
-            error instanceof ApiError ? error.message : "Coba muat ulang halaman."
+            error instanceof ApiError
+              ? error.message
+              : "Coba muat ulang halaman."
           }
         />
       ) : (

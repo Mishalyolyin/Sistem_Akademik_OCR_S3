@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -78,10 +78,9 @@ export function DialogHapusMahasiswa({
           <Button
             type="button"
             variant="destructive"
-            disabled={hapus.isPending}
+            loading={hapus.isPending}
             onClick={jalankan}
           >
-            {hapus.isPending && <Loader2 className="animate-spin" />}
             Hapus
           </Button>
         </DialogFooter>

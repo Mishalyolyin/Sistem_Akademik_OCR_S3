@@ -181,7 +181,11 @@ function Kesimpulan({ hasil }: { hasil?: HasilPeriksaDokumen }) {
         : "text-muted-foreground";
 
   const Ikon =
-    hasil.cocok === true ? Check : hasil.cocok === false ? AlertTriangle : HelpCircle;
+    hasil.cocok === true
+      ? Check
+      : hasil.cocok === false
+        ? AlertTriangle
+        : HelpCircle;
 
   return (
     <span className={`flex items-start gap-1.5 text-xs ${nada}`}>

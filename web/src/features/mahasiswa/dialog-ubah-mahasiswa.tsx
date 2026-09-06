@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -204,7 +203,6 @@ export function DialogUbahMahasiswa({
               Batal
             </Button>
             <Button type="submit" disabled={!bolehSimpan}>
-              {ubah.isPending && <Loader2 className="animate-spin" />}
               Simpan
             </Button>
           </DialogFooter>

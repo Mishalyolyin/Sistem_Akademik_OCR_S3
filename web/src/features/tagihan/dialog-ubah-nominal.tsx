@@ -5,7 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { History, Info, Loader2 } from "lucide-react";
+import { History, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,7 +21,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { InstallmentStatusBadge } from "@/components/status-badge";
 import { ApiError } from "@/lib/api";
 import { formatRupiah, formatTanggalJam } from "@/lib/format";
-import { useAmountChanges, useUpdateInstallmentAmount, type Installment } from "./api";
+import {
+  useAmountChanges,
+  useUpdateInstallmentAmount,
+  type Installment,
+} from "./api";
 
 const schema = z.object({
   amount: z.coerce
@@ -172,8 +176,7 @@ export function DialogUbahNominal({
               <Info className="size-4 shrink-0" />
               <span>
                 Nominal baru lebih kecil dari yang sudah dibayar. Cicilan jadi
-                lunas, tapi kelebihan{" "}
-                {formatRupiah(sudahDibayar - nominalBaru)}{" "}
+                lunas, tapi kelebihan {formatRupiah(sudahDibayar - nominalBaru)}{" "}
                 <strong>tidak dikembalikan otomatis</strong> — pakai fitur
                 Penyesuaian bila perlu dikembalikan.
               </span>
@@ -206,8 +209,7 @@ export function DialogUbahNominal({
             <Button type="button" variant="outline" onClick={onClose}>
               Batal
             </Button>
-            <Button type="submit" disabled={ubah.isPending}>
-              {ubah.isPending && <Loader2 className="animate-spin" />}
+            <Button type="submit" loading={ubah.isPending}>
               Simpan perubahan
             </Button>
           </DialogFooter>

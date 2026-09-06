@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { History, Info, Loader2, Minus, Plus } from "lucide-react";
+import { History, Info, Minus, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,7 +119,10 @@ export function DialogPenyesuaian({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : tutup())}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (next ? onOpenChange(true) : tutup())}
+    >
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Penyesuaian</DialogTitle>
@@ -262,7 +265,9 @@ export function DialogPenyesuaian({
                     <span
                       className={cn(
                         "tnum font-medium",
-                        Number(item.amount) > 0 ? "text-success" : "text-danger",
+                        Number(item.amount) > 0
+                          ? "text-success"
+                          : "text-danger",
                       )}
                     >
                       {Number(item.amount) > 0 ? "+" : "−"}
@@ -290,9 +295,9 @@ export function DialogPenyesuaian({
           <Button
             type="button"
             onClick={simpan}
-            disabled={!bolehSimpan || buat.isPending}
+            disabled={!bolehSimpan}
+            loading={buat.isPending}
           >
-            {buat.isPending && <Loader2 className="animate-spin" />}
             Simpan penyesuaian
           </Button>
         </DialogFooter>

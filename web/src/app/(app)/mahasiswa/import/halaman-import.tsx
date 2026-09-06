@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Download, Loader2, Upload } from "lucide-react";
+import { Download, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -36,7 +36,9 @@ export function HalamanImport() {
       onSuccess: (result) => {
         setHasil(result);
         if (result.failedRows === 0) {
-          toast.success(`${result.successRows} mahasiswa berhasil ditambahkan.`);
+          toast.success(
+            `${result.successRows} mahasiswa berhasil ditambahkan.`,
+          );
         } else {
           toast.warning(
             `${result.successRows} berhasil, ${result.failedRows} gagal. Lihat rinciannya di bawah.`,
@@ -83,13 +85,9 @@ export function HalamanImport() {
             />
             <Button
               onClick={() => fileInput.current?.click()}
-              disabled={unggah.isPending}
+              loading={unggah.isPending}
             >
-              {unggah.isPending ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Upload />
-              )}
+              <Upload />
               {unggah.isPending ? "Mengunggah…" : "Pilih berkas .xlsx"}
             </Button>
           </div>
@@ -111,7 +109,9 @@ export function HalamanImport() {
                     {item.filename}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    <span className="text-success">{item.successRows} berhasil</span>
+                    <span className="text-success">
+                      {item.successRows} berhasil
+                    </span>
                     {item.failedRows > 0 && (
                       <>
                         {" · "}
@@ -125,7 +125,9 @@ export function HalamanImport() {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">Belum pernah import.</p>
+            <p className="text-sm text-muted-foreground">
+              Belum pernah import.
+            </p>
           )}
         </aside>
       </div>
@@ -224,7 +226,10 @@ function PetunjukKolom() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            <Baris kolom="nim" isi="Wajib, tidak boleh sama dengan yang sudah ada" />
+            <Baris
+              kolom="nim"
+              isi="Wajib, tidak boleh sama dengan yang sudah ada"
+            />
             <Baris kolom="name" isi="Wajib" />
             <Baris
               kolom="class"

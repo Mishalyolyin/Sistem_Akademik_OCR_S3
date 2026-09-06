@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -60,22 +60,25 @@ export function DialogBatalTagihan({
       tutup();
     } catch (error) {
       toast.error(
-        error instanceof ApiError
-          ? error.message
-          : "Tagihan gagal dibatalkan.",
+        error instanceof ApiError ? error.message : "Tagihan gagal dibatalkan.",
       );
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : tutup())}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (next ? onOpenChange(true) : tutup())}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Batalkan tagihan</DialogTitle>
           <DialogDescription>
             {plan.categoryLabel}
-            {plan.semesterNumber ? ` semester ${plan.semesterNumber}` : ""} ·{" "}
-            {plan.academicYear} {plan.term === "GASAL" ? "Gasal" : "Genap"} ·{" "}
+            {plan.semesterNumber
+              ? ` semester ${plan.semesterNumber}`
+              : ""} · {plan.academicYear}{" "}
+            {plan.term === "GASAL" ? "Gasal" : "Genap"} ·{" "}
             {formatRupiah(plan.totalAmount)}
           </DialogDescription>
         </DialogHeader>
@@ -125,10 +128,10 @@ export function DialogBatalTagihan({
           </Button>
           <Button
             variant="destructive"
-            disabled={!bolehKirim || batalkan.isPending}
+            disabled={!bolehKirim}
+            loading={batalkan.isPending}
             onClick={kirim}
           >
-            {batalkan.isPending && <Loader2 className="animate-spin" />}
             Batalkan tagihan
           </Button>
         </DialogFooter>

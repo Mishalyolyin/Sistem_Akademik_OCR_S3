@@ -96,17 +96,26 @@ export function Beranda() {
             <p className="font-heading text-sm font-semibold">Halaman</p>
             <ul className="mt-3 flex flex-col gap-2 text-sm text-muted-foreground">
               <li>
-                <a href="#biaya" className="transition-colors hover:text-foreground">
+                <a
+                  href="#biaya"
+                  className="transition-colors hover:text-foreground"
+                >
                   Rincian biaya
                 </a>
               </li>
               <li>
-                <a href="#alur" className="transition-colors hover:text-foreground">
+                <a
+                  href="#alur"
+                  className="transition-colors hover:text-foreground"
+                >
                   Alur pembayaran
                 </a>
               </li>
               <li>
-                <Link href="/login" className="transition-colors hover:text-foreground">
+                <Link
+                  href="/login"
+                  className="transition-colors hover:text-foreground"
+                >
                   Masuk ke akun
                 </Link>
               </li>
@@ -176,7 +185,10 @@ function Navbar() {
         <Logo />
 
         <div className="hidden items-center gap-7 text-sm text-muted-foreground md:flex">
-          <a href="#program" className="transition-colors hover:text-foreground">
+          <a
+            href="#program"
+            className="transition-colors hover:text-foreground"
+          >
             Tentang program
           </a>
           <a href="#biaya" className="transition-colors hover:text-foreground">
@@ -429,7 +441,11 @@ function Judul({
 
 function Biaya() {
   const baris = [
-    { nama: kategoriLabel.PENDAFTARAN, nominal: tarifDasar.PENDAFTARAN, sifat: "sekali bayar" },
+    {
+      nama: kategoriLabel.PENDAFTARAN,
+      nominal: tarifDasar.PENDAFTARAN,
+      sifat: "sekali bayar",
+    },
     {
       nama: kategoriLabel.UKT,
       nominal: tarifDasar.UKT,
@@ -489,8 +505,8 @@ function Biaya() {
         <div className="rounded-3xl border border-border/60 bg-card/70 p-6 backdrop-blur-sm lg:col-span-2">
           <h3 className="font-heading font-semibold">Golongan potongan</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Potongan hanya berlaku untuk UKT. Biaya pendaftaran dan keempat tahap
-            ujian sama untuk semua golongan.
+            Potongan hanya berlaku untuk UKT. Biaya pendaftaran dan keempat
+            tahap ujian sama untuk semua golongan.
           </p>
 
           <ul className="mt-5 flex flex-col gap-2.5">

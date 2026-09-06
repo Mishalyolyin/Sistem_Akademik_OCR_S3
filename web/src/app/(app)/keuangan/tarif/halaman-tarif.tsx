@@ -27,10 +27,7 @@ import {
   type TuitionRate,
 } from "@/features/tarif/api";
 import { DialogTambahGolongan } from "@/features/tarif/dialog-tambah-golongan";
-import {
-  JUMLAH_SEMESTER_UKT,
-  tarifDasar,
-} from "@/features/tarif/konstanta";
+import { JUMLAH_SEMESTER_UKT, tarifDasar } from "@/features/tarif/konstanta";
 import { ApiError } from "@/lib/api";
 import { formatRupiah } from "@/lib/format";
 
@@ -42,8 +39,8 @@ export function HalamanTarif() {
   // Pratinjau di dialog memakai tarif dasar yang sungguhan, bukan angka brosur
   // di konstanta — tarif UKT bisa diubah admin di tabel tepat di atasnya.
   const tarifDasarUkt = Number(
-    rates.data?.find((rate) => rate.category === "UKT" && rate.active)?.amount ??
-      tarifDasar.UKT,
+    rates.data?.find((rate) => rate.category === "UKT" && rate.active)
+      ?.amount ?? tarifDasar.UKT,
   );
 
   return (
@@ -189,7 +186,9 @@ function TabelTarif({ data }: { data: TuitionRate[] }) {
                     aria-label={`Nominal ${rate.categoryLabel}`}
                   />
                 ) : (
-                  <span className="font-medium">{formatRupiah(rate.amount)}</span>
+                  <span className="font-medium">
+                    {formatRupiah(rate.amount)}
+                  </span>
                 )}
               </TableCell>
               <TableCell>
@@ -198,7 +197,7 @@ function TabelTarif({ data }: { data: TuitionRate[] }) {
                     <Button
                       size="icon-sm"
                       onClick={() => simpan(rate)}
-                      disabled={ubah.isPending}
+                      loading={ubah.isPending}
                       aria-label="Simpan"
                     >
                       <Check />
@@ -306,7 +305,9 @@ function TabelGolongan({ data }: { data: TierRate[] }) {
           {data.map((tier) => (
             <TableRow key={tier.tier}>
               <TableCell className="font-medium">
-                <span className={tier.active ? undefined : "text-muted-foreground"}>
+                <span
+                  className={tier.active ? undefined : "text-muted-foreground"}
+                >
                   {tier.label}
                 </span>
                 {!tier.active && (
@@ -350,7 +351,7 @@ function TabelGolongan({ data }: { data: TierRate[] }) {
                     <Button
                       size="icon-sm"
                       onClick={() => simpan(tier)}
-                      disabled={ubah.isPending}
+                      loading={ubah.isPending}
                       aria-label="Simpan"
                     >
                       <Check />
@@ -380,7 +381,7 @@ function TabelGolongan({ data }: { data: TierRate[] }) {
                     <Button
                       size="icon-sm"
                       variant="ghost"
-                      disabled={ubah.isPending}
+                      loading={ubah.isPending}
                       aria-label={
                         tier.active
                           ? `Nonaktifkan golongan ${tier.label}`

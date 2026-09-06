@@ -1,7 +1,13 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Brain, CircleCheck, CircleX, Images, TriangleAlert } from "lucide-react";
+import {
+  Brain,
+  CircleCheck,
+  CircleX,
+  Images,
+  TriangleAlert,
+} from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -106,9 +112,7 @@ export function PanelStatistikOcr() {
         ) : (
           <>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="text-sm font-medium">
-                Mesin sepakat dengan admin
-              </p>
+              <p className="text-sm font-medium">Mesin sepakat dengan admin</p>
               <p
                 className={cn(
                   "font-heading text-lg font-semibold tnum",
@@ -135,7 +139,10 @@ export function PanelStatistikOcr() {
             </p>
             {akurasi !== null && akurasi < 70 && (
               <p className="mt-2 flex items-start gap-2 text-xs text-warning">
-                <TriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                <TriangleAlert
+                  className="mt-0.5 size-3.5 shrink-0"
+                  aria-hidden
+                />
                 Mesin lebih sering keliru daripada seharusnya. Naikkan ambang
                 verifikasi otomatis supaya lebih banyak bukti masuk antrean
                 tinjauan, bukan langsung diterima.

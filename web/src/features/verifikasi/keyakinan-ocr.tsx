@@ -17,8 +17,7 @@ export function KeyakinanOcr({
   }
 
   const persen = Math.round(value * 100);
-  const tone =
-    persen >= 80 ? "success" : persen >= 40 ? "warning" : "danger";
+  const tone = persen >= 80 ? "success" : persen >= 40 ? "warning" : "danger";
 
   return (
     <div className="flex min-w-20 items-center gap-2">

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Eye, Loader2, Upload } from "lucide-react";
+import { Check, Eye, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +50,11 @@ const langkah: {
     judul: "Ijazah",
     keterangan: "Ijazah pendidikan terakhir.",
   },
-  { id: "ADDRESS", judul: "Alamat", keterangan: "Alamat tempat tinggal saat ini." },
+  {
+    id: "ADDRESS",
+    judul: "Alamat",
+    keterangan: "Alamat tempat tinggal saat ini.",
+  },
 ];
 
 export function HalamanDokumen() {
@@ -281,8 +285,7 @@ function FormUnggah({
             {namaBerkas}
           </span>
         )}
-        <Button size="sm" onClick={kirim} disabled={unggah.isPending}>
-          {unggah.isPending && <Loader2 className="animate-spin" />}
+        <Button size="sm" onClick={kirim} loading={unggah.isPending}>
           Simpan
         </Button>
       </div>
@@ -327,7 +330,7 @@ function FormAlamat() {
       <Button
         size="sm"
         className="w-fit"
-        disabled={simpan.isPending}
+        loading={simpan.isPending}
         onClick={() =>
           simpan.mutate(
             { alamat, telepon: telepon || undefined },
@@ -341,7 +344,6 @@ function FormAlamat() {
           )
         }
       >
-        {simpan.isPending && <Loader2 className="animate-spin" />}
         Simpan
       </Button>
     </div>

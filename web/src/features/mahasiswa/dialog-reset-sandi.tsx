@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Info, Loader2 } from "lucide-react";
+import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -56,7 +56,10 @@ export function DialogResetSandi({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : tutup())}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (next ? onOpenChange(true) : tutup())}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Kembalikan kata sandi ke NIM</DialogTitle>
@@ -93,8 +96,7 @@ export function DialogResetSandi({
             {selesai ? "Tutup" : "Batal"}
           </Button>
           {!selesai && (
-            <Button type="button" onClick={jalankan} disabled={reset.isPending}>
-              {reset.isPending && <Loader2 className="animate-spin" />}
+            <Button type="button" onClick={jalankan} loading={reset.isPending}>
               Kembalikan ke NIM
             </Button>
           )}

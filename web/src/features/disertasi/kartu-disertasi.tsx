@@ -44,7 +44,9 @@ export function KartuDisertasi({ studentId }: { studentId: number }) {
             <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
               <div className="flex gap-2">
                 <dt className="text-muted-foreground">Promotor</dt>
-                <dd className="min-w-0 truncate font-medium">{data.promotor}</dd>
+                <dd className="min-w-0 truncate font-medium">
+                  {data.promotor}
+                </dd>
               </div>
               <div className="flex gap-2">
                 <dt className="text-muted-foreground">Ko-promotor</dt>

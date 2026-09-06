@@ -1,7 +1,11 @@
 "use client";
 
 import { PaymentStatusBadge } from "@/components/status-badge";
-import { EmptyState, ErrorState, TableSkeleton } from "@/components/page-header";
+import {
+  EmptyState,
+  ErrorState,
+  TableSkeleton,
+} from "@/components/page-header";
 import { useRiwayat } from "@/features/portal/api";
 import { ApiError } from "@/lib/api";
 import { formatRupiah, formatTanggal, formatTanggalJam } from "@/lib/format";
@@ -25,7 +29,9 @@ export function HalamanRiwayat() {
       ) : error ? (
         <ErrorState
           message={
-            error instanceof ApiError ? error.message : "Coba muat ulang halaman."
+            error instanceof ApiError
+              ? error.message
+              : "Coba muat ulang halaman."
           }
         />
       ) : data.length === 0 ? (

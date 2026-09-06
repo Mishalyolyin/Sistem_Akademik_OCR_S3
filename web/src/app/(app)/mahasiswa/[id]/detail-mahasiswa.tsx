@@ -62,9 +62,8 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
   const [ubahTerbuka, setUbahTerbuka] = useState(false);
   const [hapusTerbuka, setHapusTerbuka] = useState(false);
   const [cicilanDiubah, setCicilanDiubah] = useState<Installment | null>(null);
-  const [tagihanDibatalkan, setTagihanDibatalkan] = useState<PaymentPlan | null>(
-    null,
-  );
+  const [tagihanDibatalkan, setTagihanDibatalkan] =
+    useState<PaymentPlan | null>(null);
 
   if (mahasiswa.isPending) {
     return (
@@ -221,7 +220,6 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
         plan={tagihanDibatalkan}
       />
 
-
       <DialogUbahNominal
         installment={cicilanDiubah}
         studentId={studentId}
@@ -342,8 +340,9 @@ function KartuTagihan({
       {dibatalkan && (
         <p className="border-t border-border bg-muted/50 px-5 py-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Dibatalkan</span>
-          {plan.cancelledAt ? ` ${formatTanggalJam(plan.cancelledAt)}` : ""} —{" "}
-          {plan.cancelReason}
+          {plan.cancelledAt
+            ? ` ${formatTanggalJam(plan.cancelledAt)}`
+            : ""} — {plan.cancelReason}
         </p>
       )}
 

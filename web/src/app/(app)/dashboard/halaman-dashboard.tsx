@@ -38,7 +38,10 @@ import {
   type KategoriRingkas,
   type KelasRingkas,
 } from "@/features/dashboard/api";
-import { kategoriLabel, type PaymentCategory } from "@/features/tarif/konstanta";
+import {
+  kategoriLabel,
+  type PaymentCategory,
+} from "@/features/tarif/konstanta";
 import { ApiError } from "@/lib/api";
 import { formatRupiah, formatTanggalJam } from "@/lib/format";
 
@@ -60,7 +63,9 @@ export function HalamanDashboard() {
         <PageHeader title="Ringkasan" />
         <ErrorState
           message={
-            error instanceof ApiError ? error.message : "Coba muat ulang halaman."
+            error instanceof ApiError
+              ? error.message
+              : "Coba muat ulang halaman."
           }
         />
       </div>
@@ -109,7 +114,9 @@ export function HalamanDashboard() {
       </StatRow>
 
       <section className="flex flex-col gap-2">
-        <h3 className="font-heading text-sm font-semibold">Status bukti bayar</h3>
+        <h3 className="font-heading text-sm font-semibold">
+          Status bukti bayar
+        </h3>
         {/* Tiap kotak menautkan ke daftar yang sudah tersaring statusnya, jadi
             angka yang menarik perhatian bisa langsung ditelusuri. */}
         <StatRow>
@@ -158,9 +165,7 @@ export function HalamanDashboard() {
 
       <div className="grid gap-5 lg:grid-cols-2">
         <RingkasanKategori data={data.perKategori} />
-        <RingkasanKelas
-          data={data.perKelas}
-        />
+        <RingkasanKelas data={data.perKelas} />
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
@@ -267,7 +272,10 @@ function RingkasanKategori({ data }: { data: KategoriRingkas[] }) {
               const persen = tertagih === 0 ? 0 : (terkumpul / tertagih) * 100;
 
               return (
-                <li key={item.kategori} className="flex flex-col gap-1.5 px-5 py-3">
+                <li
+                  key={item.kategori}
+                  className="flex flex-col gap-1.5 px-5 py-3"
+                >
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-sm font-medium">
                       {kategoriLabel[item.kategori as PaymentCategory] ??
@@ -316,7 +324,10 @@ function RingkasanKelas({ data }: { data: KelasRingkas[] }) {
               const persen = tertagih === 0 ? 0 : (terkumpul / tertagih) * 100;
 
               return (
-                <li key={item.kelas} className="flex flex-col gap-1.5 px-5 py-3">
+                <li
+                  key={item.kelas}
+                  className="flex flex-col gap-1.5 px-5 py-3"
+                >
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="text-sm font-medium">
                       Kelas {item.kelas}

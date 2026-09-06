@@ -44,7 +44,9 @@ export function AuthGuard({
   const router = useRouter();
 
   const diizinkan = roles ?? (role ? [role] : null);
-  const salahPeran = Boolean(diizinkan && user && !diizinkan.includes(user.role));
+  const salahPeran = Boolean(
+    diizinkan && user && !diizinkan.includes(user.role),
+  );
 
   useEffect(() => {
     if (status === "unauthenticated") {

@@ -41,7 +41,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PaymentStatusBadge, type PaymentStatus } from "@/components/status-badge";
+import {
+  PaymentStatusBadge,
+  type PaymentStatus,
+} from "@/components/status-badge";
 import { formatRupiah, formatTanggalJam } from "@/lib/format";
 import { KeyakinanOcr } from "./keyakinan-ocr";
 import type { PaymentRow } from "./api";
@@ -98,7 +101,9 @@ export function TabelVerifikasi({
         header: "Mahasiswa",
         cell: ({ row }) => (
           <div className="min-w-44">
-            <span className="block font-medium">{row.original.studentName}</span>
+            <span className="block font-medium">
+              {row.original.studentName}
+            </span>
             <span className="block font-mono text-xs text-muted-foreground">
               {row.original.studentNim}
             </span>
@@ -149,7 +154,9 @@ export function TabelVerifikasi({
         cell: ({ row }) => {
           const terbaca = row.original.ocrData?.extracted_amount;
           if (terbaca === null || terbaca === undefined) {
-            return <span className="block text-right text-muted-foreground">—</span>;
+            return (
+              <span className="block text-right text-muted-foreground">—</span>
+            );
           }
           const beda = terbaca !== Number(row.original.amount);
           return (
@@ -167,7 +174,8 @@ export function TabelVerifikasi({
       },
       {
         id: "confidence",
-        accessorFn: (row) => (row.ocrConfidence ? Number(row.ocrConfidence) : -1),
+        accessorFn: (row) =>
+          row.ocrConfidence ? Number(row.ocrConfidence) : -1,
         header: "Keyakinan",
         cell: ({ row }) => (
           <KeyakinanOcr
@@ -352,7 +360,10 @@ export function TabelVerifikasi({
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
                     </TableCell>
                   ))}
                 </TableRow>

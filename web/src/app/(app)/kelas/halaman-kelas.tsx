@@ -5,7 +5,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Ban, Handshake, Loader2, Plus, Trash2, Undo2 } from "lucide-react";
+import { Ban, Handshake, Plus, Trash2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -71,7 +71,11 @@ export function HalamanKelas() {
         <TableSkeleton />
       ) : error ? (
         <ErrorState
-          message={error instanceof ApiError ? error.message : "Coba muat ulang halaman."}
+          message={
+            error instanceof ApiError
+              ? error.message
+              : "Coba muat ulang halaman."
+          }
         />
       ) : data.length === 0 ? (
         <EmptyState
@@ -123,9 +127,7 @@ function TabelKelas({ data }: { data: StudyClass[] }) {
               <TableCell>
                 <span
                   className={
-                    kelas.active
-                      ? "text-success"
-                      : "text-muted-foreground"
+                    kelas.active ? "text-success" : "text-muted-foreground"
                   }
                 >
                   {kelas.active ? "Aktif" : "Nonaktif"}
@@ -143,7 +145,7 @@ function TabelKelas({ data }: { data: StudyClass[] }) {
                         ? `Nonaktifkan ${kelas.displayName}`
                         : `Aktifkan lagi ${kelas.displayName}`
                     }
-                    disabled={ubah.isPending}
+                    loading={ubah.isPending}
                     onClick={() =>
                       ubah.mutate(
                         {
@@ -218,8 +220,8 @@ function DialogHapusKelas({
         </DialogHeader>
 
         <p className="rounded-lg border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
-          Kelas yang pernah dipakai sebaiknya <strong>dinonaktifkan</strong>
-          {" "}saja — namanya tetap terbaca di riwayat mahasiswa. Menghapus hanya
+          Kelas yang pernah dipakai sebaiknya <strong>dinonaktifkan</strong>{" "}
+          saja — namanya tetap terbaca di riwayat mahasiswa. Menghapus hanya
           cocok untuk kelas yang salah dibuat.
         </p>
 
@@ -230,7 +232,7 @@ function DialogHapusKelas({
           <Button
             type="button"
             variant="destructive"
-            disabled={hapus.isPending}
+            loading={hapus.isPending}
             onClick={() =>
               hapus.mutate(kelas.id, {
                 onSuccess: () => {
@@ -246,7 +248,6 @@ function DialogHapusKelas({
               })
             }
           >
-            {hapus.isPending && <Loader2 className="animate-spin" />}
             Hapus
           </Button>
         </DialogFooter>
@@ -347,9 +348,7 @@ function DialogTambahKelas({
           <label className="flex items-center gap-2 text-sm">
             <Checkbox
               checked={kerjasama}
-              onCheckedChange={(value) =>
-                setValue("kerjasama", Boolean(value))
-              }
+              onCheckedChange={(value) => setValue("kerjasama", Boolean(value))}
             />
             Tandai sebagai kelas kerjasama
           </label>
@@ -362,7 +361,7 @@ function DialogTambahKelas({
             >
               Batal
             </Button>
-            <Button type="submit" disabled={buat.isPending}>
+            <Button type="submit" loading={buat.isPending}>
               Simpan
             </Button>
           </DialogFooter>

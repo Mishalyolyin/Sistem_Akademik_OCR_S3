@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CalendarCheck, Loader2, Play, TriangleAlert } from "lucide-react";
+import { CalendarCheck, Play, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ApiError, apiFetch } from "@/lib/api";
 
@@ -85,10 +85,10 @@ export function PanelUktOtomatis() {
 
         <Button
           variant="outline"
-          disabled={jalankan.isPending}
+          loading={jalankan.isPending}
           onClick={jalankanSekarang}
         >
-          {jalankan.isPending ? <Loader2 className="animate-spin" /> : <Play />}
+          <Play />
           Jalankan
         </Button>
       </div>
@@ -100,10 +100,7 @@ export function PanelUktOtomatis() {
             diperiksa · <span className="font-medium">{hasil.dibuat}</span>{" "}
             tagihan dibuat · {hasil.dilewati} dilewati
             {hasil.gagal > 0 && (
-              <span className="text-destructive">
-                {" "}
-                · {hasil.gagal} gagal
-              </span>
+              <span className="text-destructive"> · {hasil.gagal} gagal</span>
             )}
           </p>
 

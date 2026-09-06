@@ -71,9 +71,7 @@ export function HalamanPengaturan({
 }) {
   const { data, isPending, error } = useSettings();
 
-  const daftar = (data ?? []).filter((s) =>
-    kelompok[bagian].includes(s.key),
-  );
+  const daftar = (data ?? []).filter((s) => kelompok[bagian].includes(s.key));
 
   return (
     <div className="flex flex-col gap-5 p-6">
@@ -84,7 +82,9 @@ export function HalamanPengaturan({
       ) : error ? (
         <ErrorState
           message={
-            error instanceof ApiError ? error.message : "Coba muat ulang halaman."
+            error instanceof ApiError
+              ? error.message
+              : "Coba muat ulang halaman."
           }
         />
       ) : (
@@ -103,10 +103,10 @@ export function HalamanPengaturan({
 
       {bagian === "ocr" && (
         <p className="rounded-lg border border-info/25 bg-info-soft px-4 py-3 text-sm text-info">
-          Bukti dengan keyakinan di atas ambang verifikasi dan nominal cocok akan
-          diterima otomatis. Di bawah ambang tolak, bukti langsung ditolak karena
-          kemungkinan besar bukan bukti bayar. Di antara keduanya masuk antrean
-          tinjauan admin.
+          Bukti dengan keyakinan di atas ambang verifikasi dan nominal cocok
+          akan diterima otomatis. Di bawah ambang tolak, bukti langsung ditolak
+          karena kemungkinan besar bukan bukti bayar. Di antara keduanya masuk
+          antrean tinjauan admin.
         </p>
       )}
     </div>
@@ -156,7 +156,7 @@ function BarisPengaturan({ setting }: { setting: SystemSetting }) {
             <Button
               size="icon-sm"
               onClick={simpan}
-              disabled={ubah.isPending}
+              loading={ubah.isPending}
               aria-label="Simpan"
             >
               <Check />

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { BookOpen, Check, Eye, Loader2, Upload } from "lucide-react";
+import { BookOpen, Check, Eye, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,7 +137,8 @@ function FormIdentitas({
   const [promotor, setPromotor] = useState(awal?.promotor ?? "");
   const [copromotor, setCopromotor] = useState(awal?.copromotor ?? "");
 
-  const judulPendek = judul.trim().length > 0 && judul.trim().length < JUDUL_MINIMAL;
+  const judulPendek =
+    judul.trim().length > 0 && judul.trim().length < JUDUL_MINIMAL;
   const promotorSama =
     promotor.trim().length > 0 &&
     promotor.trim().toLowerCase() === copromotor.trim().toLowerCase();
@@ -221,8 +222,7 @@ function FormIdentitas({
       </div>
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={!bolehSimpan}>
-          {sedangMenyimpan && <Loader2 className="animate-spin" />}
+        <Button type="submit" disabled={!bolehSimpan} loading={sedangMenyimpan}>
           Simpan
         </Button>
       </div>
@@ -262,7 +262,9 @@ function KartuBerkas({
     <div
       className={cn(
         "flex flex-wrap items-center justify-between gap-3 rounded-lg border px-5 py-4",
-        sudahAda ? "border-success/30 bg-success-soft/40" : "border-border bg-card",
+        sudahAda
+          ? "border-success/30 bg-success-soft/40"
+          : "border-border bg-card",
       )}
     >
       <div className="flex min-w-0 items-start gap-3">
@@ -282,7 +284,11 @@ function KartuBerkas({
 
       <div className="flex items-center gap-2">
         {sudahAda && (
-          <Button variant="outline" size="sm" onClick={() => setPratinjau(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPratinjau(true)}
+          >
             <Eye />
             Lihat
           </Button>
@@ -298,10 +304,10 @@ function KartuBerkas({
         <Button
           variant={sudahAda ? "outline" : "default"}
           size="sm"
-          disabled={unggah.isPending}
+          loading={unggah.isPending}
           onClick={() => inputRef.current?.click()}
         >
-          {unggah.isPending ? <Loader2 className="animate-spin" /> : <Upload />}
+          <Upload />
           {sudahAda ? "Ganti" : "Unggah PDF"}
         </Button>
       </div>

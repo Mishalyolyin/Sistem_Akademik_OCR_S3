@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { AlertTriangle, Loader2, Send } from "lucide-react";
+import { AlertTriangle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -60,9 +60,9 @@ export function PanelPengingat() {
         <p className="flex gap-2 rounded-lg border border-warning/25 bg-warning-soft px-4 py-3 text-sm text-warning">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           <span>
-            Token gateway belum diisi, jadi pesan hanya dicatat di log server dan{" "}
-            <strong>tidak dikirim</strong>. Aturannya tetap berjalan, jadi ini
-            aman dipakai untuk mencoba dulu.
+            Token gateway belum diisi, jadi pesan hanya dicatat di log server
+            dan <strong>tidak dikirim</strong>. Aturannya tetap berjalan, jadi
+            ini aman dipakai untuk mencoba dulu.
           </span>
         </p>
       )}
@@ -120,9 +120,7 @@ export function PanelPengingat() {
         </div>
       )}
 
-      {konfirmasi && (
-        <DialogJalankan onClose={() => setKonfirmasi(false)} />
-      )}
+      {konfirmasi && <DialogJalankan onClose={() => setKonfirmasi(false)} />}
     </section>
   );
 }
@@ -154,7 +152,7 @@ function DialogJalankan({ onClose }: { onClose: () => void }) {
           </Button>
           <Button
             type="button"
-            disabled={jalankan.isPending}
+            loading={jalankan.isPending}
             onClick={() =>
               jalankan.mutate(undefined, {
                 onSuccess: (hasil) => {
@@ -172,7 +170,6 @@ function DialogJalankan({ onClose }: { onClose: () => void }) {
               })
             }
           >
-            {jalankan.isPending && <Loader2 className="animate-spin" />}
             Jalankan
           </Button>
         </DialogFooter>

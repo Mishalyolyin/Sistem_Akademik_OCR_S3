@@ -89,7 +89,12 @@ export function ChipSemester({ className }: { className?: string }) {
 export function KartuSemester({ className }: { className?: string }) {
   const siap = useSudahDiHidrasi();
   if (!siap) {
-    return <div className={cn("h-16 rounded-lg bg-muted/40", className)} aria-hidden />;
+    return (
+      <div
+        className={cn("h-16 rounded-lg bg-muted/40", className)}
+        aria-hidden
+      />
+    );
   }
 
   const semester = semesterAktif();

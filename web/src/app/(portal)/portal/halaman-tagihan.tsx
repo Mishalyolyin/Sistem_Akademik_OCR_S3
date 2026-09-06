@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { FileCheck2, Loader2, Lock, Plus, Upload, Wallet } from "lucide-react";
+import { FileCheck2, Lock, Plus, Upload, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -153,7 +153,8 @@ function DaftarSendiri({
       </div>
       <Button
         size="sm"
-        disabled={daftar.isPending || terkunci}
+        disabled={terkunci}
+        loading={daftar.isPending}
         onClick={() =>
           daftar.mutate(berikutnya, {
             onSuccess: (t) =>
@@ -167,7 +168,7 @@ function DaftarSendiri({
           })
         }
       >
-        {daftar.isPending ? <Loader2 className="animate-spin" /> : <Plus />}
+        <Plus />
         Daftarkan
       </Button>
     </div>
@@ -195,7 +196,9 @@ function KartuTagihan({
               </span>
             )}
           </h3>
-          <p className="text-xs text-muted-foreground">{tagihan.tahunAkademik}</p>
+          <p className="text-xs text-muted-foreground">
+            {tagihan.tahunAkademik}
+          </p>
         </div>
         <div className="text-right">
           <p className="font-heading text-base font-semibold tnum">
@@ -238,7 +241,11 @@ function KartuTagihan({
             <InstallmentStatusBadge status={cicilan.status} />
 
             {cicilan.status !== "PAID" && (
-              <Button size="sm" variant="outline" onClick={() => onBayar(cicilan)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onBayar(cicilan)}
+              >
                 <Upload />
                 Bayar
               </Button>
@@ -352,8 +359,7 @@ function DialogBayar({
           <Button variant="outline" onClick={onClose}>
             Batal
           </Button>
-          <Button onClick={kirim} disabled={unggah.isPending}>
-            {unggah.isPending && <Loader2 className="animate-spin" />}
+          <Button onClick={kirim} loading={unggah.isPending}>
             Kirim bukti
           </Button>
         </DialogFooter>
