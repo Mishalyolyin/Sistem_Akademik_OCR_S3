@@ -49,9 +49,12 @@ import {
 export function PanelTinjau({
   payment,
   onClose,
+  onDiputus,
 }: {
   payment: PaymentRow | null;
   onClose: () => void;
+  /** Memberi tahu halaman pembayaran mana yang baru diputuskan, untuk disorot. */
+  onDiputus?: (id: number) => void;
 }) {
   const [alasan, setAlasan] = useState("");
   const putuskan = useDecidePayment();
@@ -66,6 +69,18 @@ export function PanelTinjau({
   const [sedangMemutus, setSedangMemutus] = useState<"terima" | "tolak" | null>(
     null,
   );
+  /**
+   * Hasil yang baru saja tersimpan, ditahan sebentar sebelum panel tertutup.
+   *
+   * <p>Sebelumnya panel langsung tertutup begitu jawaban datang, dan
+   * satu-satunya bukti tindakan berhasil adalah toast yang lewat dalam
+   * hitungan detik. Admin yang memverifikasi belasan bukti berturut-turut
+   * kehilangan jejak: yang barusan tadi diterima atau ditolak?
+   */
+  const [hasilAkhir, setHasilAkhir] = useState<{
+    diterima: boolean;
+    nominal: string;
+  } | null>(null);
   const riwayat = usePaymentLogs(payment?.id ?? null);
 
   if (!payment) return null;
@@ -87,12 +102,17 @@ export function PanelTinjau({
       { id: payment!.id, approve, note: alasan.trim() || undefined },
       {
         onSuccess: (hasil) => {
+          setSedangMemutus(null);
+          setHasilAkhir({ diterima: approve, nominal: hasil.amount });
+          onDiputus?.(hasil.id);
           toast.success(
             approve
               ? `Pembayaran ${formatRupiah(hasil.amount)} diverifikasi dan dialokasikan ke cicilan.`
               : "Pembayaran ditolak.",
           );
-          onClose();
+          // Jeda sebelum menutup: cukup untuk terbaca, tidak cukup untuk
+          // terasa menghalangi admin yang sedang memeriksa berturut-turut.
+          setTimeout(onClose, 1400);
         },
         onError: (e) => {
           setSedangMemutus(null);
@@ -110,6 +130,8 @@ export function PanelTinjau({
         side="right"
         className="w-full gap-0 p-0 sm:max-w-full md:w-225 md:max-w-[92vw]"
       >
+        {hasilAkhir && <LapisanHasil hasil={hasilAkhir} />}
+
         <SheetHeader className="border-b border-border px-5 py-4">
           <SheetTitle className="font-heading text-base">
             {payment.studentName}
@@ -362,6 +384,7 @@ export function PanelTinjau({
             )}
           </div>
         </div>
+
       </SheetContent>
 
       {batalTerbuka && (
@@ -482,5 +505,49 @@ function DialogBatalkan({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Lapisan penutup yang menyatakan apa yang baru saja tersimpan.
+ *
+ * <p>Menutupi seluruh panel dengan sengaja: begitu keputusan tersimpan, isi di
+ * baliknya sudah tidak berlaku lagi — statusnya berubah, tombolnya tidak boleh
+ * ditekan lagi. Menampilkannya setengah transparan justru mengundang klik
+ * kedua pada tombol yang sudah tidak semestinya bekerja.
+ */
+function LapisanHasil({
+  hasil,
+}: {
+  hasil: { diterima: boolean; nominal: string };
+}) {
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 rounded-none bg-background/95 backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200">
+      <span
+        className={cn(
+          "flex size-16 items-center justify-center rounded-full motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-300",
+          hasil.diterima
+            ? "bg-success/15 text-success"
+            : "bg-destructive/15 text-destructive",
+        )}
+      >
+        {hasil.diterima ? (
+          <Check className="size-8" strokeWidth={2.5} />
+        ) : (
+          <X className="size-8" strokeWidth={2.5} />
+        )}
+      </span>
+
+      <div className="text-center">
+        <p className="font-heading text-lg font-semibold">
+          {hasil.diterima ? "Pembayaran diverifikasi" : "Pembayaran ditolak"}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {hasil.diterima
+            ? `${formatRupiah(hasil.nominal)} sudah dialokasikan ke cicilan.`
+            : "Mahasiswa bisa mengunggah bukti pengganti."}
+        </p>
+      </div>
+    </div>
   );
 }

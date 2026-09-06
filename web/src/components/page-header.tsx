@@ -1,5 +1,6 @@
 import { AlertCircle, Inbox, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export function PageHeader({
   title,
@@ -32,12 +33,47 @@ export function PageHeader({
   );
 }
 
+/**
+ * Rangka tabel selagi datanya dimuat.
+ *
+ * <p>Sebelumnya sekadar tumpukan kotak abu selebar penuh. Bentuk itu tidak
+ * menyerupai apa pun, sehingga begitu data datang seluruh halaman melompat:
+ * kolom bermunculan, tinggi baris berubah, dan mata harus mencari ulang dari
+ * awal. Rangka ini menirukan susunan tabel yang akan menggantikannya — kepala
+ * tabel, lalu baris dengan lebar kolom yang berbeda-beda seperti isi
+ * sungguhan.
+ */
 export function TableSkeleton({ rows = 6 }: { rows?: number }) {
+  // Lebar yang tidak seragam. Kolom yang semuanya sama lebar terbaca sebagai
+  // pemuat, bukan sebagai tabel yang sedang datang.
+  const kolom = ["w-40", "w-28", "w-24", "w-32", "w-20"];
+
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-card shadow-sm p-4">
-      {Array.from({ length: rows }, (_, index) => (
-        <Skeleton key={index} className="h-9 w-full" />
-      ))}
+    <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
+      <div className="flex items-center gap-6 border-b border-border/70 bg-muted/40 px-4 py-3.5">
+        {kolom.map((lebar) => (
+          <Skeleton key={lebar} className={cn("h-3", lebar)} />
+        ))}
+      </div>
+
+      <div className="divide-y divide-border/50">
+        {Array.from({ length: rows }, (_, baris) => (
+          <div key={baris} className="flex items-center gap-6 px-4 py-3.5">
+            {kolom.map((lebar, i) => (
+              <Skeleton
+                key={lebar}
+                className={cn(
+                  "h-4",
+                  lebar,
+                  // Kolom pertama sedikit lebih pekat: di tabel sungguhan ia
+                  // memang berisi nama, yang paling menarik perhatian.
+                  i === 0 ? "opacity-100" : "opacity-60",
+                )}
+              />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

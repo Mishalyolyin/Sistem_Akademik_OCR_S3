@@ -198,3 +198,13 @@
   33%      { transform: translate3d(3%, -4%, 0) scale(1.06); }
   66%      { transform: translate3d(-3%, 3%, 0) scale(0.96); }
 }
+
+/* Baris tabel yang baru diputuskan. Menyala lalu memudar sendiri — tidak
+   perlu dibersihkan lewat timer, karena animasinya sendiri yang berakhir.
+   Warnanya memakai --success apa adanya, bukan hijau tetap, supaya ikut
+   menyesuaikan mode gelap. */
+@keyframes sorot-baris {
+  0%   { background-color: color-mix(in oklch, var(--success) 22%, transparent); }
+  60%  { background-color: color-mix(in oklch, var(--success) 14%, transparent); }
+  100% { background-color: transparent; }
+}

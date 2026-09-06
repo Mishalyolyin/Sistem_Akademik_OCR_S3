@@ -36,6 +36,16 @@ export function HalamanVerifikasi({ view }: { view: VerifikasiView }) {
   );
   const [search, setSearch] = useState("");
   const [dipilih, setDipilih] = useState<PaymentRow | null>(null);
+  /**
+   * Pembayaran yang baru saja diputuskan.
+   *
+   * <p>Setelah keputusan disimpan, panelnya tertutup dan barisnya berganti
+   * status di tabel — tanpa satu pun isyarat. Admin yang baru memverifikasi
+   * lima bukti berturut-turut tidak punya cara memastikan yang barusan memang
+   * tersimpan, selain membacanya ulang satu per satu. Penanda ini membuat
+   * baris itu menyala sebentar.
+   */
+  const [baruDiputus, setBaruDiputus] = useState<number | null>(null);
 
   const { data, isPending, error } = usePayments({
     status: statusYangDiminta(statusFilter),
@@ -133,6 +143,7 @@ export function HalamanVerifikasi({ view }: { view: VerifikasiView }) {
           search={search}
           onSearchChange={setSearch}
           onReview={setDipilih}
+          sorot={baruDiputus}
         />
       )}
 
@@ -145,6 +156,7 @@ export function HalamanVerifikasi({ view }: { view: VerifikasiView }) {
         key={terpilih?.id ?? "kosong"}
         payment={terpilih}
         onClose={() => setDipilih(null)}
+        onDiputus={setBaruDiputus}
       />
     </div>
   );

@@ -80,6 +80,7 @@ export function TabelVerifikasi({
   search,
   onSearchChange,
   onReview,
+  sorot,
 }: {
   data: PaymentRow[];
   statusFilter: string;
@@ -87,6 +88,8 @@ export function TabelVerifikasi({
   search: string;
   onSearchChange: (value: string) => void;
   onReview: (payment: PaymentRow) => void;
+  /** Pembayaran yang baru diputuskan; barisnya menyala sebentar. */
+  sorot?: number | null;
 }) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "createdAt", desc: true },
@@ -356,7 +359,15 @@ export function TabelVerifikasi({
                 <TableRow
                   key={row.id}
                   onClick={() => onReview(row.original)}
-                  className="cursor-pointer"
+                  className={cn(
+                    "cursor-pointer",
+                    // Baris yang baru diputuskan menyala lalu memudar sendiri.
+                    // Tanpa ini status berganti tanpa satu pun isyarat, dan
+                    // admin yang memeriksa berturut-turut kehilangan jejak
+                    // mana yang barusan ia kerjakan.
+                    row.original.id === sorot &&
+                      "motion-safe:animate-[sorot-baris_2.4s_ease-out]",
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
