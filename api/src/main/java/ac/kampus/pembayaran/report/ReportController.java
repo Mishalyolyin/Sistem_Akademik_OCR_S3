@@ -13,8 +13,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 
 @RestController
@@ -29,6 +31,7 @@ public class ReportController {
 
 	private final PaymentReportExporter exporter;
 	private final ReceiptGenerator receiptGenerator;
+	private final OcrDatasetExporter datasetExporter;
 
 	@GetMapping("/pembayaran.xlsx")
 	@Operation(summary = "Laporan Excel: ringkasan kelas, tagihan, dan riwayat pembayaran")
@@ -46,6 +49,19 @@ public class ReportController {
 		String nama = "kuitansi-%d.pdf".formatted(paymentId);
 
 		return unduh(bytes, nama, MediaType.APPLICATION_PDF);
+	}
+
+	@GetMapping("/dataset-ocr.csv")
+	@Operation(summary = "Dataset CSV pembacaan bukti bayar yang sudah diputuskan admin, "
+			+ "untuk melatih model. Hanya baris berlabel manusia yang ikut.")
+	public ResponseEntity<Resource> datasetOcr(
+			// Teks mentah memuat nama, nomor rekening, dan saldo, jadi ia harus
+			// diminta secara sadar — bukan ikut terbawa oleh unduhan biasa.
+			@RequestParam(defaultValue = "false") boolean sertakanTeks) {
+		byte[] bytes = datasetExporter.datasetOcr(sertakanTeks);
+		String nama = "dataset-ocr-%s.csv".formatted(LocalDate.now());
+
+		return unduh(bytes, nama, new MediaType("text", "csv", StandardCharsets.UTF_8));
 	}
 
 	private ResponseEntity<Resource> unduh(byte[] bytes, String namaBerkas, MediaType tipe) {

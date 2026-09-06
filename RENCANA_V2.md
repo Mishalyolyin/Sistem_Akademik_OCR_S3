@@ -106,7 +106,6 @@ Seminar Proposal → Ujian Kelayakan → Ujian Tertutup → Ujian Terbuka
 | Migrasi DB | **Flyway** | Versi skema terkontrol, setara Laravel Migration |
 | Database | **PostgreSQL 16** | JSONB untuk `ocr_data`, enum native |
 | Message queue | **RabbitMQ (Spring AMQP)** | Job OCR async; broker pesan lazim di bank/enterprise |
-| Cache | **Redis** | Cache dan rate limit |
 | OCR | **Python 3 + FastAPI** (bungkus `ocr_processor.py`) | Model dimuat sekali, bukan spawn proses tiap upload |
 | Auth | **Spring Security + JWT** | Access token 15 menit di memori, refresh token di cookie HttpOnly |
 | Deploy | **Docker Compose** | Semua service dalam satu file |
@@ -143,7 +142,6 @@ Browser
 Next.js (UI + BFF)  --HTTP/JWT-->  Spring Boot (API, logika uang, Excel, PDF)
                                         |            |
                                         |            +--> PostgreSQL
-                                        |            +--> Redis (cache)
                                         |            +--> RabbitMQ (job OCR)
                                         |
                                         +--HTTP-->  FastAPI (Tesseract + OpenCV)
@@ -169,7 +167,7 @@ Tiga modul terpisah: `web/` (Next.js), `api/` (Spring Boot), `ocr/` (FastAPI).
 | Laravel Excel | Apache POI |
 | DomPDF | OpenPDF / Flying Saucer |
 | `Schedule::command()` | `@Scheduled(cron = "...")` |
-| `Storage::disk('public')` | Filesystem lokal atau MinIO |
+| `Storage::disk('public')` | Filesystem lokal (volume Docker); MinIO tidak jadi dipakai |
 | Session auth | Spring Security + JWT |
 | `Symfony\Process` ke python | `RestClient` ke FastAPI |
 | PHPUnit | JUnit 5 + Mockito |
@@ -189,7 +187,13 @@ Tiga modul terpisah: `web/` (Next.js), `api/` (Spring Boot), `ocr/` (FastAPI).
 
 **Entitas inti:** `users`, `students`, `study_classes`, `import_batches`, `installment_templates`,
 `installment_template_items`, `tuition_rates`, `payment_plans`, `installments`, `payments`,
-`adjustments`, `verification_logs`, `installment_amount_changes`, `system_settings`.
+`payment_allocations`, `adjustments`, `verification_logs`, `installment_amount_changes`,
+`discount_tier_rates`, `reminder_logs`, `system_settings`.
+
+Dua di antaranya lahir belakangan, saat fiturnya dikerjakan: `payment_allocations` mencatat
+uang mana masuk ke cicilan mana — tanpa itu pembagian FIFO tidak bisa ditarik kembali saat
+verifikasi dibatalkan; `reminder_logs` mencegah satu mahasiswa dikirimi pengingat jatuh tempo
+yang sama berulang kali.
 
 ### Enum (PostgreSQL native)
 
@@ -274,7 +278,12 @@ installment_amount_changes(id, installment_id, old_amount, new_amount, reason, a
 ### Biaya sekali bayar
 
 11. **Pendaftaran** Rp 1.000.000 — tagihan pertama, jadi gate sebelum akses tagihan UKT
-   (mengikuti pola `pendaftaran.complete` di sistem lama).
+   (mengikuti pola `pendaftaran.complete` di sistem lama). Backend menolak pendaftaran kategori
+   apa pun selain Pendaftaran selama biaya itu belum lunas.
+11a. **Pengecualian gate itu adalah data, bukan tambalan kode.** `students.pendaftaran_exempt`
+   membebaskan satu mahasiswa dari gate Pendaftaran — untuk yang biaya pendaftarannya memang
+   ditanggung pihak lain atau sudah dibayar di luar sistem. Tanpa penanda ini, satu-satunya jalan
+   keluar adalah membuatkan tagihan palsu lalu memverifikasinya, dan itu mengotori pembukuan.
 12. **Empat tahap ujian harus lunas berurutan.** Mahasiswa hanya bisa mendaftar
    `UJIAN_KELAYAKAN` bila `SEMINAR_PROPOSAL` sudah lunas, dan seterusnya. Backend **wajib**
    memvalidasi urutan ini, bukan hanya menyembunyikan tombol di UI.
@@ -332,7 +341,10 @@ kalau digabung, riwayat "uang masuk" dan "tagihan berubah" bercampur di satu log
   leftover ≤ toleransi di-*discard* (kode unik bank)
 - Guard race condition: keputusan manual admin tidak boleh ditimpa hasil OCR yang datang telat
 - Reminder WhatsApp terjadwal
-- Export dataset pembayaran terverifikasi untuk ML
+- Export dataset CSV pembacaan bukti untuk ML — hanya bukti yang **diputuskan admin** yang ikut,
+  disandingkan dengan apa yang dibaca mesin. Verifikasi otomatis yang belum disentuh manusia
+  sengaja tidak masuk: itu tebakan mesin sendiri, dan melatih model darinya hanya mengukuhkan
+  kesalahan yang sudah ada. Teks mentah OCR hanya ikut bila diminta, karena isinya data pribadi
 
 ---
 
@@ -346,7 +358,9 @@ kalau digabung, riwayat "uang masuk" dan "tagihan berubah" bercampur di satu log
   ter-highlight
 - **Dialog edit nominal** dengan React Hook Form + Zod, status cicilan dihitung ulang langsung
   saat diketik
-- Command palette (Ctrl+K)
+- Command palette (Ctrl+K): mencari halaman, mahasiswa, dan tindakan sekaligus. Daftar halamannya
+  diturunkan dari konfigurasi menu dan ikut disaring per peran, supaya palet tidak jadi pintu
+  belakang ke halaman yang endpointnya menolak
 
 ---
 
@@ -355,31 +369,39 @@ kalau digabung, riwayat "uang masuk" dan "tagihan berubah" bercampur di satu log
 | # | Fase | Isi | Status |
 |---|---|---|---|
 | 1 | Fondasi | Spring Boot + Flyway + JWT + RBAC + Swagger, Next.js shell + shadcn/ui, Docker Compose | **Selesai & terverifikasi** |
-| 2 | Master data | Mahasiswa, kelas berhuruf, tingkat potongan, tarif, template angsuran, import Excel | 2 minggu |
-| 3 | Tagihan | Generate plan UKT (5x, potongan), 6 kategori, urutan wajib ujian, edit nominal + audit | 2 minggu |
-| 4 | OCR | FastAPI service, RabbitMQ, async + retry + dead-letter queue | 3 minggu |
-| 5 | Verifikasi & alokasi | Sambungkan UI split-view ke API, alokasi FIFO + wallet + toleransi | 3 minggu |
-| 6 | Laporan & rilis | Export Excel, receipt PDF, dashboard, reminder WhatsApp, Playwright E2E, deploy | 3 minggu |
+| 2 | Master data | Mahasiswa, kelas berhuruf, tingkat potongan, tarif, template angsuran, import Excel | **Selesai & terverifikasi** |
+| 3 | Tagihan | Generate plan UKT (5x, potongan), 6 kategori, urutan wajib ujian, edit nominal + audit | **Selesai & terverifikasi** |
+| 4 | OCR | FastAPI service, RabbitMQ, async + retry + dead-letter queue | **Selesai & terverifikasi** |
+| 5 | Verifikasi & alokasi | Sambungkan UI split-view ke API, alokasi FIFO + wallet + toleransi | **Selesai & terverifikasi** |
+| 6 | Laporan & rilis | Export Excel, receipt PDF, dashboard, reminder WhatsApp, Playwright E2E, deploy | **Selesai & terverifikasi** |
+| + | Portal mahasiswa | Di luar rencana awal: gate dokumen, tagihan sendiri, unggah bukti, riwayat | **Selesai & terverifikasi** |
 
-Frontend Fase 5 (tabel + split-view + dialog ubah nominal) **sudah dibuat lebih awal** memakai data
-contoh, tinggal disambungkan ke API.
+Rincian tiap fase, beserta apa yang diverifikasi dan kapan, ada di [STATUS.md](STATUS.md).
+
+Frontend Fase 5 (tabel + split-view + dialog ubah nominal) dibuat lebih awal memakai data contoh,
+lalu disambungkan ke API pada fasenya sendiri.
 
 ---
 
 ## Yang Masih Perlu Diputuskan
 
 1. **Hosting.** Spring Boot butuh JVM (±512MB–1GB RAM) — shared hosting cPanel tidak mungkin.
-   Perlu VPS.
-2. **Apakah peran `DEVELOPER` (forensik OCR)** tetap dibutuhkan.
-3. *(Opsional, bukan penghambat)* Salin 4 controller yang hilang dari sistem Laravel live sebagai
-   contoh alur dokumen wajib. Kalau tidak ada, alur itu dirancang ulang dari nol — routes yang ada
-   sudah cukup menjelaskan urutannya.
+   Perlu VPS. Paketnya belum dipastikan; ini satu-satunya keputusan yang masih menggantung.
+
+### Sudah terjawab
+
+2. ~~**Apakah peran `DEVELOPER` (forensik OCR)** tetap dibutuhkan.~~ **Dipertahankan.** Ia kini
+   punya halaman forensik OCR sendiri beserta jalan membuat akunnya, dan menu untuk peran itu
+   disaring supaya tidak mengantar ke halaman yang endpointnya menolaknya.
+3. ~~*(Opsional)* Salin 4 controller yang hilang dari sistem Laravel live.~~ **Tidak diperlukan.**
+   Alur dokumen wajib dirancang ulang dari nol dan sudah jalan; urutan di `routes/web.php` memang
+   sudah cukup sebagai acuan.
 
 ---
 
 ## Verifikasi
 
-- **Fase 1** ✅ — `docker compose up` menyalakan Postgres/Redis/RabbitMQ; Flyway V1 diterapkan;
+- **Fase 1** ✅ — `docker compose up` menyalakan Postgres dan RabbitMQ; Flyway V1 diterapkan;
   login mengembalikan access token + cookie HttpOnly; `/auth/me` tanpa token 401; refresh token
   ditolak bila dipakai sebagai access token; Swagger dan actuator 200.
 - **Fase 2** — Import Excel campuran kelas biasa dan kerjasama; baris dengan kelas tidak dikenal

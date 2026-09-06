@@ -11,11 +11,11 @@ import org.testcontainers.utility.DockerImageName;
  * Flyway dan query JPA teruji di database yang sama dengan produksi.
  */
 @TestConfiguration(proxyBeanMethods = false)
-class TestcontainersConfiguration {
+public class TestcontainersConfiguration {
 
 	@Bean
 	@ServiceConnection
-	PostgreSQLContainer<?> postgresContainer() {
+	public PostgreSQLContainer<?> postgresContainer() {
 		return new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"));
 	}
 

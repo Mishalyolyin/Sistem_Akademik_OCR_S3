@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
@@ -13,6 +14,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserMenu } from "@/components/shell/user-menu";
+import { CommandPalette } from "@/components/shell/command-palette";
 import {
   findActiveSection,
   findPageTitle,
@@ -29,6 +31,7 @@ function sectionHref(section: NavSection) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const [paletTerbuka, setPaletTerbuka] = useState(false);
   const activeSection = findActiveSection(pathname);
   const subNav = activeSection?.children;
 
@@ -147,7 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             variant="outline"
             size="sm"
             className="ml-auto gap-2 text-muted-foreground"
-            disabled
+            onClick={() => setPaletTerbuka(true)}
           >
             <Search className="size-3.5" />
             Cari
@@ -159,6 +162,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
+
+      <CommandPalette open={paletTerbuka} onOpenChange={setPaletTerbuka} />
     </div>
   );
 }

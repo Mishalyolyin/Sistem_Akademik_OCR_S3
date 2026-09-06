@@ -12,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,10 +37,14 @@ class ReportControllerTest extends ControllerTestSupport {
 	private PaymentReportExporter exporter;
 	@MockitoBean
 	private ReceiptGenerator receiptGenerator;
+	@MockitoBean
+	private OcrDatasetExporter datasetExporter;
 
 	@BeforeEach
 	void setUp() {
 		when(exporter.ledgerMahasiswa()).thenReturn("berkas-excel-palsu".getBytes());
+		when(datasetExporter.datasetOcr(anyBoolean()))
+				.thenReturn("payment_id,label\n1,VERIFIED\n".getBytes());
 	}
 
 	@Test
@@ -92,6 +97,56 @@ class ReportControllerTest extends ControllerTestSupport {
 	void nomorNgawur() throws Exception {
 		mockMvc.perform(sebagaiAdmin(get("/reports/kuitansi/abc.pdf")))
 				.andExpect(status().isBadRequest());
+	}
+
+	@Test
+	@DisplayName("dataset terunduh sebagai CSV bertanggal")
+	void datasetTerunduh() throws Exception {
+		mockMvc.perform(sebagaiAdmin(get("/reports/dataset-ocr.csv")))
+				.andExpect(status().isOk())
+				.andExpect(header().string(HttpHeaders.CONTENT_TYPE, containsString("text/csv")))
+				.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+						containsString("attachment")))
+				.andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+						containsString("dataset-ocr-")));
+	}
+
+	@Test
+	@DisplayName("teks mentah tidak ikut kecuali diminta secara eksplisit")
+	void tanpaTeksMentah() throws Exception {
+		mockMvc.perform(sebagaiAdmin(get("/reports/dataset-ocr.csv")))
+				.andExpect(status().isOk());
+
+		// Isi struk memuat nama, nomor rekening, dan saldo. Unduhan biasa tidak
+		// boleh diam-diam membawanya keluar.
+		verify(datasetExporter).datasetOcr(false);
+		verify(datasetExporter, never()).datasetOcr(true);
+	}
+
+	@Test
+	@DisplayName("teks mentah ikut bila sertakanTeks=true")
+	void denganTeksMentah() throws Exception {
+		mockMvc.perform(sebagaiAdmin(get("/reports/dataset-ocr.csv")
+						.param("sertakanTeks", "true")))
+				.andExpect(status().isOk());
+
+		verify(datasetExporter).datasetOcr(true);
+	}
+
+	@Test
+	@DisplayName("mahasiswa tidak boleh menarik dataset")
+	void datasetMahasiswaDitolak() throws Exception {
+		mockMvc.perform(sebagaiMahasiswa(get("/reports/dataset-ocr.csv")))
+				.andExpect(status().isForbidden());
+
+		verify(datasetExporter, never()).datasetOcr(anyBoolean());
+	}
+
+	@Test
+	@DisplayName("dataset tanpa token ditolak 401")
+	void datasetTanpaToken() throws Exception {
+		mockMvc.perform(get("/reports/dataset-ocr.csv"))
+				.andExpect(status().isUnauthorized());
 	}
 
 	@Test

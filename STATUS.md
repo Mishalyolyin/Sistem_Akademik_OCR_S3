@@ -3,27 +3,38 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 6 September 2026, 00.30
+Terakhir diperbarui: 6 September 2026, 08.40
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 6 September 2026 pukul 00.30 di mesin pengembangan, semuanya lolos:
+Dijalankan 6 September 2026 pukul 08.40 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 315 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 331 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
-| Test unit frontend | `npm test` | ✅ 33 test lolos di 4 berkas |
+| Test unit frontend | `npm test` | ✅ 49 test lolos di 5 berkas |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
 | Build frontend | `npm run build` | ✅ 23 rute terbentuk |
 | Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
 | Service OCR (container) | `docker build` lalu `GET /health` | ✅ Python 3.14.7, OpenCV 5.0.0, Tesseract 5.5.0 |
-| Susunan compose | `docker compose config` | ✅ dev dan prod terbaca |
+| Susunan compose | `docker compose config` | ✅ dev terbaca; prod menolak tanpa `.env` terisi — memang penjagaannya |
 | Stack produksi | `up -d --build` lalu login | ✅ 5 service hidup, admin bisa masuk |
+| Endpoint dataset OCR | `GET /reports/dataset-ocr.csv` di stack produksi | ✅ 200 `text/csv`, header kolom benar, tanpa token 401 |
 
 Toolchain yang terpasang: JDK 21.0.12.1, Node 24.19.0, Python 3.14.7, Docker 29.7.2.
+
+> **Catatan cara menjalankan verifikasi stack produksi.** Port 8080 dan volume
+> `postgres-data` biasanya sudah dipakai lingkungan pengembangan. Jalankan
+> verifikasi dengan nama project dan port tersendiri supaya keduanya tidak
+> saling menimpa:
+> `docker compose -p verif --env-file <env> -f docker-compose.prod.yml up -d --build`
+> dengan `API_BIND=8081` dan `WEB_BIND=3001`, lalu `down -v` setelah selesai.
+> Tanpa `-p`, compose produksi memakai nama container yang sama dengan compose
+> dev dan akan me-recreate lalu menghapus container dev — datanya selamat karena
+> ada di volume, tapi containernya harus dinyalakan ulang.
 
 > **Catatan version control.** Seluruh V2 sempat tidak pernah masuk git dan nyaris
 > hilang karena sebuah auto-stash menyapu working tree. Sudah dipulihkan dan
@@ -128,7 +139,7 @@ Dikerjakan berurutan, dari yang paling mendesak.
 
 ### Test otomatis
 
-Sudah ada **315 test backend** dan semuanya lolos:
+Sudah ada **331 test backend** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 17 test aturan hitungan tagihan
 - `InstallmentBillingServiceTest` — 9 test aturan ubah nominal
@@ -151,6 +162,10 @@ Sudah ada **315 test backend** dan semuanya lolos:
 - `StudentServiceTest` — 14 test pengembalian kata sandi mahasiswa ke NIM,
   pemeriksaan golongan saat mahasiswa dipindah, dan penjagaan penghapusan
 - `StudentImportServiceTest` — 5 test pemeriksaan golongan pada berkas import
+- `OcrDatasetExporterTest` — 5 test pengutipan sel CSV dataset
+- `OcrDatasetExporterIntegrationTest` — 6 test query dataset di PostgreSQL asli
+  lewat Testcontainers: penyaringan label manusia, kolom turunan dari flags, dan
+  `ocr_data` yang tidak punya kunci `flags` sama sekali
 
 **Lapisan controller**, memakai rantai filter keamanan yang sesungguhnya —
 bukan dimatikan seperti kebiasaan pada uji controller, karena justru di sanalah
@@ -168,7 +183,7 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 - `StudyClassControllerTest` — 8 test pengelolaan kelas
 - `SystemSettingControllerTest` — 6 test pengaturan sistem
 - `StudentImportControllerTest` — 7 test unggahan Excel
-- `ReportControllerTest` — 7 test laporan dan kuitansi
+- `ReportControllerTest` — 12 test laporan, kuitansi, dan dataset OCR
 - `DashboardControllerTest` — 5 test bentuk angka ringkasan
 - `ForensicControllerTest` — 10 test forensik OCR dan batas perannya
 - `ReminderServiceTest` — 16 test aturan pengingat jatuh tempo
@@ -196,6 +211,69 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### Dua fitur yang tertulis di rencana tapi tidak pernah dibangun
+
+Pemeriksaan RENCANA_V2.md terhadap kode menemukan dua fitur yang tercantum di
+rencana namun tidak ada satu baris pun yang mengerjakannya, dan keduanya juga
+tidak pernah tercatat di sini — jadi bukan "dikerjakan lalu dicoret", memang
+luput. Sekaligus rencananya diselaraskan dengan kenyataan.
+
+**1. Command palette (Ctrl+K).** Tombol "Cari · Ctrl K" sudah lama duduk di top
+bar dalam keadaan `disabled`. Sekarang ia hidup, dan pintasannya bekerja dari
+halaman mana pun di shell admin.
+
+Yang bisa dicari: halaman, mahasiswa (nama atau NIM, dicari ke server dengan
+jeda ketik), dan tindakan seperti ganti tema atau keluar. Daftar halamannya
+**diturunkan dari `nav-config`, bukan didaftar ulang** — menu baru otomatis ikut
+tercari, dan yang lebih penting, penyaringan perannya memakai fungsi yang sama
+persis dengan rail ikon. Tanpa itu, seorang DEVELOPER bisa menemukan
+"Verifikasi Pembayaran" lewat Ctrl+K walau menu itu tak pernah tampak olehnya,
+lalu mendarat di halaman yang endpointnya menolaknya. Pencarian mahasiswa juga
+tidak dikirim sama sekali untuk peran selain ADMIN, karena `/students` memang
+menjawabnya 403.
+
+Isi paletnya dipisah ke komponen yang hanya dirender saat palet terbuka, jadi
+ketikan dan sorotan sesi sebelumnya hilang karena komponennya memang mati —
+bukan karena ada effect yang membersihkannya. Repo ini melarang `setState` di
+dalam effect lewat aturan React Compiler, dan pengaturan ulang sorotan saat
+daftar berubah memakai penyesuaian state saat render, pola yang memang
+disarankan React untuk keadaan turunan.
+
+**2. Export dataset pembacaan bukti untuk ML.** `GET /reports/dataset-ocr.csv`,
+dan tombolnya ada di halaman Laporan. Satu baris per bukti bayar: apa yang
+dibaca mesin (keyakinan, nominal, tanggal, bank, flag, panjang teks) disandingkan
+dengan keputusan akhir admin. Ambang keyakinan yang dipakai hari ini ditebak,
+bukan diukur; data inilah yang nanti mengukurnya.
+
+Keputusan yang paling menentukan isinya: **hanya baris yang diputuskan manusia
+yang ikut** (`verified_by IS NOT NULL`). Pembayaran `AUTO_VERIFIED` adalah
+tebakan mesin itu sendiri, dan memasukkannya sebagai label berarti melatih model
+dari jawabannya sendiri — kesalahan yang sudah ada justru dikukuhkan, bukan
+diperbaiki. Verifikasi yang dibatalkan admin ikut keluar dengan sendirinya,
+karena pembatalan mengosongkan `verified_by`.
+
+Teks mentah OCR adalah fitur paling berguna sekaligus paling sensitif: di
+dalamnya ada nama, nomor rekening, dan saldo. Ia hanya ikut kalau diminta lewat
+`?sertakanTeks=true`, dan di layar centangnya diberi peringatan dan tidak
+diingat antar kunjungan. Nama mahasiswa tidak pernah jadi kolom tersendiri —
+yang ada hanya `student_id`.
+
+Query-nya diuji ke PostgreSQL sungguhan lewat Testcontainers, bukan ke JdbcClient
+yang di-mock. Ia bertumpu pada operator `jsonb`, `jsonb_array_elements_text`,
+`LATERAL`, dan cast enum ke teks; query yang salah ketik akan lolos mulus di
+test yang me-mock dan baru meledak di layar admin. Satu kasus yang khusus
+diuji: `ocr_data` yang tidak punya kunci `flags` sama sekali — bentuk yang
+mungkin datang dari bukti lama — karena `jsonb_array_elements_text` melempar
+galat kalau yang diberikan bukan array.
+
+**Rencana ikut diselaraskan.** RENCANA_V2.md masih mencantumkan Redis di tabel
+stack dan di diagram arsitektur, padahal audit 3 September membuangnya dan tidak
+ada satu pun dependency maupun baris kode yang memakainya. Roadmapnya juga masih
+berisi estimasi mingguan untuk Fase 2–6 yang sebenarnya sudah selesai, dan dua
+keputusan yang sudah terjawab di sini masih menggantung di sana. Ditambahkan
+pula `payment_allocations`, `reminder_logs`, dan `students.pendaftaran_exempt`
+yang selama ini ada di kode tanpa pernah disebut di rencana.
 
 ### OCR dokumen mahasiswa akhirnya disambungkan
 
