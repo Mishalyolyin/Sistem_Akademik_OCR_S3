@@ -17,6 +17,7 @@ import {
 } from "@/features/pengaturan/api";
 import { ApiError } from "@/lib/api";
 import { PanelStatistikOcr } from "@/features/pengaturan/statistik-ocr";
+import { PanelUktOtomatis } from "@/features/pengaturan/panel-ukt-otomatis";
 
 /** Nama yang lebih manusiawi daripada key mentah di database. */
 const label: Record<string, string> = {
@@ -32,6 +33,8 @@ const label: Record<string, string> = {
   whatsapp_gateway_url: "Alamat gateway WhatsApp",
   whatsapp_gateway_token: "Token gateway WhatsApp",
   reminder_message_template: "Isi pesan pengingat",
+  ukt_auto_enabled: "Tagihan UKT otomatis menyala",
+  ukt_auto_last_run: "Putaran terakhir",
 };
 
 const kelompok: Record<string, string[]> = {
@@ -43,6 +46,7 @@ const kelompok: Record<string, string[]> = {
     "ocr_date_validation_days",
   ],
   sistem: ["bank_account_number"],
+  tagihan: ["ukt_auto_enabled", "ukt_auto_last_run"],
   pengingat: [
     "reminder_enabled",
     "reminder_days_before",
@@ -59,7 +63,7 @@ export function HalamanPengaturan({
   keterangan,
   children,
 }: {
-  bagian: "ocr" | "sistem" | "pengingat";
+  bagian: "ocr" | "sistem" | "pengingat" | "tagihan";
   judul: string;
   keterangan: string;
   /** Isi tambahan di bawah daftar pengaturan, misalnya riwayat kiriman. */
@@ -94,6 +98,8 @@ export function HalamanPengaturan({
       {children}
 
       {bagian === "ocr" && <PanelStatistikOcr />}
+
+      {bagian === "tagihan" && <PanelUktOtomatis />}
 
       {bagian === "ocr" && (
         <p className="rounded-lg border border-info/25 bg-info-soft px-4 py-3 text-sm text-info">

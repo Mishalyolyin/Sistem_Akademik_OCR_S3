@@ -43,21 +43,9 @@ public class BillingController {
 	private final InstallmentAmountChangeRepository changeRepository;
 	private final StudentService studentService;
 	private final PlanCancellationService cancellationService;
+	private final UktAutoService uktAutoService;
 
 	// --- DTO ---
-
-	public record GeneratePlanRequest(
-			@NotNull(message = "Kategori wajib dipilih.")
-			PaymentCategory category,
-
-			@NotNull(message = "Tahun akademik wajib diisi.")
-			@Pattern(regexp = "\\d{4}/\\d{4}", message = "Format tahun akademik harus 2026/2027.")
-			String academicYear,
-
-			@NotNull(message = "Term wajib dipilih.")
-			AcademicTerm term
-	) {
-	}
 
 	public record InstallmentResponse(
 			Long id,
@@ -141,16 +129,15 @@ public class BillingController {
 
 	// --- Endpoint ---
 
-	@PostMapping("/students/{studentId}/plans")
-	@ResponseStatus(HttpStatus.CREATED)
-	@Operation(summary = "Buat tagihan baru untuk satu mahasiswa")
-	public PlanResponse generate(
-			@PathVariable Long studentId,
-			@Valid @RequestBody GeneratePlanRequest request) {
-
-		var student = studentService.get(studentId);
-		return PlanResponse.from(generationService.generate(
-				student, request.category(), request.academicYear(), request.term()));
+	/**
+	 * Menjalankan putaran pembuatan tagihan UKT sekarang, tanpa menunggu
+	 * jadwalnya. Jalur ini memakai kode yang sama persis dengan penjadwal —
+	 * bukan jalan kedua, hanya pemicu lain untuk jalan yang sama.
+	 */
+	@PostMapping("/tagihan-ukt/jalankan")
+	@Operation(summary = "Buat tagihan UKT yang sudah waktunya untuk semua mahasiswa aktif")
+	public UktAutoService.Hasil jalankanUktOtomatis() {
+		return uktAutoService.jalankan(LocalDate.now());
 	}
 
 	@GetMapping("/students/{studentId}/plans")

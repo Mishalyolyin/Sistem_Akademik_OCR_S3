@@ -58,4 +58,7 @@ public interface StudentRepository
 	@Override
 	@EntityGraph(attributePaths = "studyClass")
 	Page<Student> findAll(@Nullable Specification<Student> spec, Pageable pageable);
+
+	/** Dipakai penjadwal tagihan UKT otomatis. */
+	java.util.List<Student> findByActiveTrueOrderByIdAsc();
 }

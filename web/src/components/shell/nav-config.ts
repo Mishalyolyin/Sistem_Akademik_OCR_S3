@@ -105,6 +105,11 @@ export const navSections: NavSection[] = [
     title: "Pengaturan",
     icon: Settings,
     children: [
+      {
+        title: "Tagihan UKT Otomatis",
+        href: "/pengaturan/tagihan",
+        hint: "Dibuat tiap awal semester",
+      },
       { title: "OCR & Verifikasi", href: "/pengaturan/ocr" },
       { title: "Rekening", href: "/pengaturan/sistem" },
       {

@@ -54,23 +54,6 @@ export function useStudentPlans(studentId: number) {
   });
 }
 
-export function useCreatePlan(studentId: number) {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (body: {
-      category: PaymentCategory;
-      academicYear: string;
-      term: AcademicTerm;
-    }) =>
-      apiFetch<PaymentPlan>(`/students/${studentId}/plans`, {
-        method: "POST",
-        body,
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [KEY, studentId] }),
-  });
-}
-
 /**
  * Membatalkan satu tagihan yang salah dibuat.
  *

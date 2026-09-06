@@ -3,21 +3,21 @@
 Daftar apa yang sudah jadi dan apa yang belum. Diperbarui tiap kali ada bagian
 yang selesai. Rencana lengkapnya ada di [RENCANA_V2.md](RENCANA_V2.md).
 
-Terakhir diperbarui: 6 September 2026, 17.10
+Terakhir diperbarui: 6 September 2026, 17.45
 
 ---
 
 ## Verifikasi terakhir
 
-Dijalankan 6 September 2026 pukul 17.10 di mesin pengembangan, semuanya lolos:
+Dijalankan 6 September 2026 pukul 17.45 di mesin pengembangan, semuanya lolos:
 
 | Yang dicek | Perintah | Hasil |
 |---|---|---|
-| Test backend | `api/mvnw test` | ✅ 386 test lolos, BUILD SUCCESS |
+| Test backend | `api/mvnw test` | ✅ 413 test lolos, BUILD SUCCESS |
 | Ketikan frontend | `npx tsc --noEmit` | ✅ tanpa galat |
 | Test unit frontend | `npm test` | ✅ 61 test lolos di 6 berkas |
 | Lint frontend | `npx eslint src/` | ✅ 0 error, 1 warning yang memang tak bisa diperbaiki |
-| Build frontend | `npm run build` | ✅ sukses, bertambah rute `/portal/disertasi` |
+| Build frontend | `npm run build` | ✅ sukses, bertambah `/portal/disertasi` dan `/pengaturan/tagihan` |
 | Service OCR (mesin) | impor `cv2`, `pytesseract`, `main` | ✅ OpenCV 5.0.0 di Python 3.14.7 |
 | Service OCR (container) | `docker build` lalu `GET /health` | ✅ Python 3.14.7, OpenCV 5.0.0, Tesseract 5.5.0 |
 | Susunan compose | `docker compose config` | ✅ dev terbaca; prod menolak tanpa `.env` terisi — memang penjagaannya |
@@ -31,6 +31,8 @@ Dijalankan 6 September 2026 pukul 17.10 di mesin pengembangan, semuanya lolos:
 | Alur disertasi | isi identitas → gerbang ujian → admin membacanya | ✅ penuh lewat API sungguhan |
 | `CHECK` disertasi | `INSERT` judul dan promotor terlalu pendek | ✅ ditolak `ck_dissertation_title` dan `ck_dissertation_promotor` |
 | Foto ZIP & dashboard | `GET /reports/foto-mahasiswa.zip`, angka OCR per kelas | ✅ 200, dan angkanya muncul di ringkasan kelas |
+| Tagihan UKT otomatis | dua angkatan + satu mahasiswa nonaktif, dua putaran | ✅ angkatan Gasal dapat semester 1; angkatan Genap dilewati karena belum waktunya; nonaktif tidak diperiksa; putaran kedua membuat 0 |
+| Jalur manual dihapus | `POST /students/1/plans` | ✅ 405 — alamatnya masih melayani GET, POST-nya memang tiada |
 
 Toolchain yang terpasang: JDK 21.0.12.1, Node 24.19.0, Python 3.14.7, Docker 29.7.2.
 
@@ -147,7 +149,7 @@ Dikerjakan berurutan, dari yang paling mendesak.
 
 ### Test otomatis
 
-Sudah ada **386 test backend** dan semuanya lolos:
+Sudah ada **413 test backend** dan semuanya lolos:
 
 - `PaymentGenerationServiceTest` — 24 test aturan hitungan tagihan, termasuk
   7 test gerbang lunas UKT sebelum tahap ujian
@@ -173,6 +175,9 @@ Sudah ada **386 test backend** dan semuanya lolos:
 - `StudentImportServiceTest` — 5 test pemeriksaan golongan pada berkas import
 - `PlanCancellationServiceTest` — 7 test pembatalan tagihan, terutama
   penolakannya saat tagihan sudah menerima uang
+- `SemesterUktTest` — 17 test penurunan tahun akademik tiap semester, untuk
+  angkatan Gasal maupun Genap
+- `UktAutoServiceTest` — 11 test putaran pembuatan tagihan otomatis
 - `DissertationServiceTest` — 11 test aturan identitas dan naskah disertasi
 - `DissertationControllerTest` — 12 test batas wewenang mahasiswa dan admin
 - `DashboardQueryIntegrationTest` — 5 test query dashboard per kelas dan ekspor
@@ -230,6 +235,53 @@ aturan peran dan bentuk jawaban penolakan ditegakkan:
 ---
 
 ## Yang SUDAH selesai dan terverifikasi
+
+### Tagihan UKT tidak lagi diketik admin satu per satu
+
+Sisir lengkap terhadap sistem S2 memunculkan pertanyaan yang lebih mendasar
+daripada daftar fitur: siapa sebenarnya yang membuat tagihan UKT. Jawabannya
+ternyata **admin, manual, satu mahasiswa satu kali** — buka halaman
+mahasiswanya, pilih kategori, **ketik tahun akademiknya**, pilih term. Untuk
+enam semester dan tiga puluh mahasiswa itu 180 kali.
+
+Dan tahun akademik yang diketik sebanyak itu cepat atau lambat akan salah,
+tanpa satu pun galat yang menegur — tahun apa pun tetap tersimpan dengan sah.
+Dialognya bahkan membuka dengan nilai yang dipatok mati, `"2026/2027"`, yang
+akan tetap muncul begitu saja setelah tahun ajaran berganti.
+
+**Sekarang penjadwal yang membuatnya**, dan tahun akademiknya diturunkan dari
+`students.start_academic_year` dan `start_term` — data yang tetap diisi admin
+lewat berkas import. Kuasa menentukannya tidak berpindah ke sistem; yang hilang
+hanya pengetikan ulang.
+
+Ini bukan sekadar kenyamanan. Tiap angkatan punya jalurnya sendiri: mahasiswa
+yang masuk Genap 2026/2027 berada di semester keduanya ketika angkatan Gasal
+2027/2028 baru memulai semester pertamanya — pada bulan kalender yang sama.
+Menurunkan tahun akademik dari tanggal hari ini akan salah untuk salah satu
+dari keduanya, apa pun pilihannya.
+
+**Jalur manualnya dihapus, bukan disembunyikan.** Route
+`POST /students/{id}/plans` tidak ada lagi. Yang tersisa hanya tombol
+"Jalankan" di halaman pengaturan, dan itu memakai kode yang sama persis dengan
+penjadwal — bukan jalan kedua, hanya pemicu lebih awal untuk jalan yang sama.
+
+Tiga penjagaan yang membuatnya aman:
+
+- **Aman diulang.** Yang sudah ada tidak dibuat ulang; yang belum tiba waktunya
+  tidak dibuat lebih dulu. Yang kedua penting: tarif dibekukan saat tagihan
+  dibuat, jadi membuat semester kelima hari ini berarti mengunci tarif hari ini
+  untuk yang baru dibayar dua tahun lagi.
+- **Yang tertinggal dikejar.** Mahasiswa yang diimpor di tengah Genap
+  melewatkan putaran September; putaran berikutnya membuat semua semester yang
+  waktunya sudah lewat. Tanpa ini semester pertamanya tidak akan pernah
+  terbentuk — jalur manualnya sudah tidak ada.
+- **Tiap mahasiswa punya transaksinya sendiri.** Satu yang gagal — tarif tahun
+  akademiknya belum diatur, misalnya — tidak menggagalkan putaran, dan sebabnya
+  ikut dicatat apa adanya. Ini menuntut kelas terpisah, bukan method di service
+  yang sama: Spring memasang transaksi lewat proxy, dan proxy tidak pernah
+  menangkap panggilan sebuah kelas ke methodnya sendiri, sehingga
+  `REQUIRES_NEW` di sana akan diam-diam tidak berlaku dan seluruh putaran
+  kembali jadi satu transaksi raksasa.
 
 ### Disertasi akhirnya punya tempat di sistem
 

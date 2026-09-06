@@ -42,6 +42,8 @@ class BillingControllerTest extends ControllerTestSupport {
 	@MockitoBean
 	private PlanCancellationService cancellationService;
 	@MockitoBean
+	private UktAutoService uktAutoService;
+	@MockitoBean
 	private PaymentPlanRepository planRepository;
 	@MockitoBean
 	private InstallmentAmountChangeRepository changeRepository;
@@ -57,59 +59,6 @@ class BillingControllerTest extends ControllerTestSupport {
 	}
 
 	// --- Buat tagihan ---
-
-	@Test
-	@DisplayName("kategori yang tidak dikenal ditolak 400 beserta daftar pilihannya")
-	void kategoriTidakDikenal() throws Exception {
-		Map<String, Object> body = permintaanPlan();
-		body.put("category", "SULTAN");
-
-		mockMvc.perform(sebagaiAdmin(post("/students/1/plans"))
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(json(body)))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.detail", containsString("UKT")));
-
-		verify(generationService, never()).generate(any(), any(), anyString(), any());
-	}
-
-	@Test
-	@DisplayName("format tahun akademik yang salah ditolak 400")
-	void tahunAkademikSalah() throws Exception {
-		Map<String, Object> body = permintaanPlan();
-		body.put("academicYear", "2026");
-
-		mockMvc.perform(sebagaiAdmin(post("/students/1/plans"))
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(json(body)))
-				.andExpect(status().isBadRequest())
-				.andExpect(jsonPath("$.detail", containsString("2026/2027")));
-	}
-
-	@Test
-	@DisplayName("kategori tidak diisi ditolak 400")
-	void kategoriKosong() throws Exception {
-		Map<String, Object> body = permintaanPlan();
-		body.remove("category");
-
-		mockMvc.perform(sebagaiAdmin(post("/students/1/plans"))
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(json(body)))
-				.andExpect(status().isBadRequest());
-	}
-
-	@Test
-	@DisplayName("aturan bisnis dari service diteruskan sebagai 409, bukan 500")
-	void aturanBisnisJadi409() throws Exception {
-		when(studentService.get(anyLong())).thenThrow(
-				new BusinessRuleException("Tagihan UKT ke-7 tidak diperbolehkan."));
-
-		mockMvc.perform(sebagaiAdmin(post("/students/1/plans"))
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(json(permintaanPlan())))
-				.andExpect(status().isConflict())
-				.andExpect(jsonPath("$.detail").value("Tagihan UKT ke-7 tidak diperbolehkan."));
-	}
 
 	// --- Ubah nominal cicilan ---
 
@@ -164,17 +113,6 @@ class BillingControllerTest extends ControllerTestSupport {
 	// --- Peran ---
 
 	@Test
-	@DisplayName("mahasiswa tidak boleh membuat tagihan untuk dirinya lewat jalur admin")
-	void mahasiswaDitolak() throws Exception {
-		mockMvc.perform(sebagaiMahasiswa(post("/students/1/plans"))
-						.contentType(MediaType.APPLICATION_JSON)
-						.content(json(permintaanPlan())))
-				.andExpect(status().isForbidden());
-
-		verify(generationService, never()).generate(any(), any(), anyString(), any());
-	}
-
-	@Test
 	@DisplayName("mahasiswa tidak boleh mengubah nominal cicilan")
 	void mahasiswaTidakBolehUbahNominal() throws Exception {
 		mockMvc.perform(sebagaiMahasiswa(patch("/installments/10/amount"))
@@ -183,5 +121,57 @@ class BillingControllerTest extends ControllerTestSupport {
 				.andExpect(status().isForbidden());
 
 		verify(billingService, never()).updateAmount(anyLong(), any(), anyString(), anyLong());
+	}
+
+	@Test
+	@DisplayName("admin bisa menjalankan putaran tagihan UKT sekarang")
+	void jalankanUktOtomatis() throws Exception {
+		when(uktAutoService.jalankan(any())).thenReturn(
+				new UktAutoService.Hasil(30, 12, 18, 0, java.util.List.of()));
+
+		mockMvc.perform(sebagaiAdmin(post("/tagihan-ukt/jalankan")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.diperiksa").value(30))
+				.andExpect(jsonPath("$.dibuat").value(12))
+				.andExpect(jsonPath("$.dilewati").value(18));
+	}
+
+	@Test
+	@DisplayName("kegagalan per mahasiswa ikut terkirim beserta sebabnya")
+	void kegagalanIkutTerkirim() throws Exception {
+		when(uktAutoService.jalankan(any())).thenReturn(new UktAutoService.Hasil(
+				2, 1, 0, 1,
+				java.util.List.of("Gagal (D9600007) semester 1: Tarif UKT belum diatur.")));
+
+		mockMvc.perform(sebagaiAdmin(post("/tagihan-ukt/jalankan")))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.gagal").value(1))
+				.andExpect(jsonPath("$.catatan[0]",
+						org.hamcrest.Matchers.containsString("Tarif UKT belum diatur")));
+	}
+
+	@Test
+	@DisplayName("mahasiswa tidak boleh menjalankan putaran tagihan")
+	void mahasiswaTidakBolehMenjalankan() throws Exception {
+		mockMvc.perform(sebagaiMahasiswa(post("/tagihan-ukt/jalankan")))
+				.andExpect(status().isForbidden());
+
+		verify(uktAutoService, never()).jalankan(any());
+	}
+
+	@Test
+	@DisplayName("tidak ada lagi jalur membuat tagihan per mahasiswa")
+	void jalurManualSudahTidakAda() throws Exception {
+		// Tagihan UKT kini hanya lahir dari satu tempat. Route POST-nya sengaja
+		// dihapus, bukan sekadar disembunyikan dari layar. Jawabannya 405 dan
+		// bukan 404 karena alamat yang sama masih melayani GET — daftar tagihan
+		// satu mahasiswa tetap bisa dibaca.
+		mockMvc.perform(sebagaiAdmin(post("/students/1/plans"))
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json(java.util.Map.of(
+								"category", "UKT",
+								"academicYear", "2026/2027",
+								"term", "GASAL"))))
+				.andExpect(status().isMethodNotAllowed());
 	}
 }

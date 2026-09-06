@@ -7,7 +7,6 @@ import {
   Ban,
   KeyRound,
   PencilLine,
-  Plus,
   Scale,
   Trash2,
   Wallet,
@@ -43,7 +42,6 @@ import {
   type Installment,
   type PaymentPlan,
 } from "@/features/tagihan/api";
-import { DialogBuatTagihan } from "@/features/tagihan/dialog-buat-tagihan";
 import { DialogUbahNominal } from "@/features/tagihan/dialog-ubah-nominal";
 import { DialogBatalTagihan } from "@/features/tagihan/dialog-batal-tagihan";
 import { DialogPenyesuaian } from "@/features/penyesuaian/dialog-penyesuaian";
@@ -59,8 +57,6 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
   const mahasiswa = useStudent(studentId);
   const plans = useStudentPlans(studentId);
   const golongan = useGolongan();
-
-  const [buatTerbuka, setBuatTerbuka] = useState(false);
   const [penyesuaianTerbuka, setPenyesuaianTerbuka] = useState(false);
   const [resetSandiTerbuka, setResetSandiTerbuka] = useState(false);
   const [ubahTerbuka, setUbahTerbuka] = useState(false);
@@ -140,10 +136,6 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
           <Scale />
           Penyesuaian
         </Button>
-        <Button onClick={() => setBuatTerbuka(true)}>
-          <Plus />
-          Buat tagihan
-        </Button>
       </PageHeader>
 
       <StatRow>
@@ -208,7 +200,7 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
         ) : plans.data.length === 0 ? (
           <EmptyState
             title="Belum ada tagihan"
-            description="Buat tagihan Pendaftaran atau UKT untuk mahasiswa ini."
+            description="Tagihan UKT dibuat sistem sendiri tiap awal semester, menurut angkatan mahasiswa ini. Pendaftaran dan tahap ujian didaftarkan mahasiswa lewat portal."
           />
         ) : (
           plans.data.map((plan) => (
@@ -229,12 +221,6 @@ export function DetailMahasiswa({ studentId }: { studentId: number }) {
         plan={tagihanDibatalkan}
       />
 
-      <DialogBuatTagihan
-        open={buatTerbuka}
-        onOpenChange={setBuatTerbuka}
-        studentId={studentId}
-        studentTier={mhs.discountTier}
-      />
 
       <DialogUbahNominal
         installment={cicilanDiubah}

@@ -276,6 +276,22 @@ installment_amount_changes(id, installment_id, old_amount, new_amount, reason, a
 
 ### Pembuatan tagihan UKT
 
+0. **Tagihan UKT dibuat sistem sendiri, bukan diketik admin per mahasiswa.** Penjadwal harian
+   membuatkan semester yang sudah waktunya untuk tiap mahasiswa aktif. Tahun akademik dan termnya
+   **diturunkan dari `students.start_academic_year` dan `start_term`** — data yang diisi admin lewat
+   berkas import — bukan dari tanggal hari ini. Angkatan Gasal dan angkatan Genap karena itu
+   berjalan di jalurnya masing-masing: pada bulan kalender yang sama, keduanya berada di semester
+   yang berbeda, dan menurunkannya dari tanggal akan salah untuk salah satunya apa pun pilihannya.
+0a. **Tidak ada jalur manual.** Route `POST /students/{id}/plans` dihapus, bukan disembunyikan.
+   Sebelumnya admin membuka halaman tiap mahasiswa lalu mengetik tahun akademiknya — untuk enam
+   semester dan tiga puluh mahasiswa itu 180 kali, dan tahun yang diketik sebanyak itu cepat atau
+   lambat salah tanpa satu pun galat menegur, karena tahun apa pun tetap tersimpan dengan sah.
+0b. **Putaran aman diulang.** Yang sudah ada tidak dibuat ulang; yang belum tiba waktunya tidak
+   dibuat lebih dulu — kalau tidak, aturan snapshot tarif di nomor 4 dilanggar diam-diam, karena
+   tarif hari ini ikut terkunci untuk semester yang baru dibayar dua tahun lagi.
+0c. **Yang tertinggal dikejar.** Mahasiswa yang diimpor di tengah semester melewatkan putaran
+   bulan itu; putaran berikutnya membuat semua semester yang waktunya sudah lewat. Tanpa ini,
+   semester pertamanya tidak akan pernah terbentuk — jalur manualnya sudah tidak ada.
 1. **Nominal dihitung dari tarif dasar dikali potongan mahasiswa**, bukan diketik admin:
    `ukt = tarif_dasar × (1 − persen_potongan)`. Contoh: 10.000.000 × (1 − 0,40) = 6.000.000.
 2. **Dibagi rata ke 5 cicilan.** Semua tarif habis dibagi 5, tapi kode tetap harus menempelkan
@@ -379,6 +395,7 @@ kalau digabung, riwayat "uang masuk" dan "tagihan berubah" bercampur di satu log
 - Verifikasi pembayaran **per kategori** (6 kategori), dengan penyaring per kelas
 - Kelola mahasiswa: tingkat potongan, kelas, reset password, bulk delete, download foto
 - Batalkan tagihan yang salah dibuat, dengan alasan wajib dan jejak audit
+- Jalankan putaran pembuatan tagihan UKT lebih awal, tanpa menunggu jadwalnya
 - Lihat disertasi tiap mahasiswa: judul, kedua promotor, dan naskahnya — dipakai saat
   memverifikasi bukti bayar tahap ujian
 - Unduh foto profil satu kelas sekaligus dalam satu ZIP, dinamai NIM_Nama
