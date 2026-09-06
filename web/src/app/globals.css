@@ -73,7 +73,7 @@
    sumbu sekaligus — rona dan terang — supaya badge "Lunas" tidak pernah
    terbaca sebagai sekadar elemen bermerek, dan sebaliknya. */
 :root {
-  --background: oklch(0.988 0.004 140);
+  --background: oklch(1 0 0);
   --foreground: oklch(0.19 0.018 160);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.19 0.018 160);
@@ -112,7 +112,7 @@
   --chart-5: oklch(0.553 0.199 27);
 
   --radius: 0.5rem;
-  --sidebar: oklch(0.974 0.008 152);
+  --sidebar: oklch(0.982 0.004 152);
   --sidebar-foreground: oklch(0.19 0.018 160);
   --sidebar-primary: oklch(0.435 0.108 162);
   --sidebar-primary-foreground: oklch(0.99 0.004 150);
